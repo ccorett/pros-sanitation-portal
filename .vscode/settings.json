@@ -1,0 +1,8 @@
+{
+  "terminal.integrated.cwd": "${workspaceFolder}",
+  "npm.packageManager": "npm",
+  "npm.scriptExplorerAction": "run",
+  "files.exclude": {
+    "**/.next": true
+  }
+}

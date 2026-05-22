@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #0c151d;
+  --color-foreground: #ebfbff;
+  --color-primary: #259f00;
+  --color-primary-light: #6cc801;
+  --color-accent: #00c6ff;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  color: var(--color-foreground);
+}
+
+.glass-card {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-foreground) 8%, transparent),
+    color-mix(in srgb, var(--color-foreground) 3%, transparent)
+  );
+  border: 1px solid color-mix(in srgb, var(--color-foreground) 12%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.industrial-grid {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--color-accent) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 6%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.status-pulse {
+  animation: pulse-glow 2.5s ease-in-out infinite;
+}
+
+.login-glow {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 25%, transparent),
+    0 0 48px color-mix(in srgb, var(--color-accent) 14%, transparent),
+    0 0 24px color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
