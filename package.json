@@ -5,6 +5,7 @@
   "scripts": {
     "whereami": "node -e \"console.log(process.cwd())\"",
     "verify": "node -e \"require('fs').existsSync('package.json') ? console.log('Project Root OK') : process.exit(1)\"",
+    "db:verify": "node scripts/verify-db.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -12,6 +13,8 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.4.0",
+    "@neondatabase/serverless": "^1.1.0",
+    "dotenv": "^17.4.2",
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.511.0",
     "next": "^15.3.3",
