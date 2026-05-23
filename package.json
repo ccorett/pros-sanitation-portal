@@ -6,20 +6,30 @@
     "whereami": "node -e \"console.log(process.cwd())\"",
     "verify": "node -e \"require('fs').existsSync('package.json') ? console.log('Project Root OK') : process.exit(1)\"",
     "db:verify": "node scripts/verify-db.mjs",
+    "db:verify:prisma": "node scripts/verify-prisma.mjs",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "postinstall": "prisma generate",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
-    "@clerk/nextjs": "^7.4.0",
     "@neondatabase/serverless": "^1.1.0",
+    "@prisma/client": "^6.19.0",
+    "better-auth": "^1.6.11",
     "dotenv": "^17.4.2",
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.511.0",
     "next": "^15.3.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
@@ -29,7 +39,9 @@
     "@types/react-dom": "^19.1.5",
     "eslint": "^9.27.0",
     "eslint-config-next": "^15.3.3",
+    "prisma": "^6.19.0",
     "tailwindcss": "^4.1.8",
+    "tsx": "^4.22.3",
     "typescript": "^5.8.3"
   }
 }

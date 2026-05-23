@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { COMPANY } from "@/lib/constants";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { sidebarNavItems } from "@/lib/mock-data";
 
 const navIcons: Record<string, typeof LayoutDashboard> = {
@@ -60,11 +61,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       >
         <div className="flex items-center justify-between border-b border-[#ebfbff]/10 px-5 py-5">
           <div className="flex items-center gap-3">
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#259f00] to-[#6cc801] text-sm font-bold text-[#0c151d]"
-              aria-hidden="true"
-            >
-              PS
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#ebfbff]/15 bg-gradient-to-br from-[#0c151d] to-[#259f00]/20 shadow-lg shadow-[#259f00]/10">
+              <CompanyLogo
+                size="sm"
+                className="drop-shadow-[0_0_10px_rgba(37,159,0,0.35)]"
+              />
             </div>
             <div>
               <p className="text-sm font-bold text-[#ebfbff]">{COMPANY.shortName}</p>

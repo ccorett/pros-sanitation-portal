@@ -1,9 +1,12 @@
-import { UserButton } from "@clerk/nextjs";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { SignOutButton } from "@/components/auth/SignOutButton";
+import { auth } from "@/lib/auth";
+import { COMPANY } from "@/lib/constants";
+import { getEmployeePortalAccess } from "@/lib/employee-portal-access";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Briefcase, ClipboardList, FileText, Users } from "lucide-react";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { COMPANY } from "@/lib/constants";
 
 const placeholderCards = [
   {
@@ -29,17 +32,25 @@ const placeholderCards = [
 ];
 
 export default async function StaffDashboardPage() {
-  const { userId } = await auth();
+  const requestHeaders = await headers();
+  const session = await auth.api.getSession({
+    headers: requestHeaders,
+  });
 
-  if (!userId) {
+  if (!session) {
     redirect("/employee-login");
   }
 
-  const user = await currentUser();
+  const access = await getEmployeePortalAccess(session.user.id);
+
+  if (!access.allowed) {
+    redirect(`/employee-login?access=${access.code}`);
+  }
+
   const displayName =
-    user?.firstName ??
-    user?.emailAddresses[0]?.emailAddress?.split("@")[0] ??
-    "Employee";
+    access.employee.firstName ??
+    session.user.name?.split(" ")[0] ??
+    session.user.email.split("@")[0];
 
   return (
     <main className="relative min-h-dvh">
@@ -50,8 +61,11 @@ export default async function StaffDashboardPage() {
       <header className="relative z-10 border-b border-[#ebfbff]/10 bg-[#0c151d]/70 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#259f00] to-[#6cc801] text-sm font-bold text-[#0c151d]">
-              PS
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#ebfbff]/15 bg-gradient-to-br from-[#0c151d] to-[#259f00]/20 shadow-lg shadow-[#259f00]/10">
+              <CompanyLogo
+                size="sm"
+                className="drop-shadow-[0_0_10px_rgba(37,159,0,0.35)]"
+              />
             </div>
             <div>
               <p className="text-sm font-bold text-[#ebfbff]">{COMPANY.shortName}</p>
@@ -65,7 +79,7 @@ export default async function StaffDashboardPage() {
             >
               Portal Home
             </Link>
-            <UserButton />
+            <SignOutButton />
           </div>
         </div>
       </header>

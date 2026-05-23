@@ -2,25 +2,57 @@
 
 import { motion } from "framer-motion";
 import { Lock, Mail } from "lucide-react";
-import { useAuth } from "@clerk/nextjs";
+import { authClient } from "@/lib/auth-client";
+import { authErrorClassName } from "@/lib/auth-form-styles";
+import { signInEmployee } from "@/lib/employee-sign-in";
+import { normalizePinInput } from "@/lib/pin";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { COMPANY } from "@/lib/constants";
+import type { PublicSignupPolicy } from "@/lib/signup-access";
 
-export function LoginCTASection() {
+type LoginCTASectionProps = {
+  signupPolicy: PublicSignupPolicy;
+};
+
+export function LoginCTASection({ signupPolicy }: LoginCTASectionProps) {
+  const signupEnabled = signupPolicy.mode !== "disabled";
   const router = useRouter();
-  const { isSignedIn, isLoaded } = useAuth();
+  const { data: session, isPending } = authClient.useSession();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!isLoaded) return;
+    setError(null);
+
+    if (isPending) return;
+
+    if (session) {
+      router.push("/staff-dashboard");
+      return;
+    }
+
     setLoading(true);
-    router.push(isSignedIn ? "/staff-dashboard" : "/employee-login");
+
+    try {
+      const result = await signInEmployee({ email, pin });
+
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      window.location.assign("/staff-dashboard");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -36,14 +68,15 @@ export function LoginCTASection() {
           transition={{ duration: 0.45 }}
           className="mb-6 flex flex-col items-center text-center"
         >
-          <div
-            className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#ebfbff]/15 bg-gradient-to-br from-[#0c151d] to-[#259f00]/20 shadow-lg shadow-[#259f00]/10 sm:h-[72px] sm:w-[72px]"
-            role="img"
-            aria-label={`${COMPANY.name} logo`}
-          >
-            <span className="text-xl font-black tracking-tighter text-[#6cc801] sm:text-2xl">
-              PS
-            </span>
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#ebfbff]/15 bg-gradient-to-br from-[#0c151d] to-[#259f00]/20 shadow-lg shadow-[#259f00]/10 sm:h-[72px] sm:w-[72px]">
+            <CompanyLogo
+              size="md"
+              className="drop-shadow-[0_0_12px_rgba(37,159,0,0.35)] sm:hidden"
+            />
+            <CompanyLogo
+              size="lg"
+              className="hidden drop-shadow-[0_0_12px_rgba(37,159,0,0.35)] sm:block"
+            />
           </div>
           <p className="text-xs font-semibold uppercase tracking-widest text-[#00c6ff]">
             {COMPANY.name}
@@ -77,12 +110,17 @@ export function LoginCTASection() {
               </div>
             </div>
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+              {error && (
+                <p className={authErrorClassName} role="alert">
+                  {error}
+                </p>
+              )}
               <div>
                 <label
-                  htmlFor="email"
+                  htmlFor="landing-email"
                   className="mb-2 block text-sm font-medium text-[#ebfbff]/80"
                 >
-                  Work email
+                  Email
                 </label>
                 <div className="relative">
                   <Mail
@@ -90,49 +128,71 @@ export function LoginCTASection() {
                     aria-hidden="true"
                   />
                   <input
-                    id="email"
+                    id="landing-email"
                     name="email"
                     type="email"
                     autoComplete="username"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@prossanitation.com"
+                    placeholder="you@example.com"
                     className="w-full rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 py-4 pl-12 pr-4 text-[#ebfbff] placeholder:text-[#ebfbff]/30 transition-colors focus:border-[#00c6ff]/50 focus:outline-none focus:ring-2 focus:ring-[#00c6ff]/30 min-h-[54px] text-base"
                   />
                 </div>
               </div>
               <div>
                 <label
-                  htmlFor="password"
+                  htmlFor="landing-pin"
                   className="mb-2 block text-sm font-medium text-[#ebfbff]/80"
                 >
-                  Password
+                  PIN
                 </label>
                 <input
-                  id="password"
-                  name="password"
+                  id="landing-pin"
+                  name="pin"
                   type="password"
+                  inputMode="numeric"
                   autoComplete="current-password"
                   required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  maxLength={4}
+                  pattern="\d{4}"
+                  value={pin}
+                  onChange={(e) => setPin(normalizePinInput(e.target.value))}
+                  placeholder="Enter your PIN"
                   className="w-full rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-4 text-[#ebfbff] placeholder:text-[#ebfbff]/30 transition-colors focus:border-[#00c6ff]/50 focus:outline-none focus:ring-2 focus:ring-[#00c6ff]/30 min-h-[54px] text-base"
                 />
               </div>
               <div className="flex justify-end">
-                <a
-                  href="#"
+                <Link
+                  href="/employee-forgot-password"
                   className="text-sm font-medium text-[#00c6ff] hover:text-[#6cc801] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00c6ff] rounded"
-                  onClick={(e) => e.preventDefault()}
                 >
-                  Forgot Password?
-                </a>
+                  Forgot PIN?
+                </Link>
               </div>
               <Button type="submit" variant="login" loading={loading}>
                 Login to Portal
               </Button>
+              {signupEnabled ? (
+                <div className="space-y-3 pt-1">
+                  <p className="text-center text-sm text-[#ebfbff]/60">
+                    New employee?
+                  </p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    fullWidth
+                    className="min-h-[52px] bg-[#0c151d]/60 text-base transition-shadow hover:shadow-lg hover:shadow-[#00c6ff]/20"
+                    onClick={() => router.push("/employee-signup")}
+                  >
+                    Create Employee Account
+                  </Button>
+                </div>
+              ) : (
+                <p className="pt-1 text-center text-sm text-[#ebfbff]/50">
+                  New accounts are created by an administrator.
+                </p>
+              )}
             </form>
             <p className="mt-6 text-center text-xs text-[#ebfbff]/40">
               {COMPANY.name} — Authorized employees only. Unauthorized access is

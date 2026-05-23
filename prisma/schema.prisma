@@ -1,0 +1,235 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Better Auth core tables
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  employee      Employee?
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verification")
+}
+
+model LoginAttempt {
+  email     String   @id
+  attempts  Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@map("login_attempts")
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  DISABLED
+  ON_LEAVE
+}
+
+enum AccountStatus {
+  ACTIVE
+  LOCKED
+  DISABLED
+}
+
+enum ClientLocationStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ServiceType {
+  SANITARY_BIN_SERVICE
+  GROCERY_CLEANING
+}
+
+enum JobStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  ISSUE_REPORTED
+}
+
+enum NoticeCategory {
+  GENERAL
+  SAFETY
+  OPERATIONS
+  HR
+}
+
+model Employee {
+  id                String           @id @default(uuid()) @db.Uuid
+  userId            String           @unique
+  employeeId        String           @unique
+  firstName         String
+  lastName          String
+  companyEmail      String           @unique
+  phoneNumber       String?
+  department        String
+  jobTitle          String
+  supervisorName    String?
+  employmentStatus  EmploymentStatus @default(ACTIVE)
+  accountStatus     AccountStatus      @default(ACTIVE)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedJobs           Job[]
+  policyAcknowledgements PolicyAcknowledgement[]
+  noticeAcknowledgements NoticeAcknowledgement[]
+
+  @@map("employees")
+}
+
+model ClientLocation {
+  id            String               @id @default(uuid()) @db.Uuid
+  clientName    String
+  siteName      String?
+  address       String
+  contactPerson String?
+  contactNumber String?
+  status        ClientLocationStatus @default(ACTIVE)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  jobs Job[]
+
+  @@map("client_locations")
+}
+
+model Job {
+  id                 String      @id @default(uuid()) @db.Uuid
+  jobCode            String      @unique
+  clientLocationId   String      @db.Uuid
+  assignedEmployeeId String      @db.Uuid
+  serviceType        ServiceType
+  scheduledDate      DateTime    @db.Date
+  instructions       String?
+  status             JobStatus   @default(NOT_STARTED)
+  completionNotes    String?
+  issueNotes         String?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  clientLocation   ClientLocation @relation(fields: [clientLocationId], references: [id], onDelete: Restrict)
+  assignedEmployee Employee       @relation(fields: [assignedEmployeeId], references: [id], onDelete: Restrict)
+
+  @@index([assignedEmployeeId])
+  @@index([clientLocationId])
+  @@index([scheduledDate])
+  @@map("jobs")
+}
+
+model InternalNotice {
+  id          String         @id @default(uuid()) @db.Uuid
+  title       String
+  body        String
+  category    NoticeCategory
+  publishedAt DateTime
+  expiresAt   DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  acknowledgements NoticeAcknowledgement[]
+
+  @@map("internal_notices")
+}
+
+model Policy {
+  id            String   @id @default(uuid()) @db.Uuid
+  title         String
+  body          String
+  version       String
+  effectiveDate DateTime @db.Date
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  acknowledgements PolicyAcknowledgement[]
+
+  @@map("policies")
+}
+
+model PolicyAcknowledgement {
+  id             String   @id @default(uuid()) @db.Uuid
+  employeeId     String   @db.Uuid
+  policyId       String   @db.Uuid
+  acknowledgedAt DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  policy   Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, policyId])
+  @@map("policy_acknowledgements")
+}
+
+model NoticeAcknowledgement {
+  id             String   @id @default(uuid()) @db.Uuid
+  employeeId     String   @db.Uuid
+  noticeId       String   @db.Uuid
+  acknowledgedAt DateTime @default(now())
+
+  employee Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  notice   InternalNotice @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, noticeId])
+  @@map("notice_acknowledgements")
+}
