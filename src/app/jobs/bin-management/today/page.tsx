@@ -1,22 +1,17 @@
-import { TechnicianJobCard } from "@/components/bin-service/TechnicianJobCard";
+import { BinTodaysJobsTable } from "@/components/bin-service/BinTodaysJobsTable";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
-import {
-  enrichJobWithStatus,
-  listTechnicianBinJobs,
-} from "@/lib/bin-service/service";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default async function BinJobsTodayPage() {
-  const { employee } = await requireStaffAccess();
-  const jobs = await listTechnicianBinJobs(employee.id);
+  await requireStaffAccess();
 
   return (
     <StaffWorkspaceShell
       sectionLabel="Job Management · Bin Management"
       title="Today's Bin Jobs"
-      subtitle="Your assigned sanitary bin service stops. Overdue and unresolved jobs stay at the top."
+      subtitle="Due and overdue bin locations only. Complete service to reset last service date to today."
     >
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Link
@@ -34,23 +29,7 @@ export default async function BinJobsTodayPage() {
         </Link>
       </div>
 
-      {jobs.length === 0 ? (
-        <div className="glass-card rounded-2xl p-8 text-center">
-          <p className="text-[#ebfbff]/60">
-            No bin jobs assigned for you right now. Check back on your service day
-            or contact your supervisor.
-          </p>
-        </div>
-      ) : (
-        <div className="mx-auto grid max-w-xl gap-4">
-          {jobs.map((job) => {
-            const { rotation } = enrichJobWithStatus(job);
-            return (
-              <TechnicianJobCard key={job.id} job={job} rotation={rotation} />
-            );
-          })}
-        </div>
-      )}
+      <BinTodaysJobsTable />
     </StaffWorkspaceShell>
   );
 }

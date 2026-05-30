@@ -9,7 +9,7 @@ export default async function HrPayslipsPage() {
 
   return (
     <StaffWorkspaceShell
-      sectionLabel="HR"
+      sectionLabel="Human Resources"
       title="Payslips"
       subtitle="View and download your available payslip PDFs. Read-only — no payroll calculations."
     >
@@ -19,7 +19,7 @@ export default async function HrPayslipsPage() {
           className="inline-flex items-center gap-2 text-sm font-medium text-[#00c6ff] transition-colors hover:text-[#6cc801]"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Back to HR
+          Back to Human Resources
         </Link>
       </div>
 

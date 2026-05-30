@@ -1,7 +1,7 @@
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
 import {
   getClientLocationBySlug,
-  type JobServiceType,
+  serviceTypeBadgeClass,
 } from "@/lib/jobs-mock-data";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import {
@@ -17,13 +17,6 @@ import { notFound } from "next/navigation";
 type LocationJobsPageProps = {
   params: Promise<{ locationSlug: string }>;
 };
-
-function serviceTypeBadgeClass(serviceType: JobServiceType): string {
-  if (serviceType === "Pharmacy Cleaning") {
-    return "border-[#00c6ff]/35 bg-[#00c6ff]/15 text-[#00c6ff]";
-  }
-  return "border-[#259f00]/35 bg-[#259f00]/15 text-[#6cc801]";
-}
 
 export default async function LocationJobsPage({ params }: LocationJobsPageProps) {
   await requireStaffAccess();

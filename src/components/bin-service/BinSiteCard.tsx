@@ -25,9 +25,10 @@ type BinSiteCardProps = {
     } | null;
   };
   rotation: RotationStatusResult;
+  readOnly?: boolean;
 };
 
-export function BinSiteCard({ site, rotation }: BinSiteCardProps) {
+export function BinSiteCard({ site, rotation, readOnly = false }: BinSiteCardProps) {
   const styles = getRotationStatusStyles(rotation.color);
 
   return (
@@ -83,15 +84,17 @@ export function BinSiteCard({ site, rotation }: BinSiteCardProps) {
         <p className="mt-4 text-sm text-[#f5c542]">Setup required</p>
       )}
 
-      <div className="mt-6 flex flex-1 items-end">
-        <Link
-          href={`/jobs/bin-management/setup/${site.id}`}
-          className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-3 text-sm font-semibold text-[#ebfbff] transition-colors hover:border-[#00c6ff]/60 hover:bg-[#00c6ff]/20"
-        >
-          <Settings2 className="h-4 w-4" aria-hidden="true" />
-          {site.setup ? "Edit Setup" : "Configure Setup"}
-        </Link>
-      </div>
+      {!readOnly ? (
+        <div className="mt-6 flex flex-1 items-end">
+          <Link
+            href={`/jobs/bin-management/setup/${site.id}?from=admin`}
+            className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-3 text-sm font-semibold text-[#ebfbff] transition-colors hover:border-[#00c6ff]/60 hover:bg-[#00c6ff]/20"
+          >
+            <Settings2 className="h-4 w-4" aria-hidden="true" />
+            {site.setup ? "Edit Setup" : "Configure Setup"}
+          </Link>
+        </div>
+      ) : null}
     </GlassCard>
   );
 }

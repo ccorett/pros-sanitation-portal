@@ -20,6 +20,7 @@ type Technician = {
 type BinSetupFormProps = {
   siteId: string;
   siteName: string;
+  returnPath?: string;
   initial: {
     expectedRegularBins: number;
     expectedNewBins: number;
@@ -34,7 +35,12 @@ type BinSetupFormProps = {
   } | null;
 };
 
-export function BinSetupForm({ siteId, siteName, initial }: BinSetupFormProps) {
+export function BinSetupForm({
+  siteId,
+  siteName,
+  returnPath = "/admin",
+  initial,
+}: BinSetupFormProps) {
   const router = useRouter();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [loading, setLoading] = useState(false);
@@ -83,7 +89,7 @@ export function BinSetupForm({ siteId, siteName, initial }: BinSetupFormProps) {
       return;
     }
 
-    router.push("/jobs/bin-management");
+    router.push(returnPath);
     router.refresh();
   }
 

@@ -1,7 +1,6 @@
-import { SignOutButton } from "@/components/auth/SignOutButton";
+import { StaffTopNav } from "@/components/layout/StaffTopNav";
 import { COMPANY } from "@/lib/constants";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import Link from "next/link";
 import type { ReactNode } from "react";
 
 type StaffWorkspaceShellProps = {
@@ -37,21 +36,7 @@ export function StaffWorkspaceShell({
               <p className="text-xs text-[#ebfbff]/50">{sectionLabel}</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/staff-dashboard"
-              className="text-sm text-[#ebfbff]/60 hover:text-[#ebfbff] transition-colors"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/"
-              className="hidden text-sm text-[#ebfbff]/60 hover:text-[#ebfbff] transition-colors sm:inline"
-            >
-              Portal Home
-            </Link>
-            <SignOutButton />
-          </div>
+          <StaffTopNav />
         </div>
       </header>
 

@@ -1,4 +1,4 @@
-import { Briefcase, Boxes, Package, Users } from "lucide-react";
+import { Briefcase, Package, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type QuickAccessItem = {
@@ -19,36 +19,28 @@ export const quickAccessItems: QuickAccessItem[] = [
     href: "#jobs",
   },
   {
-    id: "equipment",
+    id: "equipment-supplies",
     title: "Equipment & Supplies",
     description:
-      "Monitor pressure washers, PPE stock, chemical inventory, and vehicle readiness across depots.",
+      "Search inventory, check availability, request equipment, supplies and consumables.",
     icon: Package,
-    href: "#equipment",
+    href: "/equipment-supplies",
   },
   {
     id: "hr",
-    title: "HR & Staff",
+    title: "Human Resources",
     description:
       "View rosters, certifications, leave requests, and supervisor contact lists for active crews.",
     icon: Users,
-    href: "#hr",
-  },
-  {
-    id: "stock",
-    title: "Request Stock",
-    description:
-      "Submit supply requests for chemicals, PPE, sanitary products, and operational materials.",
-    icon: Boxes,
-    href: "#stock",
+    href: "/hr",
   },
 ];
 
 export const sidebarNavItems = [
   { label: "Dashboard", href: "/staff-dashboard", active: false },
   { label: "Jobs", href: "/jobs", active: false },
-  { label: "Equipment", href: "#equipment" },
-  { label: "HR", href: "/hr", active: false },
-  { label: "Stock Requests", href: "#stock" },
-  { label: "Settings", href: "#settings" },
+  { label: "Equipment & Supplies", href: "/equipment-supplies", active: false },
+  { label: "Human Resources", href: "/hr", active: false },
+  { label: "Settings", href: "/settings", active: false },
+  { label: "Admin", href: "/admin", active: false },
 ];

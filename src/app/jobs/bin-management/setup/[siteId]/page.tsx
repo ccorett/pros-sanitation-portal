@@ -8,37 +8,43 @@ import { notFound } from "next/navigation";
 
 type SetupPageProps = {
   params: Promise<{ siteId: string }>;
+  searchParams: Promise<{ from?: string }>;
 };
 
-export default async function BinSetupPage({ params }: SetupPageProps) {
+export default async function BinSetupPage({ params, searchParams }: SetupPageProps) {
   await requireStaffAccess();
 
   const { siteId } = await params;
+  const { from } = await searchParams;
   const site = await getBinServiceSite(siteId);
 
   if (!site) {
     notFound();
   }
 
+  const backHref = from === "admin" ? "/admin" : "/jobs/bin-management";
+  const backLabel = from === "admin" ? "Back to Admin" : "Back to Bin Management";
+
   return (
     <StaffWorkspaceShell
-      sectionLabel="Job Management · Bin Management"
+      sectionLabel="Admin · Bin Management"
       title="Bin Service Setup"
       subtitle={`Configure rotation schedule and expected bin counts for ${site.name}.`}
     >
       <div className="mb-6">
         <Link
-          href="/jobs/bin-management"
+          href={backHref}
           className="inline-flex items-center gap-2 text-sm font-medium text-[#00c6ff] transition-colors hover:text-[#6cc801]"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Back to Bin Management
+          {backLabel}
         </Link>
       </div>
 
       <BinSetupForm
         siteId={site.id}
         siteName={site.name}
+        returnPath={backHref}
         initial={
           site.setup
             ? {

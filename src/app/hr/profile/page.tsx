@@ -11,7 +11,7 @@ export default async function HrProfilePage() {
 
   return (
     <StaffWorkspaceShell
-      sectionLabel="HR"
+      sectionLabel="Human Resources"
       title="My Profile"
       subtitle="View your employment details and upload a profile picture."
     >
@@ -21,7 +21,7 @@ export default async function HrProfilePage() {
           className="inline-flex items-center gap-2 text-sm font-medium text-[#00c6ff] transition-colors hover:text-[#6cc801]"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Back to HR
+          Back to Human Resources
         </Link>
       </div>
 

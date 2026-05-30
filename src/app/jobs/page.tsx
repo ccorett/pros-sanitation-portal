@@ -1,7 +1,6 @@
-import { LocationCard } from "@/components/jobs/LocationCard";
+import { CleaningLocationsTable } from "@/components/jobs/CleaningLocationsTable";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { clientLocations } from "@/lib/jobs-mock-data";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import { ArrowRight, Recycle, Smartphone } from "lucide-react";
 import Link from "next/link";
@@ -47,11 +46,7 @@ export default async function JobsPage() {
       <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-[#ebfbff]/50">
         Cleaning Locations
       </h2>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {clientLocations.map((location) => (
-          <LocationCard key={location.slug} location={location} />
-        ))}
-      </div>
+      <CleaningLocationsTable />
     </StaffWorkspaceShell>
   );
 }

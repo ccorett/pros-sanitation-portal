@@ -3,11 +3,11 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import {
-  Boxes,
   Briefcase,
   LayoutDashboard,
   Package,
   Settings,
+  Shield,
   Users,
   X,
 } from "lucide-react";
@@ -19,9 +19,9 @@ import { sidebarNavItems } from "@/lib/mock-data";
 const navIcons: Record<string, typeof LayoutDashboard> = {
   Dashboard: LayoutDashboard,
   Jobs: Briefcase,
-  Equipment: Package,
-  HR: Users,
-  "Stock Requests": Boxes,
+  "Equipment & Supplies": Package,
+  "Human Resources": Users,
+  Admin: Shield,
   Settings: Settings,
 };
 

@@ -35,7 +35,7 @@ export function AddBinSiteForm() {
     }
 
     const data = (await response.json()) as { site: { id: string } };
-    router.push(`/jobs/bin-management/setup/${data.site.id}`);
+    router.push(`/jobs/bin-management/setup/${data.site.id}?from=admin`);
     router.refresh();
   }
 

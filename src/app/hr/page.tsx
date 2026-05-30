@@ -8,8 +8,8 @@ export default async function HrPage() {
 
   return (
     <StaffWorkspaceShell
-      sectionLabel="HR"
-      title="HR Section"
+      sectionLabel="Human Resources"
+      title="Human Resources"
       subtitle="Employment information, time off, payslips, and letter requests."
     >
       <div className="grid gap-4 sm:grid-cols-2">

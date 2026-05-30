@@ -42,7 +42,7 @@ export function JobLettersSection({ employeeRecordId }: JobLettersSectionProps) 
       <div className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">
         <h2 className="text-lg font-bold text-[#ebfbff]">Request a Letter</h2>
         <p className="text-sm text-[#ebfbff]/55">
-          Select the letter type you need. HR will process mock requests without an
+          Select the letter type you need. Human Resources will process mock requests without an
           approval workflow for now.
         </p>
 

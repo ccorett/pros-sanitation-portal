@@ -1,9 +1,9 @@
-import { SignOutButton } from "@/components/auth/SignOutButton";
+import { StaffTopNav } from "@/components/layout/StaffTopNav";
 import { auth } from "@/lib/auth";
 import { COMPANY } from "@/lib/constants";
 import { getEmployeePortalAccess } from "@/lib/employee-portal-access";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { Briefcase, ClipboardList, FileText, Users } from "lucide-react";
+import { Briefcase, FileText, Package, Users } from "lucide-react";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -16,16 +16,17 @@ const placeholderCards = [
     href: "/jobs",
   },
   {
-    title: "HR Section",
+    title: "Human Resources",
     description: "Profile, vacation requests, payslips, and job letters.",
     icon: Users,
     href: "/hr",
   },
   {
-    title: "Internal Notices",
-    description: "Shift reminders, safety updates, and route change alerts.",
-    icon: ClipboardList,
-    href: undefined,
+    title: "Equipment & Supplies",
+    description:
+      "Search inventory, check availability, request equipment, supplies and consumables.",
+    icon: Package,
+    href: "/equipment-supplies",
   },
   {
     title: "Policies",
@@ -76,15 +77,7 @@ export default async function StaffDashboardPage() {
               <p className="text-xs text-[#ebfbff]/50">Staff Dashboard</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="text-sm text-[#ebfbff]/60 hover:text-[#ebfbff] transition-colors"
-            >
-              Portal Home
-            </Link>
-            <SignOutButton />
-          </div>
+          <StaffTopNav />
         </div>
       </header>
 
@@ -95,7 +88,7 @@ export default async function StaffDashboardPage() {
             Welcome back, {displayName}
           </h1>
           <p className="mt-3 max-w-2xl text-sm text-[#ebfbff]/60 sm:text-base">
-            This is your temporary staff workspace. Job management, HR tools, and
+            This is your temporary staff workspace. Job management, Human Resources tools, and
             operational modules will be connected here in a future release.
           </p>
         </div>
