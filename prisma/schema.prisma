@@ -132,6 +132,9 @@ model Employee {
 
   user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   assignedJobs           Job[]
+  assignedBinSetups      BinServiceSetup[]       @relation("BinSetupTechnician")
+  assignedBinJobs        BinServiceJob[]         @relation("BinJobTechnician")
+  binServiceLogs         BinServiceLog[]         @relation("BinLogTechnician")
   policyAcknowledgements PolicyAcknowledgement[]
   noticeAcknowledgements NoticeAcknowledgement[]
 
@@ -232,4 +235,140 @@ model NoticeAcknowledgement {
 
   @@unique([employeeId, noticeId])
   @@map("notice_acknowledgements")
+}
+
+enum BinWeekPattern {
+  WEEK_1_3
+  WEEK_2_4
+}
+
+enum ServiceDayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum BinServiceJobStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANNOT_ACCESS
+  ISSUE_REPORTED
+}
+
+enum BinServiceLogOutcome {
+  COMPLETED
+  CANNOT_ACCESS
+  ISSUE_REPORTED
+}
+
+model BinClient {
+  id        String           @id @default(uuid()) @db.Uuid
+  name      String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  sites     BinServiceSite[]
+
+  @@map("bin_clients")
+}
+
+model BinServiceSite {
+  id        String           @id @default(uuid()) @db.Uuid
+  clientId  String           @db.Uuid
+  name      String
+  area      String?
+  address   String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  client BinClient         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  setup  BinServiceSetup?
+  jobs   BinServiceJob[]
+  logs   BinServiceLog[]
+
+  @@index([clientId])
+  @@map("bin_service_sites")
+}
+
+model BinServiceSetup {
+  id                       String            @id @default(uuid()) @db.Uuid
+  siteId                   String            @unique @db.Uuid
+  expectedRegularBins      Int               @default(0)
+  expectedNewBins          Int               @default(0)
+  weekPattern              BinWeekPattern
+  serviceDay               ServiceDayOfWeek
+  assignedTechnicianId     String?           @db.Uuid
+  accessInstructions       String?
+  contactName              String?
+  contactPhone             String?
+  signatureRequired        Boolean           @default(false)
+  active                   Boolean           @default(true)
+  lastCompletedServiceDate DateTime?         @db.Date
+  nextServiceDate          DateTime?         @db.Date
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+
+  site               BinServiceSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  assignedTechnician Employee?      @relation("BinSetupTechnician", fields: [assignedTechnicianId], references: [id], onDelete: SetNull)
+  jobs               BinServiceJob[]
+
+  @@index([assignedTechnicianId])
+  @@index([nextServiceDate])
+  @@map("bin_service_setups")
+}
+
+model BinServiceJob {
+  id                   String              @id @default(uuid()) @db.Uuid
+  setupId              String              @db.Uuid
+  siteId               String              @db.Uuid
+  assignedTechnicianId String              @db.Uuid
+  scheduledDate        DateTime            @db.Date
+  status               BinServiceJobStatus @default(SCHEDULED)
+  startedAt            DateTime?
+  completedAt          DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  setup              BinServiceSetup @relation(fields: [setupId], references: [id], onDelete: Cascade)
+  site               BinServiceSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  assignedTechnician Employee        @relation("BinJobTechnician", fields: [assignedTechnicianId], references: [id], onDelete: Restrict)
+  logs               BinServiceLog[]
+
+  @@unique([setupId, scheduledDate])
+  @@index([assignedTechnicianId, scheduledDate])
+  @@index([siteId])
+  @@index([status])
+  @@map("bin_service_jobs")
+}
+
+model BinServiceLog {
+  id                  String               @id @default(uuid()) @db.Uuid
+  jobId               String               @db.Uuid
+  siteId              String               @db.Uuid
+  technicianId        String               @db.Uuid
+  regularBinsExpected Int
+  regularBinsServiced Int
+  newBinsExpected     Int
+  newBinsServiced     Int
+  linersUsed          Int
+  issueType           String?
+  issueNotes          String?
+  clientSignatureName String?
+  noSignatureReason   String?
+  outcome             BinServiceLogOutcome
+  completedAt         DateTime             @default(now())
+
+  job        BinServiceJob  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  site       BinServiceSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  technician Employee       @relation("BinLogTechnician", fields: [technicianId], references: [id], onDelete: Restrict)
+
+  @@index([jobId])
+  @@index([siteId])
+  @@index([technicianId])
+  @@index([completedAt])
+  @@map("bin_service_logs")
 }

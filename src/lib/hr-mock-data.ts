@@ -1,0 +1,150 @@
+import {
+  CalendarDays,
+  FileText,
+  Receipt,
+  UserCircle,
+  type LucideIcon,
+} from "lucide-react";
+
+export type VacationRequestStatus = "Pending" | "Approved" | "Rejected";
+
+export type JobLetterType =
+  | "Job Letter"
+  | "Employment Letter"
+  | "Salary Letter";
+
+export type JobLetterRequestStatus = "Pending" | "Approved" | "Rejected";
+
+export type VacationRequest = {
+  id: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  status: VacationRequestStatus;
+  submittedAt: string;
+};
+
+export type Payslip = {
+  id: string;
+  periodLabel: string;
+  payDate: string;
+  fileName: string;
+};
+
+export type JobLetterRequest = {
+  id: string;
+  letterType: JobLetterType;
+  status: JobLetterRequestStatus;
+  requestedAt: string;
+  notes?: string;
+};
+
+export type HrModule = {
+  title: string;
+  description: string;
+  href: string;
+  icon: LucideIcon;
+};
+
+export const hrModules: HrModule[] = [
+  {
+    title: "My Profile",
+    description: "View employment details and upload your profile picture.",
+    href: "/hr/profile",
+    icon: UserCircle,
+  },
+  {
+    title: "Vacation Requests",
+    description: "Submit time off requests and track approval status.",
+    href: "/hr/vacation",
+    icon: CalendarDays,
+  },
+  {
+    title: "Payslips",
+    description: "View and download your available payslip PDFs.",
+    href: "/hr/payslips",
+    icon: Receipt,
+  },
+  {
+    title: "Job Letters",
+    description: "Request employment, job, or salary letters.",
+    href: "/hr/job-letters",
+    icon: FileText,
+  },
+];
+
+export const mockLocationAssignment = "Tobago Field Operations";
+
+export const seedVacationRequests: VacationRequest[] = [
+  {
+    id: "vac-seed-001",
+    startDate: "2026-06-10",
+    endDate: "2026-06-14",
+    reason: "Family travel",
+    status: "Approved",
+    submittedAt: "2026-05-01T10:00:00.000Z",
+  },
+  {
+    id: "vac-seed-002",
+    startDate: "2026-07-22",
+    endDate: "2026-07-24",
+    reason: "Personal appointment",
+    status: "Pending",
+    submittedAt: "2026-05-18T14:30:00.000Z",
+  },
+];
+
+export const mockPayslips: Payslip[] = [
+  {
+    id: "payslip-2026-03",
+    periodLabel: "March 2026",
+    payDate: "2026-03-31",
+    fileName: "payslip-march-2026.pdf",
+  },
+  {
+    id: "payslip-2026-02",
+    periodLabel: "February 2026",
+    payDate: "2026-02-28",
+    fileName: "payslip-february-2026.pdf",
+  },
+  {
+    id: "payslip-2026-01",
+    periodLabel: "January 2026",
+    payDate: "2026-01-31",
+    fileName: "payslip-january-2026.pdf",
+  },
+];
+
+export const seedJobLetterRequests: JobLetterRequest[] = [
+  {
+    id: "letter-seed-001",
+    letterType: "Employment Letter",
+    status: "Approved",
+    requestedAt: "2026-04-12T09:00:00.000Z",
+    notes: "For bank account opening",
+  },
+];
+
+export function vacationStatusClass(status: VacationRequestStatus): string {
+  if (status === "Approved") {
+    return "border-[#6cc801]/35 bg-[#6cc801]/15 text-[#6cc801]";
+  }
+  if (status === "Rejected") {
+    return "border-[#ff4d4f]/35 bg-[#ff4d4f]/15 text-[#ff4d4f]";
+  }
+  return "border-[#f5c542]/35 bg-[#f5c542]/15 text-[#f5c542]";
+}
+
+export function jobLetterStatusClass(status: JobLetterRequestStatus): string {
+  return vacationStatusClass(status);
+}
+
+export function formatDisplayDate(isoDate: string): string {
+  const date = new Date(isoDate.includes("T") ? isoDate : `${isoDate}T12:00:00.000Z`);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}

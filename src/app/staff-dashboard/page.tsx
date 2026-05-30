@@ -13,21 +13,25 @@ const placeholderCards = [
     title: "Job Management",
     description: "Assigned routes, job status, and daily sanitation schedules.",
     icon: Briefcase,
+    href: "/jobs",
   },
   {
     title: "HR Section",
-    description: "Roster visibility, certifications, and supervisor contacts.",
+    description: "Profile, vacation requests, payslips, and job letters.",
     icon: Users,
+    href: "/hr",
   },
   {
     title: "Internal Notices",
     description: "Shift reminders, safety updates, and route change alerts.",
     icon: ClipboardList,
+    href: undefined,
   },
   {
     title: "Policies",
     description: "Company procedures, PPE requirements, and compliance guides.",
     icon: FileText,
+    href: undefined,
   },
 ];
 
@@ -99,14 +103,34 @@ export default async function StaffDashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {placeholderCards.map((card) => {
             const Icon = card.icon;
-            return (
-              <div key={card.title} className="glass-card rounded-2xl p-5 sm:p-6">
+            const content = (
+              <>
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#00c6ff]/15 text-[#00c6ff]">
                   <Icon className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <h2 className="mt-4 text-lg font-bold text-[#ebfbff]">{card.title}</h2>
                 <p className="mt-2 text-sm text-[#ebfbff]/55">{card.description}</p>
-                <p className="mt-4 text-xs font-medium text-[#6cc801]">Coming soon</p>
+                <p className="mt-4 text-xs font-medium text-[#6cc801]">
+                  {card.href ? "Open module" : "Coming soon"}
+                </p>
+              </>
+            );
+
+            if (card.href) {
+              return (
+                <Link
+                  key={card.title}
+                  href={card.href}
+                  className="glass-card block rounded-2xl p-5 transition-shadow hover:shadow-lg hover:shadow-[#00c6ff]/10 sm:p-6"
+                >
+                  {content}
+                </Link>
+              );
+            }
+
+            return (
+              <div key={card.title} className="glass-card rounded-2xl p-5 sm:p-6">
+                {content}
               </div>
             );
           })}

@@ -45,10 +45,10 @@ export const quickAccessItems: QuickAccessItem[] = [
 ];
 
 export const sidebarNavItems = [
-  { label: "Dashboard", href: "#", active: true },
-  { label: "Jobs", href: "#jobs" },
+  { label: "Dashboard", href: "/staff-dashboard", active: false },
+  { label: "Jobs", href: "/jobs", active: false },
   { label: "Equipment", href: "#equipment" },
-  { label: "HR", href: "#hr" },
+  { label: "HR", href: "/hr", active: false },
   { label: "Stock Requests", href: "#stock" },
   { label: "Settings", href: "#settings" },
 ];

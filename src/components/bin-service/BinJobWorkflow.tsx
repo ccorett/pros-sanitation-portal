@@ -1,0 +1,365 @@
+"use client";
+
+import { Button } from "@/components/ui/Button";
+import { CounterField } from "@/components/bin-service/CounterField";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+
+type BinJobWorkflowProps = {
+  jobId: string;
+  siteName: string;
+  expectedRegularBins: number;
+  expectedNewBins: number;
+  signatureRequired: boolean;
+  initialStatus: string;
+};
+
+const CANNOT_ACCESS_REASONS = [
+  "Site locked / no access",
+  "Contact not available",
+  "Safety concern",
+  "Other",
+];
+
+const ISSUE_TYPES = [
+  "Missing bins",
+  "Damaged bins",
+  "Chemical issue",
+  "Access problem",
+  "Other",
+];
+
+export function BinJobWorkflow({
+  jobId,
+  siteName,
+  expectedRegularBins,
+  expectedNewBins,
+  signatureRequired,
+  initialStatus,
+}: BinJobWorkflowProps) {
+  const router = useRouter();
+  const [started, setStarted] = useState(initialStatus === "IN_PROGRESS");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"service" | "cannot_access" | "issue">(
+    "service",
+  );
+  const [regularBinsServiced, setRegularBinsServiced] = useState(expectedRegularBins);
+  const [newBinsServiced, setNewBinsServiced] = useState(expectedNewBins);
+  const [linersUsed, setLinersUsed] = useState(
+    expectedRegularBins + expectedNewBins,
+  );
+  const [clientSignatureName, setClientSignatureName] = useState("");
+  const [noSignatureReason, setNoSignatureReason] = useState("");
+  const [cannotAccessReason, setCannotAccessReason] = useState("");
+  const [issueType, setIssueType] = useState("");
+  const [issueNotes, setIssueNotes] = useState("");
+
+  const totalServiced = useMemo(
+    () => regularBinsServiced + newBinsServiced,
+    [regularBinsServiced, newBinsServiced],
+  );
+
+  useEffect(() => {
+    if (mode === "service") {
+      setLinersUsed(totalServiced);
+    }
+  }, [totalServiced, mode]);
+
+  async function ensureStarted() {
+    if (started) return true;
+
+    setLoading(true);
+    setError(null);
+
+    const response = await fetch(`/api/bin-service/jobs/${jobId}/start`, {
+      method: "POST",
+    });
+
+    setLoading(false);
+
+    if (!response.ok) {
+      const data = (await response.json()) as { error?: string };
+      setError(data.error ?? "Unable to start job.");
+      return false;
+    }
+
+    setStarted(true);
+    return true;
+  }
+
+  async function handleStart() {
+    const ok = await ensureStarted();
+    if (ok) setMode("service");
+  }
+
+  async function handleComplete() {
+    const ok = await ensureStarted();
+    if (!ok) return;
+
+    if (signatureRequired && !clientSignatureName.trim() && !noSignatureReason.trim()) {
+      setError("Provide a client signature name or a no-signature reason.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const response = await fetch(`/api/bin-service/jobs/${jobId}/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        regularBinsServiced,
+        newBinsServiced,
+        linersUsed,
+        clientSignatureName: clientSignatureName.trim() || undefined,
+        noSignatureReason: noSignatureReason.trim() || undefined,
+      }),
+    });
+
+    setLoading(false);
+
+    if (!response.ok) {
+      const data = (await response.json()) as { error?: string };
+      setError(data.error ?? "Unable to complete service.");
+      return;
+    }
+
+    router.push("/jobs/bin-management/today");
+    router.refresh();
+  }
+
+  async function handleCannotAccess() {
+    if (!cannotAccessReason.trim()) {
+      setError("Select or enter a reason.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const response = await fetch(`/api/bin-service/jobs/${jobId}/cannot-access`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: cannotAccessReason }),
+    });
+
+    setLoading(false);
+
+    if (!response.ok) {
+      const data = (await response.json()) as { error?: string };
+      setError(data.error ?? "Unable to save cannot access.");
+      return;
+    }
+
+    router.push("/jobs/bin-management/today");
+    router.refresh();
+  }
+
+  async function handleReportIssue() {
+    if (!issueType.trim()) {
+      setError("Select an issue type.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const response = await fetch(`/api/bin-service/jobs/${jobId}/report-issue`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ issueType, issueNotes }),
+    });
+
+    setLoading(false);
+
+    if (!response.ok) {
+      const data = (await response.json()) as { error?: string };
+      setError(data.error ?? "Unable to report issue.");
+      return;
+    }
+
+    router.push("/jobs/bin-management/today");
+    router.refresh();
+  }
+
+  if (!started && initialStatus === "SCHEDULED") {
+    return (
+      <div className="space-y-4">
+        <div className="glass-card rounded-2xl p-5 sm:p-6">
+          <h2 className="text-xl font-bold text-[#ebfbff]">{siteName}</h2>
+          <p className="mt-2 text-sm text-[#ebfbff]/60">
+            Expected {expectedRegularBins} regular · {expectedNewBins} new bins
+          </p>
+        </div>
+        {error ? (
+          <p className="rounded-xl border border-[#ff4d4f]/30 bg-[#ff4d4f]/10 px-4 py-3 text-sm text-[#ff4d4f]">
+            {error}
+          </p>
+        ) : null}
+        <Button
+          fullWidth
+          loading={loading}
+          onClick={handleStart}
+          className="min-h-[56px] text-base"
+        >
+          Start Job
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-2">
+        {(["service", "cannot_access", "issue"] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setMode(tab)}
+            className={[
+              "min-h-[48px] rounded-xl border px-2 py-2 text-xs font-semibold sm:text-sm",
+              mode === tab
+                ? "border-[#00c6ff]/50 bg-[#00c6ff]/15 text-[#00c6ff]"
+                : "border-[#ebfbff]/15 bg-[#ebfbff]/5 text-[#ebfbff]/70",
+            ].join(" ")}
+          >
+            {tab === "service"
+              ? "Service"
+              : tab === "cannot_access"
+                ? "Cannot Access"
+                : "Report Issue"}
+          </button>
+        ))}
+      </div>
+
+      {mode === "service" ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <CounterField
+              label={`Regular bins (expected ${expectedRegularBins})`}
+              value={regularBinsServiced}
+              onChange={setRegularBinsServiced}
+            />
+            <CounterField
+              label={`New bins (expected ${expectedNewBins})`}
+              value={newBinsServiced}
+              onChange={setNewBinsServiced}
+            />
+          </div>
+          <CounterField
+            label="Liners used"
+            value={linersUsed}
+            onChange={setLinersUsed}
+          />
+
+          {signatureRequired ? (
+            <div className="glass-card space-y-4 rounded-2xl p-5">
+              <label className="block">
+                <span className="text-sm text-[#ebfbff]/70">Client signature name</span>
+                <input
+                  value={clientSignatureName}
+                  onChange={(event) => setClientSignatureName(event.target.value)}
+                  className="mt-2 w-full min-h-[48px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-sm text-[#ebfbff] focus:border-[#00c6ff]/50 focus:outline-none"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm text-[#ebfbff]/70">No signature reason</span>
+                <input
+                  value={noSignatureReason}
+                  onChange={(event) => setNoSignatureReason(event.target.value)}
+                  className="mt-2 w-full min-h-[48px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-sm text-[#ebfbff] focus:border-[#00c6ff]/50 focus:outline-none"
+                  placeholder="If client unavailable"
+                />
+              </label>
+            </div>
+          ) : null}
+
+          <Button
+            fullWidth
+            loading={loading}
+            onClick={handleComplete}
+            className="min-h-[56px] text-base"
+          >
+            Complete Service
+          </Button>
+        </>
+      ) : null}
+
+      {mode === "cannot_access" ? (
+        <>
+          <div className="grid gap-2">
+            {CANNOT_ACCESS_REASONS.map((reason) => (
+              <button
+                key={reason}
+                type="button"
+                onClick={() => setCannotAccessReason(reason)}
+                className={[
+                  "min-h-[52px] rounded-xl border px-4 py-3 text-left text-sm font-semibold",
+                  cannotAccessReason === reason
+                    ? "border-[#ff8c42]/50 bg-[#ff8c42]/15 text-[#ff8c42]"
+                    : "border-[#ebfbff]/15 bg-[#ebfbff]/5 text-[#ebfbff]/70",
+                ].join(" ")}
+              >
+                {reason}
+              </button>
+            ))}
+          </div>
+          <Button
+            fullWidth
+            variant="secondary"
+            loading={loading}
+            onClick={handleCannotAccess}
+            className="min-h-[56px] text-base"
+          >
+            Cannot Access
+          </Button>
+        </>
+      ) : null}
+
+      {mode === "issue" ? (
+        <>
+          <div className="grid gap-2">
+            {ISSUE_TYPES.map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setIssueType(type)}
+                className={[
+                  "min-h-[52px] rounded-xl border px-4 py-3 text-left text-sm font-semibold",
+                  issueType === type
+                    ? "border-[#ff4d4f]/50 bg-[#ff4d4f]/15 text-[#ff4d4f]"
+                    : "border-[#ebfbff]/15 bg-[#ebfbff]/5 text-[#ebfbff]/70",
+                ].join(" ")}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+          <textarea
+            value={issueNotes}
+            onChange={(event) => setIssueNotes(event.target.value)}
+            rows={3}
+            placeholder="Additional notes (optional)"
+            className="w-full rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-sm text-[#ebfbff] placeholder:text-[#ebfbff]/35 focus:border-[#00c6ff]/50 focus:outline-none"
+          />
+          <Button
+            fullWidth
+            variant="secondary"
+            loading={loading}
+            onClick={handleReportIssue}
+            className="min-h-[56px] text-base"
+          >
+            Report Issue
+          </Button>
+        </>
+      ) : null}
+
+      {error ? (
+        <p className="rounded-xl border border-[#ff4d4f]/30 bg-[#ff4d4f]/10 px-4 py-3 text-sm text-[#ff4d4f]">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}

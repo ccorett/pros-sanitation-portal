@@ -17,69 +17,70 @@ async function main() {
     where: { email: DEMO_EMAIL },
   });
 
-  let userId = existingUser?.id;
+  let employeeId: string | undefined;
 
-  if (!userId) {
+  if (existingUser) {
+    const employee = await prisma.employee.upsert({
+      where: { userId: existingUser.id },
+      update: {},
+      create: {
+        userId: existingUser.id,
+        employeeId: "PS-EMP-001",
+        firstName: "Jordan",
+        lastName: "Mitchell",
+        companyEmail: DEMO_EMAIL,
+        phoneNumber: "+1-868-555-0142",
+        department: "Field Operations",
+        jobTitle: "Sanitation Technician",
+        supervisorName: "Alex Rivera",
+        employmentStatus: EmploymentStatus.ACTIVE,
+        accountStatus: AccountStatus.ACTIVE,
+      },
+    });
+    employeeId = employee.id;
+  } else {
     console.log(
-      "No demo auth user found. Run employee signup or create a user before seeding employee profile.",
+      "No demo auth user found. Bin sites will seed without a default technician assignment.",
     );
-    return;
   }
 
-  const employee = await prisma.employee.upsert({
-    where: { userId },
-    update: {},
-    create: {
-      userId,
-      employeeId: "PS-EMP-001",
-      firstName: "Jordan",
-      lastName: "Mitchell",
-      companyEmail: DEMO_EMAIL,
-      phoneNumber: "+1-868-555-0142",
-      department: "Field Operations",
-      jobTitle: "Sanitation Technician",
-      supervisorName: "Alex Rivera",
-      employmentStatus: EmploymentStatus.ACTIVE,
-      accountStatus: AccountStatus.ACTIVE,
-    },
-  });
+  if (employeeId) {
+    const clientLocation = await prisma.clientLocation.upsert({
+      where: { id: "00000000-0000-4000-8000-000000000001" },
+      update: {},
+      create: {
+        id: "00000000-0000-4000-8000-000000000001",
+        clientName: "Harbourview Commercial Plaza",
+        siteName: "Loading Dock & Waste Enclosure",
+        address: "14 Industrial Park Road, Port of Spain",
+        contactPerson: "M. Singh",
+        contactNumber: "+1-868-555-0198",
+        status: ClientLocationStatus.ACTIVE,
+      },
+    });
 
-  const clientLocation = await prisma.clientLocation.upsert({
-    where: { id: "00000000-0000-4000-8000-000000000001" },
-    update: {},
-    create: {
-      id: "00000000-0000-4000-8000-000000000001",
-      clientName: "Harbourview Commercial Plaza",
-      siteName: "Loading Dock & Waste Enclosure",
-      address: "14 Industrial Park Road, Port of Spain",
-      contactPerson: "M. Singh",
-      contactNumber: "+1-868-555-0198",
-      status: ClientLocationStatus.ACTIVE,
-    },
-  });
+    await prisma.job.upsert({
+      where: { jobCode: "JOB-2026-0142" },
+      update: {},
+      create: {
+        jobCode: "JOB-2026-0142",
+        clientLocationId: clientLocation.id,
+        assignedEmployeeId: employeeId,
+        serviceType: ServiceType.SANITARY_BIN_SERVICE,
+        scheduledDate: new Date("2026-05-22"),
+        instructions:
+          "Service all sanitary bins at loading dock. Confirm chemical PPE before mixing degreaser.",
+        status: JobStatus.NOT_STARTED,
+      },
+    });
 
-  await prisma.job.upsert({
-    where: { jobCode: "JOB-2026-0142" },
-    update: {},
-    create: {
-      jobCode: "JOB-2026-0142",
-      clientLocationId: clientLocation.id,
-      assignedEmployeeId: employee.id,
-      serviceType: ServiceType.SANITARY_BIN_SERVICE,
-      scheduledDate: new Date("2026-05-22"),
-      instructions:
-        "Service all sanitary bins at loading dock. Confirm chemical PPE before mixing degreaser.",
-      status: JobStatus.NOT_STARTED,
-    },
-  });
-
-  await prisma.job.upsert({
+    await prisma.job.upsert({
     where: { jobCode: "JOB-2026-0143" },
     update: {},
     create: {
       jobCode: "JOB-2026-0143",
       clientLocationId: clientLocation.id,
-      assignedEmployeeId: employee.id,
+      assignedEmployeeId: employeeId,
       serviceType: ServiceType.GROCERY_CLEANING,
       scheduledDate: new Date("2026-05-23"),
       instructions:
@@ -87,6 +88,7 @@ async function main() {
       status: JobStatus.NOT_STARTED,
     },
   });
+  }
 
   await prisma.internalNotice.upsert({
     where: { id: "00000000-0000-4000-8000-000000000010" },
@@ -112,6 +114,106 @@ async function main() {
       effectiveDate: new Date("2026-01-15"),
     },
   });
+
+  const pennysaverClient = await prisma.binClient.upsert({
+    where: { id: "00000000-0000-4000-8000-000000000100" },
+    update: { name: "Pennysaver" },
+    create: {
+      id: "00000000-0000-4000-8000-000000000100",
+      name: "Pennysaver",
+    },
+  });
+
+  const pennysaverSites = [
+    {
+      id: "00000000-0000-4000-8000-000000000101",
+      name: "Scarborough Pennysaver Grocery",
+      area: "Scarborough",
+      address: "Scarborough Main Road, Tobago",
+      expectedRegularBins: 8,
+      expectedNewBins: 1,
+      weekPattern: "WEEK_1_3" as const,
+      serviceDay: "TUESDAY" as const,
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000102",
+      name: "Canaan Pennysaver Grocery",
+      area: "Canaan",
+      address: "Canaan Road, Tobago",
+      expectedRegularBins: 6,
+      expectedNewBins: 1,
+      weekPattern: "WEEK_2_4" as const,
+      serviceDay: "WEDNESDAY" as const,
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000103",
+      name: "Carnbee Pennysaver Grocery",
+      area: "Carnbee",
+      address: "Carnbee Main Road, Tobago",
+      expectedRegularBins: 7,
+      expectedNewBins: 0,
+      weekPattern: "WEEK_1_3" as const,
+      serviceDay: "THURSDAY" as const,
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000104",
+      name: "Carnbee Pennysaver Pharmacy",
+      area: "Carnbee",
+      address: "Carnbee Pharmacy Lane, Tobago",
+      expectedRegularBins: 4,
+      expectedNewBins: 0,
+      weekPattern: "WEEK_2_4" as const,
+      serviceDay: "FRIDAY" as const,
+    },
+  ];
+
+  for (const siteSeed of pennysaverSites) {
+    const site = await prisma.binServiceSite.upsert({
+      where: { id: siteSeed.id },
+      update: {
+        name: siteSeed.name,
+        area: siteSeed.area,
+        address: siteSeed.address,
+      },
+      create: {
+        id: siteSeed.id,
+        clientId: pennysaverClient.id,
+        name: siteSeed.name,
+        area: siteSeed.area,
+        address: siteSeed.address,
+      },
+    });
+
+    await prisma.binServiceSetup.upsert({
+      where: { siteId: site.id },
+      update: {
+        expectedRegularBins: siteSeed.expectedRegularBins,
+        expectedNewBins: siteSeed.expectedNewBins,
+        assignedTechnicianId: employeeId ?? null,
+        accessInstructions:
+          "Use rear service entrance. Ask for store manager if gate is locked.",
+        contactName: "Store Manager",
+        contactPhone: "+1-868-555-0100",
+        signatureRequired: false,
+        active: true,
+      },
+      create: {
+        siteId: site.id,
+        expectedRegularBins: siteSeed.expectedRegularBins,
+        expectedNewBins: siteSeed.expectedNewBins,
+        weekPattern: siteSeed.weekPattern,
+        serviceDay: siteSeed.serviceDay,
+        assignedTechnicianId: employeeId ?? null,
+        accessInstructions:
+          "Use rear service entrance. Ask for store manager if gate is locked.",
+        contactName: "Store Manager",
+        contactPhone: "+1-868-555-0100",
+        signatureRequired: false,
+        active: true,
+        nextServiceDate: new Date("2026-05-20"),
+      },
+    });
+  }
 
   console.log("Seed complete: platform records linked to existing auth user when present.");
 }
