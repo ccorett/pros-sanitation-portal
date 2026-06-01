@@ -121,9 +121,11 @@ model Employee {
   firstName         String
   lastName          String
   companyEmail      String           @unique
-  phoneNumber       String?
-  department        String
-  jobTitle          String
+  phoneNumber        String?
+  department         String
+  jobTitle           String
+  position           String?
+  locationAssignment String?
   supervisorName    String?
   employmentStatus  EmploymentStatus @default(ACTIVE)
   accountStatus     AccountStatus      @default(ACTIVE)

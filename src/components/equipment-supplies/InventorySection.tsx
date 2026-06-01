@@ -16,8 +16,9 @@ import {
   type InventoryRequest,
   type InventoryUrgency,
 } from "@/lib/equipment-supplies-mock-data";
+import { getManagedInventoryItems } from "@/lib/platform-storage";
 import { Search, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type InventorySectionProps = {
   employeeRecordId: string;
@@ -36,10 +37,22 @@ export function InventorySection({ employeeRecordId }: InventorySectionProps) {
   const [requests, setRequests] = useState<InventoryRequest[]>(() =>
     getInventoryRequests(employeeRecordId),
   );
+  const [inventory, setInventory] = useState<InventoryItem[]>(() =>
+    typeof window !== "undefined" ? getManagedInventoryItems() : inventoryItems,
+  );
+
+  useEffect(() => {
+    function refresh() {
+      setInventory(getManagedInventoryItems());
+    }
+    refresh();
+    window.addEventListener("pros-platform-data-updated", refresh);
+    return () => window.removeEventListener("pros-platform-data-updated", refresh);
+  }, []);
 
   const filteredItems = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return inventoryItems.filter((item) => {
+    return inventory.filter((item) => {
       const matchesCategory = category === "All" || item.category === category;
       const matchesSearch =
         !query ||
@@ -48,7 +61,7 @@ export function InventorySection({ employeeRecordId }: InventorySectionProps) {
         item.storageArea.toLowerCase().includes(query);
       return matchesCategory && matchesSearch;
     });
-  }, [search, category]);
+  }, [search, category, inventory]);
 
   function openRequestForm(item: InventoryItem, restock: boolean) {
     setSelectedItem(item);

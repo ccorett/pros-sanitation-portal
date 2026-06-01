@@ -6,22 +6,15 @@ import { authClient } from "@/lib/auth-client";
 import { authErrorClassName } from "@/lib/auth-form-styles";
 import { signInEmployee } from "@/lib/employee-sign-in";
 import { normalizePinInput } from "@/lib/pin";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { CreateEmployeeAccountLink } from "@/components/auth/CreateEmployeeAccountLink";
 import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { COMPANY } from "@/lib/constants";
-import type { PublicSignupPolicy } from "@/lib/signup-access";
 
-type LoginCTASectionProps = {
-  signupPolicy: PublicSignupPolicy;
-};
-
-export function LoginCTASection({ signupPolicy }: LoginCTASectionProps) {
-  const signupEnabled = signupPolicy.mode !== "disabled";
-  const router = useRouter();
+export function LoginCTASection() {
   const { data: session, isPending } = authClient.useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +28,7 @@ export function LoginCTASection({ signupPolicy }: LoginCTASectionProps) {
     if (isPending) return;
 
     if (session) {
-      router.push("/staff-dashboard");
+      window.location.assign("/staff-dashboard");
       return;
     }
 
@@ -145,7 +138,7 @@ export function LoginCTASection({ signupPolicy }: LoginCTASectionProps) {
                   htmlFor="landing-pin"
                   className="mb-2 block text-sm font-medium text-[#ebfbff]/80"
                 >
-                  PIN
+                  4 Digit PIN
                 </label>
                 <input
                   id="landing-pin"
@@ -173,27 +166,11 @@ export function LoginCTASection({ signupPolicy }: LoginCTASectionProps) {
               <Button type="submit" variant="login" loading={loading}>
                 Login to Portal
               </Button>
-              {signupEnabled ? (
-                <div className="space-y-3 pt-1">
-                  <p className="text-center text-sm text-[#ebfbff]/60">
-                    New employee?
-                  </p>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    fullWidth
-                    className="min-h-[52px] bg-[#0c151d]/60 text-base transition-shadow hover:shadow-lg hover:shadow-[#00c6ff]/20"
-                    onClick={() => router.push("/employee-signup")}
-                  >
-                    Create Employee Account
-                  </Button>
-                </div>
-              ) : (
-                <p className="pt-1 text-center text-sm text-[#ebfbff]/50">
-                  New accounts are created by an administrator.
-                </p>
-              )}
             </form>
+            <div className="mt-5 space-y-3">
+              <p className="text-center text-sm text-[#ebfbff]/60">New employee?</p>
+              <CreateEmployeeAccountLink />
+            </div>
             <p className="mt-6 text-center text-xs text-[#ebfbff]/40">
               {COMPANY.name} — Authorized employees only. Unauthorized access is
               prohibited and monitored.

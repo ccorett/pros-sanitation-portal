@@ -1,38 +1,56 @@
 "use client";
 
-import {
-  getApprovalRequests,
-  updateApprovalStatus,
-} from "@/lib/admin-client-storage";
+import { EditHistoryModal } from "@/components/admin/EditHistoryModal";
 import {
   approvalPriorityClass,
   approvalStatusClass,
   formatAdminDate,
   type ApprovalRequest,
 } from "@/lib/admin-mock-data";
-import { useState } from "react";
+import { authClient } from "@/lib/auth-client";
+import {
+  formatEditTimestamp,
+  getUnifiedApprovalRequests,
+  updateApprovalStatus,
+} from "@/lib/platform-storage";
+import { useEffect, useState } from "react";
 
+// TODO: Restrict approve/reject to admin role when RBAC is enabled.
 export function AdminApprovalsSection() {
+  const { data: session } = authClient.useSession();
+  const editor =
+    session?.user?.name?.trim() ||
+    session?.user?.email?.split("@")[0] ||
+    "Admin User";
+
   const [requests, setRequests] = useState<ApprovalRequest[]>(() =>
-    getApprovalRequests(),
+    typeof window !== "undefined" ? getUnifiedApprovalRequests() : [],
   );
   const [selected, setSelected] = useState<ApprovalRequest | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<ApprovalRequest | null>(null);
+
+  useEffect(() => {
+    function refresh() {
+      setRequests(getUnifiedApprovalRequests());
+    }
+    refresh();
+    window.addEventListener("pros-platform-data-updated", refresh);
+    window.addEventListener("pros-bin-locations-updated", refresh);
+    return () => {
+      window.removeEventListener("pros-platform-data-updated", refresh);
+      window.removeEventListener("pros-bin-locations-updated", refresh);
+    };
+  }, []);
 
   function handleStatus(id: string, status: "Approved" | "Rejected") {
-    setRequests(updateApprovalStatus(id, status));
+    updateApprovalStatus(id, status, editor);
+    setRequests(getUnifiedApprovalRequests());
   }
 
   return (
     <section className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold text-[#ebfbff]">Requests for Approval</h2>
-        <p className="mt-1 text-sm text-[#ebfbff]/55">
-          All pending operational requests in one queue.
-        </p>
-      </div>
-
       <div className="glass-card overflow-x-auto rounded-2xl">
-        <table className="min-w-[1100px] w-full text-left text-sm">
+        <table className="min-w-[1300px] w-full text-left text-sm">
           <thead>
             <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
               <th className="px-4 py-4 font-semibold sm:px-6">Request Type</th>
@@ -41,6 +59,7 @@ export function AdminApprovalsSection() {
               <th className="px-4 py-4 font-semibold">Date Submitted</th>
               <th className="px-4 py-4 font-semibold">Priority</th>
               <th className="px-4 py-4 font-semibold">Status</th>
+              <th className="px-4 py-4 font-semibold">Last Edited</th>
               <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
             </tr>
           </thead>
@@ -72,8 +91,27 @@ export function AdminApprovalsSection() {
                     {request.status}
                   </span>
                 </td>
+                <td className="px-4 py-4 text-[#ebfbff]/70">
+                  {request.lastEditedAt
+                    ? formatEditTimestamp(request.lastEditedAt)
+                    : request.lastEdited
+                      ? formatAdminDate(request.lastEdited)
+                      : "—"}
+                  {request.editedBy ? (
+                    <span className="block text-xs text-[#ebfbff]/45">
+                      {request.editedBy}
+                    </span>
+                  ) : null}
+                </td>
                 <td className="px-4 py-4 sm:px-6">
                   <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelected(request)}
+                      className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                    >
+                      View
+                    </button>
                     <button
                       type="button"
                       disabled={request.status !== "Pending"}
@@ -92,10 +130,10 @@ export function AdminApprovalsSection() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setSelected(request)}
-                      className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                      onClick={() => setHistoryTarget(request)}
+                      className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#ebfbff]/20 bg-[#ebfbff]/5 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
                     >
-                      View Details
+                      View Edit History
                     </button>
                   </div>
                 </td>
@@ -123,6 +161,14 @@ export function AdminApprovalsSection() {
             </button>
           </div>
         </div>
+      ) : null}
+
+      {historyTarget ? (
+        <EditHistoryModal
+          recordId={historyTarget.id}
+          recordName={`${historyTarget.requestType} — ${historyTarget.requestedBy}`}
+          onClose={() => setHistoryTarget(null)}
+        />
       ) : null}
     </section>
   );

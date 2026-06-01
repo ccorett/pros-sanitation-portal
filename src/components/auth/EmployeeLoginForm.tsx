@@ -11,19 +11,14 @@ import {
 import { LoginAccessAlert } from "@/components/auth/LoginAccessAlert";
 import { signInEmployee } from "@/lib/employee-sign-in";
 import { normalizePinInput } from "@/lib/pin";
-import type { PublicSignupPolicy } from "@/lib/signup-access";
+import { CreateEmployeeAccountLink } from "@/components/auth/CreateEmployeeAccountLink";
 import { Button } from "@/components/ui/Button";
 
 type EmployeeLoginFormProps = {
-  signupPolicy: PublicSignupPolicy;
   accessCode?: string | null;
 };
 
-export function EmployeeLoginForm({
-  signupPolicy,
-  accessCode = null,
-}: EmployeeLoginFormProps) {
-  const signupEnabled = signupPolicy.mode !== "disabled";
+export function EmployeeLoginForm({ accessCode = null }: EmployeeLoginFormProps) {
   const [email, setEmail] = useState("");
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
@@ -81,7 +76,7 @@ export function EmployeeLoginForm({
         </div>
         <div>
           <label htmlFor="pin" className={authLabelClassName}>
-            PIN
+            4 Digit PIN
           </label>
           <input
             id="pin"
@@ -115,26 +110,11 @@ export function EmployeeLoginForm({
         <Button type="submit" variant="login" loading={loading}>
           Login to Portal
         </Button>
-        {signupEnabled ? (
-          <div className="space-y-3 pt-1">
-            <p className="text-center text-sm text-[#ebfbff]/60">New employee?</p>
-            <Link href="/employee-signup" className="block w-full">
-              <Button
-                type="button"
-                variant="secondary"
-                fullWidth
-                className="min-h-[52px] bg-[#0c151d]/60 text-base transition-shadow hover:shadow-lg hover:shadow-[#00c6ff]/20"
-              >
-                Create Employee Account
-              </Button>
-            </Link>
-          </div>
-        ) : (
-          <p className="pt-1 text-center text-sm text-[#ebfbff]/50">
-            New accounts are created by an administrator.
-          </p>
-        )}
       </form>
+      <div className="mt-5 w-full space-y-3">
+        <p className="text-center text-sm text-[#ebfbff]/60">New employee?</p>
+        <CreateEmployeeAccountLink />
+      </div>
     </div>
   );
 }

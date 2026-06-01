@@ -17,10 +17,10 @@ export function StaffTopNav() {
         Admin
       </Link>
       <Link
-        href="/settings"
+        href="/my-profile"
         className="text-sm text-[#ebfbff]/60 hover:text-[#ebfbff] transition-colors"
       >
-        Settings
+        My Profile
       </Link>
       <SignOutButton />
     </div>

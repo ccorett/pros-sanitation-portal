@@ -17,8 +17,11 @@ type CreateEmployeeInput = {
   firstName: string;
   lastName: string;
   companyEmail: string;
+  phoneNumber?: string;
   department?: string;
   jobTitle?: string;
+  position?: string;
+  locationAssignment?: string;
 };
 
 export async function createEmployeeWithAllocatedId(input: CreateEmployeeInput) {
@@ -27,8 +30,11 @@ export async function createEmployeeWithAllocatedId(input: CreateEmployeeInput) 
     firstName: input.firstName,
     lastName: input.lastName,
     companyEmail: input.companyEmail,
-    department: input.department ?? "Field Operations",
+    phoneNumber: input.phoneNumber?.trim() || null,
+    department: input.department ?? "Operations",
     jobTitle: input.jobTitle ?? "Sanitation Technician",
+    position: input.position ?? null,
+    locationAssignment: input.locationAssignment ?? null,
     employmentStatus: EmploymentStatus.ACTIVE,
     accountStatus: AccountStatus.ACTIVE,
   };

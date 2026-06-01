@@ -1,3 +1,4 @@
+import { AdminBinRouteLocationsTable } from "@/components/admin/AdminBinRouteLocationsTable";
 import { AddBinSiteForm } from "@/components/bin-service/AddBinSiteForm";
 import {
   formatShortDate,
@@ -18,13 +19,16 @@ export async function AdminBinManagementSection() {
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-xl font-bold text-[#ebfbff]">Bin Management Admin Controls</h2>
+        <h2 className="text-xl font-bold text-[#ebfbff]">Bin Service Sites</h2>
         <p className="mt-1 text-sm text-[#ebfbff]/55">
-          Configure bin service sites, rotation schedules, and technician assignments.
+          Add locations, edit setup, schedules, and expected bins. Technician updates
+          appear in the route activity table below.
         </p>
       </div>
 
       <AddBinSiteForm />
+
+      <AdminBinRouteLocationsTable />
 
       {enriched.length === 0 ? (
         <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">

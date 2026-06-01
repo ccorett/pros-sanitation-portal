@@ -17,6 +17,7 @@ const STATUS_FILTERS: Array<{ value: "all" | BinServiceStatusColor; label: strin
   { value: "green", label: "On Schedule" },
   { value: "yellow", label: "Due" },
   { value: "red", label: "Overdue" },
+  { value: "orange", label: "Needs Attention" },
   { value: "grey", label: "Inactive" },
 ];
 
@@ -39,7 +40,7 @@ export function BinLocationsOverviewTable() {
         !query || location.location.toLowerCase().includes(query);
       const matchesNotes =
         !notesQuery ||
-        location.notes.toLowerCase().includes(notesQuery) ||
+        location.displayNotes.toLowerCase().includes(notesQuery) ||
         location.location.toLowerCase().includes(notesQuery);
       const matchesLastService =
         !lastServiceFilter || location.lastServiceDate === lastServiceFilter;
@@ -48,9 +49,10 @@ export function BinLocationsOverviewTable() {
     });
 
     const rank = (color: string) => {
-      if (color === "red") return 0;
-      if (color === "yellow") return 1;
-      if (color === "grey") return 3;
+      if (color === "orange") return 0;
+      if (color === "red") return 1;
+      if (color === "yellow") return 2;
+      if (color === "grey") return 4;
       return 2;
     };
 
@@ -175,7 +177,7 @@ export function BinLocationsOverviewTable() {
                     </span>
                   </td>
                   <td className="max-w-[220px] px-4 py-4 text-[#ebfbff]/70">
-                    {location.notes || "—"}
+                    {location.displayNotes || "—"}
                   </td>
                   <td className="px-4 py-4 sm:px-6">
                     <Link

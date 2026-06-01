@@ -3,7 +3,6 @@ import { EmployeeLoginForm } from "@/components/auth/EmployeeLoginForm";
 import { auth } from "@/lib/auth";
 import { COMPANY } from "@/lib/constants";
 import { getEmployeePortalAccess } from "@/lib/employee-portal-access";
-import { getPublicSignupPolicy } from "@/lib/signup-access";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -33,10 +32,7 @@ export default async function EmployeeLoginPage({
       title="Secure Employee Login"
       subtitle="Sign in with your company credentials to continue."
     >
-      <EmployeeLoginForm
-        signupPolicy={getPublicSignupPolicy()}
-        accessCode={accessCode ?? null}
-      />
+      <EmployeeLoginForm accessCode={accessCode ?? null} />
       <p className="mt-6 text-center text-xs text-[#ebfbff]/40">
         {COMPANY.name} — Authorized employees only. Unauthorized access is
         prohibited and monitored.

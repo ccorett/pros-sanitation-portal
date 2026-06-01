@@ -1,7 +1,4 @@
-import { AdminApprovalsSection } from "@/components/admin/AdminApprovalsSection";
-import { AdminBinManagementSection } from "@/components/admin/AdminBinManagementSection";
-import { AdminPurchasingSection } from "@/components/admin/AdminPurchasingSection";
-import { AdminStockSection } from "@/components/admin/AdminStockSection";
+import { AdminHub } from "@/components/admin/AdminHub";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 
@@ -11,15 +8,10 @@ export default async function AdminPage() {
   return (
     <StaffWorkspaceShell
       sectionLabel="Admin"
-      title="Admin Control Centre"
-      subtitle="Manage approvals, stock, purchasing, and operational setup."
+      title="Admin Control Hub"
+      subtitle="Choose a section to manage approvals, stock, purchasing, bin services, or human resources."
     >
-      <div className="space-y-12">
-        <AdminApprovalsSection />
-        <AdminStockSection />
-        <AdminPurchasingSection />
-        <AdminBinManagementSection />
-      </div>
+      <AdminHub />
     </StaffWorkspaceShell>
   );
 }

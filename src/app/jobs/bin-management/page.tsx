@@ -1,4 +1,4 @@
-import { BinLocationsOverviewTable } from "@/components/bin-service/BinLocationsOverviewTable";
+import { BinTechnicianServiceTable } from "@/components/bin-service/BinTechnicianServiceTable";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import { ArrowLeft, Smartphone } from "lucide-react";
@@ -11,7 +11,7 @@ export default async function BinManagementPage() {
     <StaffWorkspaceShell
       sectionLabel="Job Management"
       title="Bin Management"
-      subtitle="All bin service locations from the route list. Next service is 14 days after last service."
+      subtitle="Update service activity for assigned bin route locations. Location setup is managed in Admin."
     >
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Link
@@ -30,7 +30,7 @@ export default async function BinManagementPage() {
         </Link>
       </div>
 
-      <BinLocationsOverviewTable />
+      <BinTechnicianServiceTable />
     </StaffWorkspaceShell>
   );
 }

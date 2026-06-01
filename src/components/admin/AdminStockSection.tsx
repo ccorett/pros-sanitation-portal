@@ -1,21 +1,44 @@
 "use client";
 
+import { EditHistoryModal } from "@/components/admin/EditHistoryModal";
 import { Button } from "@/components/ui/Button";
+import { formatInventoryDate } from "@/lib/equipment-supplies-mock-data";
+import { authClient } from "@/lib/auth-client";
 import {
+  formatEditTimestamp,
   getAllManagedInventoryItems,
   updateStockItem,
-} from "@/lib/admin-client-storage";
-import { formatInventoryDate } from "@/lib/equipment-supplies-mock-data";
-import { useState } from "react";
+} from "@/lib/platform-storage";
+import { appendEditHistory } from "@/lib/platform-edit-history";
+import { useEffect, useState } from "react";
 
 type ManagedItem = ReturnType<typeof getAllManagedInventoryItems>[number];
 
+// TODO: Restrict edit/disable to admin role when RBAC is enabled.
 export function AdminStockSection() {
-  const [items, setItems] = useState<ManagedItem[]>(() => getAllManagedInventoryItems());
+  const { data: session } = authClient.useSession();
+  const editor =
+    session?.user?.name?.trim() ||
+    session?.user?.email?.split("@")[0] ||
+    "Admin User";
+
+  const [items, setItems] = useState<ManagedItem[]>(() =>
+    typeof window !== "undefined" ? getAllManagedInventoryItems() : [],
+  );
   const [editing, setEditing] = useState<ManagedItem | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<ManagedItem | null>(null);
   const [quantity, setQuantity] = useState(0);
   const [reorderLevel, setReorderLevel] = useState(0);
   const [storageArea, setStorageArea] = useState("");
+
+  useEffect(() => {
+    function refresh() {
+      setItems(getAllManagedInventoryItems());
+    }
+    refresh();
+    window.addEventListener("pros-platform-data-updated", refresh);
+    return () => window.removeEventListener("pros-platform-data-updated", refresh);
+  }, []);
 
   function openEdit(item: ManagedItem) {
     setEditing(item);
@@ -27,36 +50,38 @@ export function AdminStockSection() {
   function saveEdit() {
     if (!editing) return;
     setItems(
-      updateStockItem(editing.id, {
-        availableQuantity: quantity,
-        reorderLevel,
-        storageArea,
-      }),
+      updateStockItem(
+        editing.id,
+        {
+          availableQuantity: quantity,
+          reorderLevel,
+          storageArea,
+        },
+        editor,
+      ),
     );
     setEditing(null);
   }
 
-  function markReordered(itemId: string) {
-    setItems(updateStockItem(itemId, { reordered: true }));
-  }
-
-  function disableItem(itemId: string) {
-    setItems(updateStockItem(itemId, { disabled: true }));
+  function disableItem(item: ManagedItem) {
+    appendEditHistory({
+      recordId: item.id,
+      section: "Stock Management",
+      recordName: item.name,
+      actionType: "Disabled Item",
+      previousValue: "Active",
+      newValue: "Disabled",
+      editedBy: editor,
+    });
+    setItems(updateStockItem(item.id, { disabled: true }, editor));
   }
 
   const visibleItems = items.filter((item) => !item.disabled);
 
   return (
     <section className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold text-[#ebfbff]">Stock Management</h2>
-        <p className="mt-1 text-sm text-[#ebfbff]/55">
-          Edit inventory quantities and reorder levels from the Equipment &amp; Supplies catalogue.
-        </p>
-      </div>
-
       <div className="glass-card overflow-x-auto rounded-2xl">
-        <table className="min-w-[1100px] w-full text-left text-sm">
+        <table className="min-w-[1200px] w-full text-left text-sm">
           <thead>
             <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
               <th className="px-4 py-4 font-semibold sm:px-6">Item Name</th>
@@ -65,7 +90,8 @@ export function AdminStockSection() {
               <th className="px-4 py-4 font-semibold">Unit</th>
               <th className="px-4 py-4 font-semibold">Reorder Level</th>
               <th className="px-4 py-4 font-semibold">Storage Area</th>
-              <th className="px-4 py-4 font-semibold">Last Updated</th>
+              <th className="px-4 py-4 font-semibold">Last Edited</th>
+              <th className="px-4 py-4 font-semibold">Edited By</th>
               <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
             </tr>
           </thead>
@@ -82,8 +108,11 @@ export function AdminStockSection() {
                 <td className="px-4 py-4 text-[#ebfbff]/70">{item.reorderLevel}</td>
                 <td className="px-4 py-4 text-[#ebfbff]/70">{item.storageArea}</td>
                 <td className="px-4 py-4 text-[#ebfbff]/70">
-                  {formatInventoryDate(item.lastUpdated)}
+                  {item.lastEditedAt
+                    ? formatEditTimestamp(item.lastEditedAt)
+                    : formatInventoryDate(item.lastUpdated)}
                 </td>
+                <td className="px-4 py-4 text-[#ebfbff]/70">{item.editedBy ?? "—"}</td>
                 <td className="px-4 py-4 sm:px-6">
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -95,17 +124,17 @@ export function AdminStockSection() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => markReordered(item.id)}
-                      className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
-                    >
-                      Mark Reordered
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => disableItem(item.id)}
+                      onClick={() => disableItem(item)}
                       className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
                     >
                       Disable Item
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryTarget(item)}
+                      className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#ebfbff]/20 bg-[#ebfbff]/5 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                    >
+                      View Edit History
                     </button>
                   </div>
                 </td>
@@ -157,6 +186,14 @@ export function AdminStockSection() {
             </div>
           </div>
         </div>
+      ) : null}
+
+      {historyTarget ? (
+        <EditHistoryModal
+          recordId={historyTarget.id}
+          recordName={historyTarget.name}
+          onClose={() => setHistoryTarget(null)}
+        />
       ) : null}
     </section>
   );

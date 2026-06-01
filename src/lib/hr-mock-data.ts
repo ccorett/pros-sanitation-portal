@@ -1,10 +1,4 @@
-import {
-  CalendarDays,
-  FileText,
-  Receipt,
-  UserCircle,
-  type LucideIcon,
-} from "lucide-react";
+import { CalendarDays, FileText, Receipt, type LucideIcon } from "lucide-react";
 
 export type VacationRequestStatus = "Pending" | "Approved" | "Rejected";
 
@@ -48,12 +42,6 @@ export type HrModule = {
 
 export const hrModules: HrModule[] = [
   {
-    title: "My Profile",
-    description: "View employment details and upload your profile picture.",
-    href: "/hr/profile",
-    icon: UserCircle,
-  },
-  {
     title: "Vacation Requests",
     description: "Submit time off requests and track approval status.",
     href: "/hr/vacation",
@@ -66,7 +54,7 @@ export const hrModules: HrModule[] = [
     icon: Receipt,
   },
   {
-    title: "Job Letters",
+    title: "Job Letter Requests",
     description: "Request employment, job, or salary letters.",
     href: "/hr/job-letters",
     icon: FileText,

@@ -5,6 +5,7 @@ export type ApprovalRequestType =
   | "Payslip Requests"
   | "Cannot Access Job Reports"
   | "Reported Job Issues"
+  | "Bin Service Issues"
   | "Bin Setup Changes";
 
 export type ApprovalPriority = "Normal" | "High" | "Critical";
@@ -19,6 +20,9 @@ export type ApprovalRequest = {
   dateSubmitted: string;
   priority: ApprovalPriority;
   status: ApprovalStatus;
+  lastEdited?: string;
+  lastEditedAt?: string;
+  editedBy?: string;
 };
 
 export const seedApprovalRequests: ApprovalRequest[] = [
@@ -75,6 +79,9 @@ export const seedApprovalRequests: ApprovalRequest[] = [
     dateSubmitted: "2026-05-19",
     priority: "High",
     status: "Pending",
+    lastEdited: "2026-05-19",
+    lastEditedAt: "2026-05-19T08:00:00.000Z",
+    editedBy: "Jordan Mitchell",
   },
   {
     id: "apr-007",

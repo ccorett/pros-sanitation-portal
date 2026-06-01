@@ -17,7 +17,7 @@ const placeholderCards = [
   },
   {
     title: "Human Resources",
-    description: "Profile, vacation requests, payslips, and job letters.",
+    description: "Vacation requests, payslips, and job letter requests.",
     icon: Users,
     href: "/hr",
   },

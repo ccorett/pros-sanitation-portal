@@ -1,0 +1,2 @@
+export const authSecondaryLinkClassName =
+  "inline-flex w-full min-h-[52px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#0c151d]/60 px-6 py-3.5 text-base font-semibold text-[#ebfbff] transition-all hover:border-[#00c6ff]/60 hover:bg-[#00c6ff]/20 hover:shadow-lg hover:shadow-[#00c6ff]/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00c6ff]";

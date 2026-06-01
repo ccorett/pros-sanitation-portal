@@ -7,6 +7,7 @@ interface AuthPageShellProps {
   title: string;
   subtitle: string;
   badge?: string;
+  wide?: boolean;
   children: React.ReactNode;
 }
 
@@ -14,6 +15,7 @@ export function AuthPageShell({
   title,
   subtitle,
   badge = "Secure employee access",
+  wide = false,
   children,
 }: AuthPageShellProps) {
   return (
@@ -42,7 +44,12 @@ export function AuthPageShell({
         </p>
         <p className="mt-3 text-sm text-[#ebfbff]/60">{badge}</p>
       </div>
-      <div className="relative z-10 w-full max-w-xl">
+      <div
+        className={[
+          "relative z-10 w-full",
+          wide ? "max-w-2xl" : "max-w-xl",
+        ].join(" ")}
+      >
         <GlassCard className="login-glow relative w-full border-[#00c6ff]/25 p-6 sm:p-8">
           <div className="mb-7 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:text-left">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#259f00]/20 text-[#6cc801]">

@@ -6,7 +6,6 @@ import {
   seedJobLetterRequests,
   seedVacationRequests,
 } from "@/lib/hr-mock-data";
-
 const PROFILE_PIC_PREFIX = "pros-hr-profile-pic:";
 const VACATION_PREFIX = "pros-hr-vacation:";
 const JOB_LETTERS_PREFIX = "pros-hr-job-letters:";
@@ -61,6 +60,11 @@ export function addVacationRequest(
   };
   const updated = [created, ...existing];
   saveVacationRequests(employeeId, updated);
+  if (typeof window !== "undefined") {
+    void import("@/lib/platform-hr-storage").then(({ upsertVacationFromEmployee }) => {
+      upsertVacationFromEmployee(employeeId, employeeId, created);
+    });
+  }
   return updated;
 }
 
@@ -103,5 +107,10 @@ export function addJobLetterRequest(
   };
   const updated = [created, ...existing];
   saveJobLetterRequests(employeeId, updated);
+  if (typeof window !== "undefined") {
+    void import("@/lib/platform-hr-storage").then(({ upsertJobLetterFromEmployee }) => {
+      upsertJobLetterFromEmployee(employeeId, employeeId, created);
+    });
+  }
   return updated;
 }

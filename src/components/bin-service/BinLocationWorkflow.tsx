@@ -8,7 +8,7 @@ import {
   reportBinIssue,
   startBinJob,
 } from "@/lib/bin-locations-storage";
-import type { BinWorkflowStatus } from "@/lib/bin-locations-status";
+import { clampBinCount, type BinWorkflowStatus } from "@/lib/bin-locations-status";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -46,9 +46,16 @@ export function BinLocationWorkflow({
   const router = useRouter();
   const [started, setStarted] = useState(initialStatus === "in_progress");
   const [mode, setMode] = useState<"service" | "cannot_access" | "issue">("service");
-  const [regularBinsServiced, setRegularBinsServiced] = useState(expectedRegularBins);
-  const [newBinsServiced, setNewBinsServiced] = useState(expectedNewBins);
-  const [linersUsed, setLinersUsed] = useState(expectedRegularBins + expectedNewBins);
+  const maxLiners = expectedRegularBins + expectedNewBins;
+  const [regularBinsServiced, setRegularBinsServiced] = useState(
+    clampBinCount(expectedRegularBins, expectedRegularBins),
+  );
+  const [newBinsServiced, setNewBinsServiced] = useState(
+    clampBinCount(expectedNewBins, expectedNewBins),
+  );
+  const [linersUsed, setLinersUsed] = useState(
+    clampBinCount(expectedRegularBins + expectedNewBins, maxLiners),
+  );
   const [clientSignatureName, setClientSignatureName] = useState("");
   const [noSignatureReason, setNoSignatureReason] = useState("");
   const [cannotAccessReason, setCannotAccessReason] = useState("");
@@ -63,9 +70,9 @@ export function BinLocationWorkflow({
 
   useEffect(() => {
     if (mode === "service") {
-      setLinersUsed(totalServiced);
+      setLinersUsed(clampBinCount(totalServiced, maxLiners));
     }
-  }, [totalServiced, mode]);
+  }, [totalServiced, mode, maxLiners]);
 
   function ensureStarted() {
     if (!started) {
@@ -163,15 +170,26 @@ export function BinLocationWorkflow({
             <CounterField
               label={`Regular bins (expected ${expectedRegularBins})`}
               value={regularBinsServiced}
-              onChange={setRegularBinsServiced}
+              onChange={(value) =>
+                setRegularBinsServiced(clampBinCount(value, expectedRegularBins))
+              }
+              max={expectedRegularBins}
             />
             <CounterField
               label={`New bins (expected ${expectedNewBins})`}
               value={newBinsServiced}
-              onChange={setNewBinsServiced}
+              onChange={(value) =>
+                setNewBinsServiced(clampBinCount(value, expectedNewBins))
+              }
+              max={expectedNewBins}
             />
           </div>
-          <CounterField label="Liners used" value={linersUsed} onChange={setLinersUsed} />
+          <CounterField
+            label="Liners used"
+            value={linersUsed}
+            onChange={(value) => setLinersUsed(clampBinCount(value, maxLiners))}
+            max={maxLiners}
+          />
           {signatureRequired ? (
             <div className="glass-card space-y-4 rounded-2xl p-5">
               <label className="block">

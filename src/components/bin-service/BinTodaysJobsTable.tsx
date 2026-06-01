@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { CounterField } from "@/components/bin-service/CounterField";
 import {
+  clampBinCount,
   computeDaysSinceLastService,
   formatBinDate,
   getBinServiceStatus,
@@ -74,8 +75,15 @@ export function BinTodaysJobsTable() {
   function openComplete(location: BinLocationView) {
     setActiveId(location.id);
     setMode("complete");
-    setRegularServiced(location.regularBins);
-    setNewServiced(location.newBins);
+    setRegularServiced(
+      clampBinCount(
+        location.regularBinsServiced ?? location.regularBins,
+        location.regularBins,
+      ),
+    );
+    setNewServiced(
+      clampBinCount(location.newBinsServiced ?? location.newBins, location.newBins),
+    );
     startBinJob(location.id);
     refresh();
   }
@@ -182,7 +190,7 @@ export function BinTodaysJobsTable() {
                     </span>
                   </td>
                   <td className="max-w-[200px] px-4 py-4 text-[#ebfbff]/70">
-                    {location.notes || "—"}
+                    {location.displayNotes || "—"}
                   </td>
                   <td className="px-4 py-4 sm:px-6">
                     <div className="flex min-w-[320px] flex-wrap gap-2">
@@ -233,12 +241,20 @@ export function BinTodaysJobsTable() {
                   <CounterField
                     label={`Regular bins (expected ${activeLocation.regularBins})`}
                     value={regularServiced}
-                    onChange={setRegularServiced}
+                    onChange={(value) =>
+                      setRegularServiced(
+                        clampBinCount(value, activeLocation.regularBins),
+                      )
+                    }
+                    max={activeLocation.regularBins}
                   />
                   <CounterField
                     label={`New bins (expected ${activeLocation.newBins})`}
                     value={newServiced}
-                    onChange={setNewServiced}
+                    onChange={(value) =>
+                      setNewServiced(clampBinCount(value, activeLocation.newBins))
+                    }
+                    max={activeLocation.newBins}
                   />
                 </div>
                 <Button fullWidth className="min-h-[52px]" onClick={handleComplete}>

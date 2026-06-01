@@ -41,6 +41,6 @@ export const sidebarNavItems = [
   { label: "Jobs", href: "/jobs", active: false },
   { label: "Equipment & Supplies", href: "/equipment-supplies", active: false },
   { label: "Human Resources", href: "/hr", active: false },
-  { label: "Settings", href: "/settings", active: false },
+  { label: "My Profile", href: "/my-profile", active: false },
   { label: "Admin", href: "/admin", active: false },
 ];
