@@ -5,13 +5,16 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default async function HrJobLettersPage() {
-  const { employee } = await requireStaffAccess();
+  const { employee } = await requireStaffAccess({ pathname: "/hr" });
 
   return (
     <StaffWorkspaceShell
       sectionLabel="Human Resources"
       title="Job Letters"
       subtitle="Request job, employment, or salary letters and track request status."
+          accessLevel={employee.accessLevel}
+      operationalGroup={employee.operationalGroup}
+      companyEmail={employee.companyEmail}
     >
       <div className="mb-6">
         <Link

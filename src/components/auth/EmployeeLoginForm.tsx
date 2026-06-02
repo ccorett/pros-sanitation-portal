@@ -37,7 +37,7 @@ export function EmployeeLoginForm({ accessCode = null }: EmployeeLoginFormProps)
         return;
       }
 
-      window.location.assign("/staff-dashboard");
+      window.location.assign(result.redirectTo);
     } finally {
       setLoading(false);
     }

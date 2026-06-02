@@ -5,6 +5,7 @@ import { Mail } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { getClientAppBaseUrl } from "@/lib/app-url";
+import { AUTH_PASSWORD_RESET_PATH } from "@/lib/auth-routes";
 import {
   authErrorClassName,
   authInputClassName,
@@ -25,7 +26,7 @@ export function ForgotPasswordForm() {
     setLoading(true);
 
     try {
-      const redirectTo = `${getClientAppBaseUrl()}/employee-reset-password`;
+      const redirectTo = `${getClientAppBaseUrl()}${AUTH_PASSWORD_RESET_PATH}`;
       const result = await authClient.requestPasswordReset({
         email: email.trim(),
         redirectTo,

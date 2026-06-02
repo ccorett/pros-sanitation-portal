@@ -24,9 +24,12 @@ export async function GET() {
 
   return NextResponse.json({
     allowed: true,
+    redirectTo: access.redirectTo,
+    pendingVerification: access.pendingVerification,
     employee: {
       employeeId: access.employee.employeeId,
       firstName: access.employee.firstName,
+      accessLevel: access.employee.accessLevel,
       accountStatus: access.employee.accountStatus,
     },
   });

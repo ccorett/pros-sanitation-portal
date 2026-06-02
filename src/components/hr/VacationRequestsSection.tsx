@@ -4,23 +4,35 @@ import { Button } from "@/components/ui/Button";
 import {
   addVacationRequest,
   getVacationRequests,
+  type VacationSubmitMeta,
 } from "@/lib/hr-client-storage";
 import {
   formatDisplayDate,
   vacationStatusClass,
   type VacationRequest,
 } from "@/lib/hr-mock-data";
-import { useState } from "react";
+import {
+  workflowStatusClass,
+  type VacationWorkflowRequest,
+} from "@/lib/vacation-workflow";
+import { useEffect, useState } from "react";
 
 type VacationRequestsSectionProps = {
-  employeeRecordId: string;
+  employeeMeta: VacationSubmitMeta;
+  serverSeed?: VacationWorkflowRequest[];
 };
 
+function displayStatus(request: VacationRequest): string {
+  const workflow = request as VacationWorkflowRequest;
+  return workflow.workflowStatus ?? request.status;
+}
+
 export function VacationRequestsSection({
-  employeeRecordId,
+  employeeMeta,
+  serverSeed,
 }: VacationRequestsSectionProps) {
   const [requests, setRequests] = useState<VacationRequest[]>(() =>
-    getVacationRequests(employeeRecordId),
+    getVacationRequests(employeeMeta.employeeId, serverSeed),
   );
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -28,10 +40,31 @@ export function VacationRequestsSection({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!serverSeed?.length) return;
+
+    void import("@/lib/platform-hr-storage").then(({ upsertVacationFromEmployee }) => {
+      for (const request of serverSeed) {
+        upsertVacationFromEmployee(
+          employeeMeta.employeeId,
+          employeeMeta.employeeName,
+          request,
+        );
+      }
+    });
+  }, [employeeMeta.employeeId, employeeMeta.employeeName, serverSeed]);
+
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
     setSuccess(null);
+
+    if (!employeeMeta.locationAssignment) {
+      setError(
+        "Location assignment is required before submitting vacation requests.",
+      );
+      return;
+    }
 
     if (!startDate || !endDate || !reason.trim()) {
       setError("Start date, end date, and reason are required.");
@@ -43,7 +76,7 @@ export function VacationRequestsSection({
       return;
     }
 
-    const updated = addVacationRequest(employeeRecordId, {
+    const updated = addVacationRequest(employeeMeta, {
       startDate,
       endDate,
       reason: reason.trim(),
@@ -53,7 +86,9 @@ export function VacationRequestsSection({
     setStartDate("");
     setEndDate("");
     setReason("");
-    setSuccess("Vacation request submitted. Status: Pending.");
+    setSuccess(
+      "Vacation request submitted. Status: Pending Supervisor Review.",
+    );
   }
 
   return (
@@ -118,27 +153,39 @@ export function VacationRequestsSection({
             No vacation requests yet.
           </div>
         ) : (
-          requests.map((request) => (
-            <article key={request.id} className="glass-card rounded-2xl p-5 sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-[#00c6ff]">
-                    {formatDisplayDate(request.startDate)} –{" "}
-                    {formatDisplayDate(request.endDate)}
-                  </p>
-                  <p className="mt-2 text-sm text-[#ebfbff]/70">{request.reason}</p>
+          requests.map((request) => {
+            const statusLabel = displayStatus(request);
+            const statusClass =
+              "workflowStatus" in request &&
+              typeof (request as VacationWorkflowRequest).workflowStatus ===
+                "string"
+                ? workflowStatusClass(
+                    (request as VacationWorkflowRequest).workflowStatus,
+                  )
+                : vacationStatusClass(request.status);
+
+            return (
+              <article key={request.id} className="glass-card rounded-2xl p-5 sm:p-6">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-[#00c6ff]">
+                      {formatDisplayDate(request.startDate)} –{" "}
+                      {formatDisplayDate(request.endDate)}
+                    </p>
+                    <p className="mt-2 text-sm text-[#ebfbff]/70">{request.reason}</p>
+                  </div>
+                  <span
+                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClass}`}
+                  >
+                    {statusLabel}
+                  </span>
                 </div>
-                <span
-                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${vacationStatusClass(request.status)}`}
-                >
-                  {request.status}
-                </span>
-              </div>
-              <p className="mt-3 text-xs text-[#ebfbff]/45">
-                Submitted {formatDisplayDate(request.submittedAt)}
-              </p>
-            </article>
-          ))
+                <p className="mt-3 text-xs text-[#ebfbff]/45">
+                  Submitted {formatDisplayDate(request.submittedAt)}
+                </p>
+              </article>
+            );
+          })
         )}
       </div>
     </div>

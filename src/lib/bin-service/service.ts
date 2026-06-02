@@ -426,6 +426,7 @@ export async function listActiveTechnicians() {
   return prisma.employee.findMany({
     where: {
       accountStatus: "ACTIVE",
+      accessLevel: { not: "PENDING_VERIFICATION" },
       employmentStatus: "ACTIVE",
     },
     select: {

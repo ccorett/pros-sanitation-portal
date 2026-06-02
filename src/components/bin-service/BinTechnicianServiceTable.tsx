@@ -22,7 +22,13 @@ const STATUS_FILTERS: Array<{ value: "all" | BinServiceStatusColor; label: strin
   { value: "grey", label: "Inactive" },
 ];
 
-export function BinTechnicianServiceTable() {
+type BinTechnicianServiceTableProps = {
+  readOnlySetup?: boolean;
+};
+
+export function BinTechnicianServiceTable({
+  readOnlySetup = false,
+}: BinTechnicianServiceTableProps) {
   const { data: session } = authClient.useSession();
   const updatedBy =
     session?.user?.name?.trim() ||
@@ -80,7 +86,9 @@ export function BinTechnicianServiceTable() {
     <div className="space-y-4">
       <div className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">
         <p className="text-sm text-[#ebfbff]/70">
-          Update service activity only. Location setup is managed by Admin.
+          {readOnlySetup
+            ? "Update assigned service activity only. Adding locations and changing bin setup are restricted for your role."
+            : "Update service activity and review all route locations."}
         </p>
         <label className="block">
           <span className="text-sm text-[#ebfbff]/70">Search by Location or Notes</span>

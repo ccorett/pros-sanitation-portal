@@ -1,15 +1,17 @@
+import { DEV_APP_ORIGIN } from "@/lib/app-url";
 import { authClient } from "@/lib/auth-client";
-import { LOGIN_LOCKOUT_MESSAGE } from "@/lib/login-attempts";
+import { AUTH_POST_LOGIN_PATH } from "@/lib/auth-routes";
+import { LOGIN_LOCKOUT_MESSAGE, normalizeEmail } from "@/lib/login-attempts";
 
 export type EmployeeSignInResult =
-  | { ok: true }
+  | { ok: true; redirectTo: "/pending-verification" | "/staff-dashboard" }
   | { ok: false; error: string };
 
 export async function signInEmployee(input: {
   email: string;
   pin: string;
 }): Promise<EmployeeSignInResult> {
-  const email = input.email.trim();
+  const email = normalizeEmail(input.email);
 
   try {
     const check = await fetch(
@@ -30,7 +32,7 @@ export async function signInEmployee(input: {
     const result = await authClient.signIn.email({
       email,
       password: input.pin,
-      callbackURL: "/staff-dashboard",
+      callbackURL: AUTH_POST_LOGIN_PATH,
     });
 
     if (result.error) {
@@ -51,10 +53,17 @@ export async function signInEmployee(input: {
         };
       }
 
+      const authMessage = result.error.message?.trim();
+      const status = result.error.status;
+
       return {
         ok: false,
         error:
-          result.error.message ?? "Invalid email or PIN. Please try again.",
+          status === 403
+            ? `Sign-in was blocked for this address. Open the portal at ${DEV_APP_ORIGIN}.`
+            : authMessage && authMessage !== "Invalid email or password"
+              ? authMessage
+              : "Invalid email or PIN. Please try again.",
       };
     }
 
@@ -68,6 +77,7 @@ export async function signInEmployee(input: {
     const accessData = (await accessResponse.json()) as {
       allowed?: boolean;
       message?: string;
+      redirectTo?: "/pending-verification" | "/staff-dashboard";
     };
 
     if (!accessResponse.ok || !accessData.allowed) {
@@ -80,7 +90,10 @@ export async function signInEmployee(input: {
       };
     }
 
-    return { ok: true };
+    return {
+      ok: true,
+      redirectTo: accessData.redirectTo ?? "/staff-dashboard",
+    };
   } catch {
     return {
       ok: false,

@@ -51,7 +51,8 @@ function buildMockEmployee(
     position: body.position,
     locationAssignment: body.locationAssignment,
     employmentStatus: "ACTIVE",
-    accountStatus: "ACTIVE",
+    accessLevel: "PENDING_VERIFICATION",
+    accountStatus: "PENDING",
     mock: true,
   };
 }

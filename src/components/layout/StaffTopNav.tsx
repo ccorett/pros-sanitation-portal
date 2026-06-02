@@ -1,27 +1,26 @@
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { getVisibleNavItems } from "@/lib/portal-route-access";
+import type { EmployeeAccessContext } from "@/lib/operational-access";
 import Link from "next/link";
 
-export function StaffTopNav() {
+type StaffTopNavProps = {
+  accessContext: EmployeeAccessContext;
+};
+
+export function StaffTopNav({ accessContext }: StaffTopNavProps) {
+  const items = getVisibleNavItems(accessContext);
+
   return (
-    <div className="flex items-center gap-4">
-      <Link
-        href="/staff-dashboard"
-        className="text-sm text-[#ebfbff]/60 hover:text-[#ebfbff] transition-colors"
-      >
-        Dashboard
-      </Link>
-      <Link
-        href="/admin"
-        className="text-sm text-[#ebfbff]/60 hover:text-[#ebfbff] transition-colors"
-      >
-        Admin
-      </Link>
-      <Link
-        href="/my-profile"
-        className="text-sm text-[#ebfbff]/60 hover:text-[#ebfbff] transition-colors"
-      >
-        My Profile
-      </Link>
+    <div className="flex flex-wrap items-center justify-end gap-3 sm:gap-4">
+      {items.map((item) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          className="text-sm text-[#ebfbff]/60 transition-colors hover:text-[#ebfbff]"
+        >
+          {item.label}
+        </Link>
+      ))}
       <SignOutButton />
     </div>
   );

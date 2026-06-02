@@ -1,7 +1,9 @@
 import { BinSetupForm } from "@/components/bin-service/BinSetupForm";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
 import { getBinServiceSite } from "@/lib/bin-service/service";
+import { canManageBinLocationSetup } from "@/lib/operational-access";
 import { requireStaffAccess } from "@/lib/require-staff-access";
+import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -12,7 +14,13 @@ type SetupPageProps = {
 };
 
 export default async function BinSetupPage({ params, searchParams }: SetupPageProps) {
-  await requireStaffAccess();
+  const { employee } = await requireStaffAccess({
+    pathname: "/jobs/bin-management",
+  });
+
+  if (!canManageBinLocationSetup(employee.accessLevel)) {
+    redirect("/jobs/bin-management");
+  }
 
   const { siteId } = await params;
   const { from } = await searchParams;
@@ -30,6 +38,9 @@ export default async function BinSetupPage({ params, searchParams }: SetupPagePr
       sectionLabel="Admin · Bin Management"
       title="Bin Service Setup"
       subtitle={`Configure rotation schedule and expected bin counts for ${site.name}.`}
+      accessLevel={employee.accessLevel}
+      operationalGroup={employee.operationalGroup}
+      companyEmail={employee.companyEmail}
     >
       <div className="mb-6">
         <Link

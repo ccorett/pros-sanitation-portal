@@ -1,17 +1,29 @@
 import { BinTechnicianServiceTable } from "@/components/bin-service/BinTechnicianServiceTable";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
+import { canManageBinLocationSetup } from "@/lib/operational-access";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import { ArrowLeft, Smartphone } from "lucide-react";
 import Link from "next/link";
 
 export default async function BinManagementPage() {
-  await requireStaffAccess();
+  const { employee } = await requireStaffAccess({
+    pathname: "/jobs/bin-management",
+  });
+
+  const allowSetupLinks = canManageBinLocationSetup(employee.accessLevel);
 
   return (
     <StaffWorkspaceShell
       sectionLabel="Job Management"
       title="Bin Management"
-      subtitle="Update service activity for assigned bin route locations. Location setup is managed in Admin."
+      subtitle={
+        allowSetupLinks
+          ? "Review all bin service routes, due sites, and technician activity."
+          : "Update service activity for assigned bin route locations. Location setup is managed by managers and admin."
+      }
+      accessLevel={employee.accessLevel}
+      operationalGroup={employee.operationalGroup}
+      companyEmail={employee.companyEmail}
     >
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Link
@@ -30,7 +42,7 @@ export default async function BinManagementPage() {
         </Link>
       </div>
 
-      <BinTechnicianServiceTable />
+      <BinTechnicianServiceTable readOnlySetup={!allowSetupLinks} />
     </StaffWorkspaceShell>
   );
 }

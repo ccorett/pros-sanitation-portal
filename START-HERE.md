@@ -20,7 +20,7 @@ npm run verify
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3001](http://localhost:3001).
 
 ## Verify you are in the right location
 

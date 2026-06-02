@@ -84,10 +84,30 @@ enum EmploymentStatus {
   ON_LEAVE
 }
 
+enum AccessLevel {
+  PENDING_VERIFICATION
+  TEAM_MEMBER
+  SUPERVISOR
+  MANAGER
+  ADMIN
+  SUPER_ADMIN
+
+  @@map("PortalAccessLevel")
+}
+
 enum AccountStatus {
+  PENDING
   ACTIVE
-  LOCKED
   DISABLED
+  REMOVED
+}
+
+enum OperationalGroup {
+  GENERAL
+  BIN_TECHNICIAN
+  BIN_SERVICE_SUPERVISOR
+
+  @@map("OperationalGroup")
 }
 
 enum ClientLocationStatus {
@@ -128,11 +148,17 @@ model Employee {
   locationAssignment String?
   supervisorName    String?
   employmentStatus  EmploymentStatus @default(ACTIVE)
-  accountStatus     AccountStatus      @default(ACTIVE)
+  accessLevel       AccessLevel        @default(PENDING_VERIFICATION)
+  operationalGroup  OperationalGroup   @default(GENERAL)
+  accountStatus     AccountStatus      @default(PENDING)
+  lastLoginAt       DateTime?
+  lastEditedAt      DateTime?
+  editedBy          String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
   user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessHistories        AccessHistory[]
   assignedJobs           Job[]
   assignedBinSetups      BinServiceSetup[]       @relation("BinSetupTechnician")
   assignedBinJobs        BinServiceJob[]         @relation("BinJobTechnician")
@@ -141,6 +167,22 @@ model Employee {
   noticeAcknowledgements NoticeAcknowledgement[]
 
   @@map("employees")
+}
+
+model AccessHistory {
+  id            String      @id @default(uuid()) @db.Uuid
+  employeeId    String      @db.Uuid
+  previousLevel AccessLevel
+  newLevel      AccessLevel
+  changedBy     String
+  changedAt     DateTime    @default(now())
+  notes         String?
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([changedAt])
+  @@map("access_history")
 }
 
 model ClientLocation {

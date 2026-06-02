@@ -1,4 +1,9 @@
-import { getAppBaseUrl, getPublicAppBaseUrl } from "@/lib/app-url";
+import {
+  DEV_APP_ORIGIN,
+  getAppBaseUrl,
+  getPublicAppBaseUrl,
+  isDevEnvironment,
+} from "@/lib/app-url";
 
 export const AUTH_COOKIE_PREFIX = "pros-portal";
 
@@ -35,11 +40,9 @@ export function resolveTrustedOrigins(): string[] {
     addTrustedOrigin(origins, entry);
   });
 
-  if (process.env.NODE_ENV !== "production") {
-    for (let port = 3000; port <= 3010; port++) {
-      origins.add(`http://localhost:${port}`);
-      origins.add(`http://127.0.0.1:${port}`);
-    }
+  if (isDevEnvironment()) {
+    origins.add(DEV_APP_ORIGIN);
+    origins.add("http://127.0.0.1:3001");
   }
 
   return [...origins];

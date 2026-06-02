@@ -1,8 +1,10 @@
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
+import { canAccessCleaningLocation } from "@/lib/employee-job-assignments";
 import {
   getClientLocationBySlug,
   serviceTypeBadgeClass,
 } from "@/lib/jobs-mock-data";
+import { toEmployeeAccessContext } from "@/lib/portal-route-access";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import {
   ArrowLeft,
@@ -12,14 +14,15 @@ import {
   MapPin,
 } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 type LocationJobsPageProps = {
   params: Promise<{ locationSlug: string }>;
 };
 
 export default async function LocationJobsPage({ params }: LocationJobsPageProps) {
-  await requireStaffAccess();
+  const { employee } = await requireStaffAccess({ pathname: "/jobs" });
+  const accessContext = toEmployeeAccessContext(employee);
 
   const { locationSlug } = await params;
   const location = getClientLocationBySlug(locationSlug);
@@ -28,11 +31,18 @@ export default async function LocationJobsPage({ params }: LocationJobsPageProps
     notFound();
   }
 
+  if (!canAccessCleaningLocation(accessContext, locationSlug)) {
+    redirect("/staff-dashboard");
+  }
+
   return (
     <StaffWorkspaceShell
       sectionLabel="Job Management"
       title={location.name}
       subtitle={`${location.serviceType} · ${location.status} client location`}
+      accessLevel={employee.accessLevel}
+      operationalGroup={employee.operationalGroup}
+      companyEmail={employee.companyEmail}
     >
       <div className="mb-6">
         <Link

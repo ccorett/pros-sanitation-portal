@@ -1,4 +1,5 @@
 import {
+  AccessLevel,
   AccountStatus,
   ClientLocationStatus,
   EmploymentStatus,
@@ -7,6 +8,7 @@ import {
   PrismaClient,
   ServiceType,
 } from "@prisma/client";
+import { seedAccessTestAccounts } from "./seed-access-test-accounts";
 
 const prisma = new PrismaClient();
 
@@ -34,6 +36,7 @@ async function main() {
         jobTitle: "Sanitation Technician",
         supervisorName: "Alex Rivera",
         employmentStatus: EmploymentStatus.ACTIVE,
+        accessLevel: AccessLevel.TEAM_MEMBER,
         accountStatus: AccountStatus.ACTIVE,
       },
     });
@@ -215,7 +218,11 @@ async function main() {
     });
   }
 
-  console.log("Seed complete: platform records linked to existing auth user when present.");
+  await seedAccessTestAccounts(prisma);
+
+  console.log(
+    "Seed complete: platform records and access-level test accounts are ready.",
+  );
 }
 
 main()

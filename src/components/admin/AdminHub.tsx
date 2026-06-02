@@ -1,10 +1,15 @@
 "use client";
 
+import type { AdminHubCard } from "@/lib/admin-hub-server";
 import { getAdminHubSections } from "@/lib/platform-storage";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-export function AdminHub() {
+type AdminHubProps = {
+  serverSections?: AdminHubCard[];
+};
+
+export function AdminHub({ serverSections = [] }: AdminHubProps) {
   const [sections, setSections] = useState(() =>
     typeof window !== "undefined" ? getAdminHubSections() : [],
   );
@@ -22,9 +27,11 @@ export function AdminHub() {
     };
   }, []);
 
+  const allSections = [...sections, ...serverSections];
+
   return (
     <div className="grid gap-5 sm:grid-cols-2">
-      {sections.map((section) => (
+      {allSections.map((section) => (
         <article
           key={section.id}
           className="glass-card flex flex-col rounded-2xl border border-[#00c6ff]/15 p-6 sm:p-7"

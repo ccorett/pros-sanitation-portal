@@ -1,0 +1,2 @@
+-- Restored record: portal access levels were applied on the remote database.
+-- Enum "PortalAccessLevel" and column employees.accessLevel already exist.

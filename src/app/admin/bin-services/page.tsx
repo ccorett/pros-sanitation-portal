@@ -7,13 +7,16 @@ import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 
 export default async function AdminBinServicesPage() {
-  await requireStaffAccess();
+  const { employee } = await requireStaffAccess({ pathname: "/admin" });
 
   return (
     <StaffWorkspaceShell
       sectionLabel="Admin"
       title="Bin Services"
       subtitle="Sites, route locations, due/overdue bins, setup, and technician updates."
+          accessLevel={employee.accessLevel}
+      operationalGroup={employee.operationalGroup}
+      companyEmail={employee.companyEmail}
     >
       <div className="space-y-12">
         <AdminBackLink />

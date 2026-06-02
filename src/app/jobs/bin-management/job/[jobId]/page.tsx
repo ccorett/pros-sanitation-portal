@@ -11,7 +11,9 @@ type BinJobPageProps = {
 };
 
 export default async function BinJobPage({ params }: BinJobPageProps) {
-  await requireStaffAccess();
+  const { employee } = await requireStaffAccess({
+    pathname: "/jobs/bin-management",
+  });
 
   const { jobId } = await params;
   const location = getSeedLocations().find((item) => item.id === jobId);
@@ -25,6 +27,9 @@ export default async function BinJobPage({ params }: BinJobPageProps) {
       sectionLabel="Job Management · Bin Management"
       title={location.location}
       subtitle={`${location.newBins} new · ${location.regularBins} regular bins`}
+      accessLevel={employee.accessLevel}
+      operationalGroup={employee.operationalGroup}
+      companyEmail={employee.companyEmail}
     >
       <div className="mb-6">
         <Link

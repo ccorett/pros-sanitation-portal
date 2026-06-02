@@ -1,4 +1,3 @@
-import { AccountStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export const LOGIN_LOCKOUT_MESSAGE =
@@ -25,23 +24,7 @@ export async function recordLoginFailure(email: string): Promise<boolean> {
     update: { attempts: { increment: 1 } },
   });
 
-  const locked = record.attempts >= MAX_FAILED_ATTEMPTS;
-
-  if (locked) {
-    const user = await prisma.user.findUnique({
-      where: { email: normalized },
-      include: { employee: true },
-    });
-
-    if (user?.employee) {
-      await prisma.employee.update({
-        where: { id: user.employee.id },
-        data: { accountStatus: AccountStatus.LOCKED },
-      });
-    }
-  }
-
-  return locked;
+  return record.attempts >= MAX_FAILED_ATTEMPTS;
 }
 
 export async function resetLoginAttempts(email: string): Promise<void> {
@@ -49,16 +32,4 @@ export async function resetLoginAttempts(email: string): Promise<void> {
   await prisma.loginAttempt.deleteMany({
     where: { email: normalized },
   });
-
-  const user = await prisma.user.findUnique({
-    where: { email: normalized },
-    include: { employee: true },
-  });
-
-  if (user?.employee?.accountStatus === AccountStatus.LOCKED) {
-    await prisma.employee.update({
-      where: { id: user.employee.id },
-      data: { accountStatus: AccountStatus.ACTIVE },
-    });
-  }
 }

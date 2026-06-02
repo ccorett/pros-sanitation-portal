@@ -1,7 +1,7 @@
 import { AuthPageShell } from "@/components/auth/AuthPageShell";
 import { EmployeeSignupForm } from "@/components/auth/EmployeeSignupForm";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getEmployeePortalAccess } from "@/lib/employee-portal-access";
 import { getPublicSignupPolicy } from "@/lib/signup-access";
 import { headers } from "next/headers";
 import Link from "next/link";
@@ -26,12 +26,10 @@ export default async function EmployeeSignupPage({
   }
 
   if (session) {
-    const employee = await prisma.employee.findUnique({
-      where: { userId: session.user.id },
-    });
+    const access = await getEmployeePortalAccess(session.user.id);
 
-    if (employee) {
-      redirect("/staff-dashboard");
+    if (access.allowed) {
+      redirect(access.redirectTo);
     }
   }
 

@@ -5,13 +5,16 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default async function HrPayslipsPage() {
-  await requireStaffAccess();
+  const { employee } = await requireStaffAccess({ pathname: "/hr" });
 
   return (
     <StaffWorkspaceShell
       sectionLabel="Human Resources"
       title="Payslips"
       subtitle="View and download your available payslip PDFs. Read-only — no payroll calculations."
+          accessLevel={employee.accessLevel}
+      operationalGroup={employee.operationalGroup}
+      companyEmail={employee.companyEmail}
     >
       <div className="mb-6">
         <Link

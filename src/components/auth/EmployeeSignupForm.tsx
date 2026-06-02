@@ -2,6 +2,7 @@
 
 import { FormEvent, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { AUTH_POST_SIGNUP_PATH } from "@/lib/auth-routes";
 import {
   authErrorClassName,
   authInputClassName,
@@ -125,7 +126,7 @@ export function EmployeeSignupForm({
           email: email.trim(),
           password: pin,
           name: `${firstName.trim()} ${lastName.trim()}`,
-          callbackURL: "/staff-dashboard",
+          callbackURL: AUTH_POST_SIGNUP_PATH,
           ...(policy.inviteRequired
             ? { inviteCode: inviteCode.trim() }
             : {}),
@@ -183,7 +184,7 @@ export function EmployeeSignupForm({
         });
       }
 
-      window.location.assign("/staff-dashboard");
+      window.location.assign("/pending-verification");
     } catch (cause) {
       console.error("[signup]", cause);
       setError(

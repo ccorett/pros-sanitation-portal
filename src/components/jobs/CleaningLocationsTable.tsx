@@ -1,11 +1,26 @@
 import {
-  clientLocations,
   formatLocationDate,
   serviceTypeBadgeClass,
+  type ClientLocation,
 } from "@/lib/jobs-mock-data";
 import Link from "next/link";
 
-export function CleaningLocationsTable() {
+type CleaningLocationsTableProps = {
+  locations: ClientLocation[];
+};
+
+export function CleaningLocationsTable({
+  locations,
+}: CleaningLocationsTableProps) {
+  if (locations.length === 0) {
+    return (
+      <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+        No non-bin cleaning locations are assigned to your account. Contact a
+        manager if you need access to a specific job site.
+      </div>
+    );
+  }
+
   return (
     <div className="glass-card overflow-x-auto rounded-2xl">
       <table className="min-w-[1100px] w-full text-left text-sm">
@@ -23,7 +38,7 @@ export function CleaningLocationsTable() {
           </tr>
         </thead>
         <tbody>
-          {clientLocations.map((location) => (
+          {locations.map((location) => (
             <tr
               key={location.slug}
               className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"

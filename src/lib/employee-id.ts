@@ -1,4 +1,9 @@
-import { AccountStatus, EmploymentStatus, Prisma } from "@prisma/client";
+import {
+  AccessLevel,
+  AccountStatus,
+  EmploymentStatus,
+  Prisma,
+} from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const MAX_ALLOCATION_ATTEMPTS = 5;
@@ -36,7 +41,8 @@ export async function createEmployeeWithAllocatedId(input: CreateEmployeeInput) 
     position: input.position ?? null,
     locationAssignment: input.locationAssignment ?? null,
     employmentStatus: EmploymentStatus.ACTIVE,
-    accountStatus: AccountStatus.ACTIVE,
+    accessLevel: AccessLevel.PENDING_VERIFICATION,
+    accountStatus: AccountStatus.PENDING,
   };
 
   for (let attempt = 0; attempt < MAX_ALLOCATION_ATTEMPTS; attempt++) {

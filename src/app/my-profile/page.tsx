@@ -3,7 +3,7 @@ import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 
 export default async function MyProfilePage() {
-  const { session, employee } = await requireStaffAccess();
+  const { session, employee } = await requireStaffAccess({ pathname: "/my-profile" });
 
   const employeeRecord = employee as {
     id: string;
@@ -25,6 +25,9 @@ export default async function MyProfilePage() {
       sectionLabel="My Profile"
       title="My Profile"
       subtitle="View and update your personal and employment information."
+          accessLevel={employee.accessLevel}
+      operationalGroup={employee.operationalGroup}
+      companyEmail={employee.companyEmail}
     >
       <MyProfileSection
         initial={{

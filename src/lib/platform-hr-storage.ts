@@ -1,7 +1,6 @@
 import type {
   JobLetterRequest,
   JobLetterRequestStatus,
-  VacationRequest,
   VacationRequestStatus,
 } from "@/lib/hr-mock-data";
 import {
@@ -11,15 +10,33 @@ import {
   saveVacationRequests,
 } from "@/lib/hr-client-storage";
 import { appendEditHistory } from "@/lib/platform-edit-history";
+import { OperationalGroup } from "@prisma/client";
+import {
+  DEMO_VACATION_REQUEST,
+  DEMO_VACATION_REQUEST_ID,
+  type SupervisorAwarenessStatus,
+  type VacationWorkflowRequest,
+  type VacationWorkflowStatus,
+} from "@/lib/vacation-workflow";
 
 export type AdminHrRecord = {
   id: string;
   requestType: "Vacation Requests" | "Job Letter Requests" | "Payslip Requests";
   employee: string;
   employeeId: string;
+  employeeEmail?: string;
   details: string;
   dateSubmitted: string;
   status: VacationRequestStatus | JobLetterRequestStatus;
+  workflowStatus?: VacationWorkflowStatus;
+  locationAssignment?: string;
+  supervisorEmail?: string;
+  employeeOperationalGroup?: OperationalGroup;
+  supervisorAwareness?: SupervisorAwarenessStatus | null;
+  supervisorNotes?: string | null;
+  startDate?: string;
+  endDate?: string;
+  reason?: string;
   lastEdited?: string;
   lastEditedAt?: string;
   editedBy?: string;
@@ -29,28 +46,26 @@ const HR_ADMIN_PREFIX = "pros-platform-hr-admin:";
 
 const seedHrAdminRecords: AdminHrRecord[] = [
   {
-    id: "hr-vac-002",
+    id: DEMO_VACATION_REQUEST_ID,
     requestType: "Vacation Requests",
-    employee: "Alex Rivera",
-    employeeId: "emp-demo-002",
-    details: "Jul 22–24 · Personal appointment",
-    dateSubmitted: "2026-05-18",
+    employee: DEMO_VACATION_REQUEST.employeeName,
+    employeeId: "team-member-demo",
+    employeeEmail: DEMO_VACATION_REQUEST.employeeEmail,
+    details: "Jun 10–12 · Family appointment",
+    dateSubmitted: "2026-06-01",
     status: "Pending",
-    lastEdited: "2026-05-18",
-    lastEditedAt: "2026-05-18T14:30:00.000Z",
-    editedBy: "Alex Rivera",
-  },
-  {
-    id: "hr-vac-001",
-    requestType: "Vacation Requests",
-    employee: "Jordan Mitchell",
-    employeeId: "emp-demo-001",
-    details: "Jun 10–14 · Family travel",
-    dateSubmitted: "2026-05-01",
-    status: "Approved",
-    lastEdited: "2026-05-17",
-    lastEditedAt: "2026-05-17T11:00:00.000Z",
-    editedBy: "Admin User",
+    workflowStatus: "Pending Supervisor Review",
+    locationAssignment: DEMO_VACATION_REQUEST.locationAssignment,
+    supervisorEmail: DEMO_VACATION_REQUEST.supervisorEmail,
+    employeeOperationalGroup: DEMO_VACATION_REQUEST.employeeOperationalGroup,
+    supervisorAwareness: null,
+    supervisorNotes: null,
+    startDate: DEMO_VACATION_REQUEST.startDate,
+    endDate: DEMO_VACATION_REQUEST.endDate,
+    reason: DEMO_VACATION_REQUEST.reason,
+    lastEdited: "2026-06-01",
+    lastEditedAt: DEMO_VACATION_REQUEST.submittedAt,
+    editedBy: DEMO_VACATION_REQUEST.employeeName,
   },
   {
     id: "letter-seed-001",
@@ -64,18 +79,6 @@ const seedHrAdminRecords: AdminHrRecord[] = [
     lastEditedAt: "2026-04-15T09:00:00.000Z",
     editedBy: "Admin User",
   },
-  {
-    id: "payslip-req-001",
-    requestType: "Payslip Requests",
-    employee: "Alex Rivera",
-    employeeId: "emp-demo-002",
-    details: "Duplicate payslip copy for March 2026",
-    dateSubmitted: "2026-05-16",
-    status: "Pending",
-    lastEdited: "2026-05-16",
-    lastEditedAt: "2026-05-16T10:00:00.000Z",
-    editedBy: "Alex Rivera",
-  },
 ];
 
 function readHrRecords(): AdminHrRecord[] {
@@ -84,7 +87,11 @@ function readHrRecords(): AdminHrRecord[] {
   if (!raw) return seedHrAdminRecords;
   try {
     const parsed = JSON.parse(raw) as AdminHrRecord[];
-    return Array.isArray(parsed) ? parsed : seedHrAdminRecords;
+    const records = Array.isArray(parsed) ? parsed : seedHrAdminRecords;
+    if (!records.some((row) => row.id === DEMO_VACATION_REQUEST_ID)) {
+      return [seedHrAdminRecords[0], ...records];
+    }
+    return records;
   } catch {
     return seedHrAdminRecords;
   }
@@ -101,6 +108,32 @@ export function getAdminHrRecords(): AdminHrRecord[] {
   return readHrRecords();
 }
 
+export function getVacationWorkflowRecords(): VacationWorkflowRequest[] {
+  return readHrRecords()
+    .filter((row) => row.requestType === "Vacation Requests")
+    .map(adminRecordToWorkflow);
+}
+
+function adminRecordToWorkflow(record: AdminHrRecord): VacationWorkflowRequest {
+  return {
+    id: record.id,
+    startDate: record.startDate ?? record.details.split("–")[0]?.trim() ?? "",
+    endDate: record.endDate ?? "",
+    reason: record.reason ?? record.details.split("·").pop()?.trim() ?? "",
+    status: record.status as VacationRequestStatus,
+    submittedAt: record.lastEditedAt ?? record.dateSubmitted,
+    workflowStatus: record.workflowStatus ?? "Pending Supervisor Review",
+    locationAssignment: record.locationAssignment ?? "",
+    employeeEmail: record.employeeEmail ?? "",
+    employeeName: record.employee,
+    employeeOperationalGroup:
+      record.employeeOperationalGroup ?? OperationalGroup.GENERAL,
+    supervisorEmail: record.supervisorEmail ?? "",
+    supervisorAwareness: record.supervisorAwareness ?? null,
+    supervisorNotes: record.supervisorNotes ?? null,
+  };
+}
+
 function syncStatusToEmployeeView(record: AdminHrRecord, status: AdminHrRecord["status"]) {
   if (record.requestType === "Vacation Requests") {
     const requests = getVacationRequests(record.employeeId).map((row) =>
@@ -114,6 +147,15 @@ function syncStatusToEmployeeView(record: AdminHrRecord, status: AdminHrRecord["
     );
     saveJobLetterRequests(record.employeeId, requests);
   }
+}
+
+function syncWorkflowToEmployeeView(record: AdminHrRecord) {
+  if (record.requestType !== "Vacation Requests") return;
+  const workflow = adminRecordToWorkflow(record);
+  const requests = getVacationRequests(record.employeeId).map((row) =>
+    row.id === record.id ? { ...row, ...workflow } : row,
+  );
+  saveVacationRequests(record.employeeId, requests);
 }
 
 export function updateAdminHrStatus(
@@ -148,11 +190,62 @@ export function updateAdminHrStatus(
   return records;
 }
 
+export function markSupervisorVacationAwareness(input: {
+  requestId: string;
+  awareness: SupervisorAwarenessStatus;
+  supervisorNotes: string;
+  editedBy: string;
+}): AdminHrRecord[] {
+  const records = readHrRecords().map((record) => {
+    if (record.id !== input.requestId) return record;
+    if (record.workflowStatus !== "Pending Supervisor Review") return record;
+
+    const updated: AdminHrRecord = {
+      ...record,
+      workflowStatus: "Pending Manager Review",
+      supervisorAwareness: input.awareness,
+      supervisorNotes: input.supervisorNotes.trim(),
+      lastEdited: new Date().toISOString().slice(0, 10),
+      lastEditedAt: new Date().toISOString(),
+      editedBy: input.editedBy,
+    };
+    syncWorkflowToEmployeeView(updated);
+    return updated;
+  });
+  saveHrRecords(records);
+  return records;
+}
+
+export function managerDecideVacationRequest(input: {
+  requestId: string;
+  decision: "Approved" | "Rejected";
+  editedBy: string;
+}): AdminHrRecord[] {
+  const records = readHrRecords().map((record) => {
+    if (record.id !== input.requestId) return record;
+    if (record.workflowStatus !== "Pending Manager Review") return record;
+
+    const updated: AdminHrRecord = {
+      ...record,
+      workflowStatus: input.decision,
+      status: input.decision,
+      lastEdited: new Date().toISOString().slice(0, 10),
+      lastEditedAt: new Date().toISOString(),
+      editedBy: input.editedBy,
+    };
+    syncStatusToEmployeeView(updated, input.decision);
+    syncWorkflowToEmployeeView(updated);
+    return updated;
+  });
+  saveHrRecords(records);
+  return records;
+}
+
 /** Sync employee vacation submit into platform HR store (single source). */
 export function upsertVacationFromEmployee(
   employeeId: string,
   employeeName: string,
-  request: VacationRequest,
+  request: VacationWorkflowRequest,
 ) {
   const records = readHrRecords();
   const existing = records.find((r) => r.id === request.id);
@@ -161,9 +254,19 @@ export function upsertVacationFromEmployee(
     requestType: "Vacation Requests",
     employee: employeeName,
     employeeId,
+    employeeEmail: request.employeeEmail,
     details: `${request.startDate} – ${request.endDate} · ${request.reason}`,
     dateSubmitted: request.submittedAt.slice(0, 10),
     status: request.status,
+    workflowStatus: request.workflowStatus,
+    locationAssignment: request.locationAssignment,
+    supervisorEmail: request.supervisorEmail,
+    employeeOperationalGroup: request.employeeOperationalGroup,
+    supervisorAwareness: request.supervisorAwareness,
+    supervisorNotes: request.supervisorNotes,
+    startDate: request.startDate,
+    endDate: request.endDate,
+    reason: request.reason,
     lastEdited: request.submittedAt.slice(0, 10),
     lastEditedAt: request.submittedAt,
     editedBy: employeeName,

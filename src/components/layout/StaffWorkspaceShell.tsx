@@ -1,12 +1,17 @@
 import { StaffTopNav } from "@/components/layout/StaffTopNav";
 import { COMPANY } from "@/lib/constants";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import type { AccessLevel, OperationalGroup } from "@prisma/client";
+import { toEmployeeAccessContext } from "@/lib/portal-route-access";
 import type { ReactNode } from "react";
 
 type StaffWorkspaceShellProps = {
   sectionLabel: string;
   title: string;
   subtitle?: string;
+  accessLevel: AccessLevel;
+  operationalGroup: OperationalGroup;
+  companyEmail: string;
   children: ReactNode;
 };
 
@@ -14,8 +19,16 @@ export function StaffWorkspaceShell({
   sectionLabel,
   title,
   subtitle,
+  accessLevel,
+  operationalGroup,
+  companyEmail,
   children,
 }: StaffWorkspaceShellProps) {
+  const accessContext = toEmployeeAccessContext({
+    accessLevel,
+    operationalGroup,
+    companyEmail,
+  });
   return (
     <main className="relative min-h-dvh">
       <div
@@ -36,7 +49,7 @@ export function StaffWorkspaceShell({
               <p className="text-xs text-[#ebfbff]/50">{sectionLabel}</p>
             </div>
           </div>
-          <StaffTopNav />
+          <StaffTopNav accessContext={accessContext} />
         </div>
       </header>
 

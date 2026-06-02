@@ -1,11 +1,15 @@
-import type {
-  JobLetterRequest,
-  VacationRequest,
-} from "@/lib/hr-mock-data";
+import type { JobLetterRequest, VacationRequest } from "@/lib/hr-mock-data";
 import {
   seedJobLetterRequests,
   seedVacationRequests,
 } from "@/lib/hr-mock-data";
+import { OperationalGroup } from "@prisma/client";
+import {
+  resolveSupervisorEmailForSubmit,
+  toWorkflowRequest,
+  type VacationWorkflowRequest,
+} from "@/lib/vacation-workflow";
+
 const PROFILE_PIC_PREFIX = "pros-hr-profile-pic:";
 const VACATION_PREFIX = "pros-hr-vacation:";
 const JOB_LETTERS_PREFIX = "pros-hr-job-letters:";
@@ -23,17 +27,30 @@ export function setProfilePicture(employeeId: string, dataUrl: string) {
   localStorage.setItem(storageKey(PROFILE_PIC_PREFIX, employeeId), dataUrl);
 }
 
-export function getVacationRequests(employeeId: string): VacationRequest[] {
-  if (typeof window === "undefined") return seedVacationRequests;
+export function getVacationRequests(
+  employeeId: string,
+  serverSeed?: VacationWorkflowRequest[],
+): VacationRequest[] {
+  if (typeof window === "undefined") {
+    return serverSeed ?? seedVacationRequests;
+  }
 
   const raw = localStorage.getItem(storageKey(VACATION_PREFIX, employeeId));
-  if (!raw) return seedVacationRequests;
+  if (!raw) {
+    return serverSeed ?? seedVacationRequests;
+  }
 
   try {
     const parsed = JSON.parse(raw) as VacationRequest[];
-    return Array.isArray(parsed) ? parsed : seedVacationRequests;
+    if (!Array.isArray(parsed)) {
+      return serverSeed ?? seedVacationRequests;
+    }
+    if (serverSeed?.length && !parsed.some((row) => row.id === serverSeed[0].id)) {
+      return [...serverSeed, ...parsed];
+    }
+    return parsed;
   } catch {
-    return seedVacationRequests;
+    return serverSeed ?? seedVacationRequests;
   }
 }
 
@@ -47,24 +64,47 @@ export function saveVacationRequests(
   );
 }
 
+export type VacationSubmitMeta = {
+  employeeId: string;
+  employeeEmail: string;
+  employeeName: string;
+  locationAssignment: string;
+  operationalGroup: OperationalGroup;
+};
+
 export function addVacationRequest(
-  employeeId: string,
+  meta: VacationSubmitMeta,
   request: Omit<VacationRequest, "id" | "status" | "submittedAt">,
 ): VacationRequest[] {
-  const existing = getVacationRequests(employeeId);
-  const created: VacationRequest = {
-    ...request,
-    id: `vac-${Date.now()}`,
-    status: "Pending",
-    submittedAt: new Date().toISOString(),
-  };
+  const existing = getVacationRequests(meta.employeeId);
+  const created = toWorkflowRequest(
+    {
+      ...request,
+      id: `vac-${Date.now()}`,
+      status: "Pending",
+      submittedAt: new Date().toISOString(),
+    },
+    {
+      employeeEmail: meta.employeeEmail,
+      employeeName: meta.employeeName,
+      locationAssignment: meta.locationAssignment,
+      operationalGroup: meta.operationalGroup,
+      supervisorEmail: resolveSupervisorEmailForSubmit({
+        operationalGroup: meta.operationalGroup,
+        locationAssignment: meta.locationAssignment,
+      }),
+    },
+  );
+
   const updated = [created, ...existing];
-  saveVacationRequests(employeeId, updated);
+  saveVacationRequests(meta.employeeId, updated);
+
   if (typeof window !== "undefined") {
     void import("@/lib/platform-hr-storage").then(({ upsertVacationFromEmployee }) => {
-      upsertVacationFromEmployee(employeeId, employeeId, created);
+      upsertVacationFromEmployee(meta.employeeId, meta.employeeName, created);
     });
   }
+
   return updated;
 }
 

@@ -3,6 +3,7 @@ import { APIError } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
+import { getAppBaseUrl } from "@/lib/app-url";
 import { getAuthAdvancedOptions, resolveTrustedOrigins } from "@/lib/auth-config";
 import { prisma } from "@/lib/prisma";
 import { PIN_REQUIREMENTS_MESSAGE, isPinValid } from "@/lib/pin";
@@ -33,7 +34,7 @@ export const auth = betterAuth({
     provider: "postgresql",
   }),
   secret: process.env.BETTER_AUTH_SECRET,
-  baseURL: process.env.BETTER_AUTH_URL,
+  baseURL: getAppBaseUrl(),
   trustedOrigins: resolveTrustedOrigins(),
   advanced: getAuthAdvancedOptions(),
   emailAndPassword: {

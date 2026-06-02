@@ -22,7 +22,7 @@ export default async function EmployeeLoginPage({
   if (session) {
     const portalAccess = await getEmployeePortalAccess(session.user.id);
     if (portalAccess.allowed) {
-      redirect("/staff-dashboard");
+      redirect(portalAccess.redirectTo);
     }
     await auth.api.signOut({ headers: requestHeaders });
   }

@@ -1,25 +1,35 @@
 import { StaffTopNav } from "@/components/layout/StaffTopNav";
-import { auth } from "@/lib/auth";
 import { COMPANY } from "@/lib/constants";
-import { getEmployeePortalAccess } from "@/lib/employee-portal-access";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { Briefcase, FileText, Package, Users } from "lucide-react";
+import {
+  canAccessPortalFeature,
+  toEmployeeAccessContext,
+} from "@/lib/portal-route-access";
+import { requireStaffAccess } from "@/lib/require-staff-access";
+import { Briefcase, FileText, Package, Recycle, Users } from "lucide-react";
 import Link from "next/link";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 
-const placeholderCards = [
+const dashboardCards = [
   {
     title: "Job Management",
-    description: "Assigned routes, job status, and daily sanitation schedules.",
+    description: "Assigned non-bin client locations and service jobs.",
     icon: Briefcase,
     href: "/jobs",
+    feature: "jobs" as const,
+  },
+  {
+    title: "Bin Management",
+    description: "Bin routes, due sites, and technician service updates.",
+    icon: Recycle,
+    href: "/jobs/bin-management",
+    feature: "binManagement" as const,
   },
   {
     title: "Human Resources",
     description: "Vacation requests, payslips, and job letter requests.",
     icon: Users,
     href: "/hr",
+    feature: "humanResources" as const,
   },
   {
     title: "Equipment & Supplies",
@@ -27,35 +37,32 @@ const placeholderCards = [
       "Search inventory, check availability, request equipment, supplies and consumables.",
     icon: Package,
     href: "/equipment-supplies",
+    feature: "equipmentSupplies" as const,
   },
   {
     title: "Policies",
     description: "Company procedures, PPE requirements, and compliance guides.",
     icon: FileText,
     href: undefined,
+    feature: "jobs" as const,
   },
 ];
 
 export default async function StaffDashboardPage() {
-  const requestHeaders = await headers();
-  const session = await auth.api.getSession({
-    headers: requestHeaders,
+  const { session, employee } = await requireStaffAccess({
+    pathname: "/staff-dashboard",
   });
 
-  if (!session) {
-    redirect("/employee-login");
-  }
-
-  const access = await getEmployeePortalAccess(session.user.id);
-
-  if (!access.allowed) {
-    redirect(`/employee-login?access=${access.code}`);
-  }
-
   const displayName =
-    access.employee.firstName ??
+    employee.firstName ??
     session.user.name?.split(" ")[0] ??
     session.user.email.split("@")[0];
+
+  const accessContext = toEmployeeAccessContext(employee);
+
+  const visibleCards = dashboardCards.filter((card) =>
+    canAccessPortalFeature(accessContext, card.feature),
+  );
 
   return (
     <main className="relative min-h-dvh">
@@ -77,7 +84,7 @@ export default async function StaffDashboardPage() {
               <p className="text-xs text-[#ebfbff]/50">Staff Dashboard</p>
             </div>
           </div>
-          <StaffTopNav />
+          <StaffTopNav accessContext={accessContext} />
         </div>
       </header>
 
@@ -88,13 +95,12 @@ export default async function StaffDashboardPage() {
             Welcome back, {displayName}
           </h1>
           <p className="mt-3 max-w-2xl text-sm text-[#ebfbff]/60 sm:text-base">
-            This is your temporary staff workspace. Job management, Human Resources tools, and
-            operational modules will be connected here in a future release.
+            Your dashboard shows only the modules available for your access level.
           </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          {placeholderCards.map((card) => {
+          {visibleCards.map((card) => {
             const Icon = card.icon;
             const content = (
               <>

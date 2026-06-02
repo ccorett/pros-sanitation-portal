@@ -5,13 +5,18 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default async function BinJobsTodayPage() {
-  await requireStaffAccess();
+  const { employee } = await requireStaffAccess({
+    pathname: "/jobs/bin-management/today",
+  });
 
   return (
     <StaffWorkspaceShell
       sectionLabel="Job Management · Bin Management"
       title="Today's Bin Jobs"
       subtitle="Due and overdue bin locations only. Complete service to reset last service date to today."
+          accessLevel={employee.accessLevel}
+      operationalGroup={employee.operationalGroup}
+      companyEmail={employee.companyEmail}
     >
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Link
