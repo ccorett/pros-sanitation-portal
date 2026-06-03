@@ -25,6 +25,7 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
     "@prisma/client": "^6.19.0",
+    "ably": "^2.21.0",
     "better-auth": "^1.6.11",
     "dotenv": "^17.4.2",
     "framer-motion": "^11.18.2",
