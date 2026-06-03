@@ -54,6 +54,7 @@ export function BinJobWorkflow({
   const [cannotAccessReason, setCannotAccessReason] = useState("");
   const [issueType, setIssueType] = useState("");
   const [issueNotes, setIssueNotes] = useState("");
+  const [serviceNotes, setServiceNotes] = useState("");
 
   const totalServiced = useMemo(
     () => regularBinsServiced + newBinsServiced,
@@ -112,6 +113,7 @@ export function BinJobWorkflow({
         regularBinsServiced,
         newBinsServiced,
         linersUsed,
+        serviceNotes: serviceNotes.trim() || undefined,
         clientSignatureName: clientSignatureName.trim() || undefined,
         noSignatureReason: noSignatureReason.trim() || undefined,
       }),
@@ -141,7 +143,10 @@ export function BinJobWorkflow({
     const response = await fetch(`/api/bin-service/jobs/${jobId}/cannot-access`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason: cannotAccessReason }),
+      body: JSON.stringify({
+        reason: cannotAccessReason,
+        serviceNotes: serviceNotes.trim() || undefined,
+      }),
     });
 
     setLoading(false);
@@ -168,7 +173,11 @@ export function BinJobWorkflow({
     const response = await fetch(`/api/bin-service/jobs/${jobId}/report-issue`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ issueType, issueNotes }),
+      body: JSON.stringify({
+        issueType,
+        issueNotes,
+        serviceNotes: serviceNotes.trim() || undefined,
+      }),
     });
 
     setLoading(false);
@@ -211,6 +220,16 @@ export function BinJobWorkflow({
 
   return (
     <div className="space-y-4">
+      <label className="block">
+        <span className="text-sm text-[#ebfbff]/70">Service notes</span>
+        <textarea
+          value={serviceNotes}
+          onChange={(event) => setServiceNotes(event.target.value)}
+          rows={2}
+          className="mt-2 w-full rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-sm text-[#ebfbff] focus:border-[#00c6ff]/50 focus:outline-none"
+        />
+      </label>
+
       <div className="grid grid-cols-3 gap-2">
         {(["service", "cannot_access", "issue"] as const).map((tab) => (
           <button

@@ -3,23 +3,17 @@
 import { Button } from "@/components/ui/Button";
 import { CounterField } from "@/components/bin-service/CounterField";
 import {
-  clampBinCount,
   computeDaysSinceLastService,
   formatBinDate,
-  getBinServiceStatus,
-  statusColorClass,
 } from "@/lib/bin-locations-status";
 import {
-  completeBinService,
-  getDueAndOverdueLocations,
-  markBinCannotAccess,
-  reportBinIssue,
-  startBinJob,
-  type BinLocationView,
-} from "@/lib/bin-locations-storage";
+  fetchBinJobsToday,
+  type BinFieldTodayJob,
+} from "@/lib/bin-service/field-client";
+import { getRotationStatusStyles } from "@/lib/bin-service/status";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const CANNOT_ACCESS_REASONS = [
   "Site locked / no access",
@@ -35,101 +29,178 @@ const ISSUE_TYPES = [
   "Other",
 ];
 
-function sortByPriority(locations: BinLocationView[]) {
-  return [...locations].sort((a, b) => {
-    const statusA = getBinServiceStatus(a);
-    const statusB = getBinServiceStatus(b);
-    const rank = (color: string) => (color === "red" ? 0 : 1);
-    const diff = rank(statusA.color) - rank(statusB.color);
+function sortByPriority(jobs: BinFieldTodayJob[]) {
+  return [...jobs].sort((a, b) => {
+    const rank = (color: string) => (color === "red" ? 0 : color === "yellow" ? 1 : 2);
+    const diff = rank(a.rotation.color) - rank(b.rotation.color);
     if (diff !== 0) return diff;
-    return (
-      computeDaysSinceLastService(b.lastServiceDate) -
-      computeDaysSinceLastService(a.lastServiceDate)
-    );
+    const daysA = a.lastServiceDate
+      ? computeDaysSinceLastService(a.lastServiceDate)
+      : 999;
+    const daysB = b.lastServiceDate
+      ? computeDaysSinceLastService(b.lastServiceDate)
+      : 999;
+    return daysB - daysA;
   });
 }
 
 export function BinTodaysJobsTable() {
   const router = useRouter();
-  const [locations, setLocations] = useState<BinLocationView[]>(() =>
-    sortByPriority(getDueAndOverdueLocations()),
-  );
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [jobs, setJobs] = useState<BinFieldTodayJob[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [mode, setMode] = useState<"complete" | "cannot_access" | "issue">("complete");
   const [regularServiced, setRegularServiced] = useState(0);
   const [newServiced, setNewServiced] = useState(0);
+  const [linersUsed, setLinersUsed] = useState(0);
+  const [serviceNotes, setServiceNotes] = useState("");
   const [cannotAccessReason, setCannotAccessReason] = useState("");
   const [issueType, setIssueType] = useState("");
   const [issueNotes, setIssueNotes] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const activeLocation = useMemo(
-    () => locations.find((location) => location.id === activeId),
-    [locations, activeId],
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const rows = await fetchBinJobsToday();
+      setJobs(sortByPriority(rows));
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Unable to load today's jobs.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const activeJob = useMemo(
+    () => jobs.find((job) => job.id === activeJobId),
+    [jobs, activeJobId],
   );
 
-  function refresh() {
-    setLocations(sortByPriority(getDueAndOverdueLocations()));
-  }
-
-  function openComplete(location: BinLocationView) {
-    setActiveId(location.id);
+  function openComplete(job: BinFieldTodayJob) {
+    setActiveJobId(job.id);
     setMode("complete");
-    setRegularServiced(
-      clampBinCount(
-        location.regularBinsServiced ?? location.regularBins,
-        location.regularBins,
-      ),
-    );
-    setNewServiced(
-      clampBinCount(location.newBinsServiced ?? location.newBins, location.newBins),
-    );
-    startBinJob(location.id);
-    refresh();
+    setRegularServiced(job.setup.expectedRegularBins);
+    setNewServiced(job.setup.expectedNewBins);
+    setLinersUsed(job.setup.expectedRegularBins + job.setup.expectedNewBins);
+    setServiceNotes(job.displayNotes);
+    void fetch(`/api/bin-service/jobs/${job.id}/start`, { method: "POST" });
   }
 
-  function openCannotAccess(location: BinLocationView) {
-    setActiveId(location.id);
+  function openCannotAccess(job: BinFieldTodayJob) {
+    setActiveJobId(job.id);
     setMode("cannot_access");
     setCannotAccessReason("");
-    startBinJob(location.id);
-    refresh();
+    void fetch(`/api/bin-service/jobs/${job.id}/start`, { method: "POST" });
   }
 
-  function openIssue(location: BinLocationView) {
-    setActiveId(location.id);
+  function openIssue(job: BinFieldTodayJob) {
+    setActiveJobId(job.id);
     setMode("issue");
     setIssueType("");
     setIssueNotes("");
-    startBinJob(location.id);
-    refresh();
+    void fetch(`/api/bin-service/jobs/${job.id}/start`, { method: "POST" });
   }
 
-  function handleComplete() {
-    if (!activeId) return;
-    completeBinService(activeId);
-    setActiveId(null);
-    setMessage("Service completed. Last service date updated.");
-    refresh();
+  async function handleComplete() {
+    if (!activeJobId) return;
+    setSaving(true);
+    const response = await fetch(`/api/bin-service/jobs/${activeJobId}/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        regularBinsServiced: regularServiced,
+        newBinsServiced: newServiced,
+        linersUsed,
+        serviceNotes,
+      }),
+    });
+    setSaving(false);
+    if (!response.ok) {
+      const data = (await response.json()) as { error?: string };
+      setError(data.error ?? "Unable to complete service.");
+      return;
+    }
+    setActiveJobId(null);
+    setMessage("Service completed. Last and next service dates updated in Neon.");
+    await refresh();
+    router.refresh();
   }
 
-  function handleCannotAccess() {
-    if (!activeId || !cannotAccessReason.trim()) return;
-    markBinCannotAccess(activeId, cannotAccessReason.trim());
-    setActiveId(null);
+  async function handleCannotAccess() {
+    if (!activeJobId || !cannotAccessReason.trim()) return;
+    setSaving(true);
+    const response = await fetch(
+      `/api/bin-service/jobs/${activeJobId}/cannot-access`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reason: cannotAccessReason.trim(),
+          serviceNotes,
+        }),
+      },
+    );
+    setSaving(false);
+    if (!response.ok) {
+      const data = (await response.json()) as { error?: string };
+      setError(data.error ?? "Unable to save cannot access.");
+      return;
+    }
+    setActiveJobId(null);
     setMessage("Cannot access recorded.");
-    refresh();
+    await refresh();
+    router.refresh();
   }
 
-  function handleReportIssue() {
-    if (!activeId || !issueType.trim()) return;
-    reportBinIssue(activeId, issueType.trim(), issueNotes.trim() || undefined);
-    setActiveId(null);
+  async function handleReportIssue() {
+    if (!activeJobId || !issueType.trim()) return;
+    setSaving(true);
+    const response = await fetch(
+      `/api/bin-service/jobs/${activeJobId}/report-issue`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ issueType, issueNotes, serviceNotes }),
+      },
+    );
+    setSaving(false);
+    if (!response.ok) {
+      const data = (await response.json()) as { error?: string };
+      setError(data.error ?? "Unable to report issue.");
+      return;
+    }
+    setActiveJobId(null);
     setMessage("Issue reported.");
-    refresh();
+    await refresh();
+    router.refresh();
   }
 
-  if (locations.length === 0) {
+  if (loading) {
+    return (
+      <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+        Loading due and overdue bin jobs…
+      </div>
+    );
+  }
+
+  if (error && jobs.length === 0) {
+    return (
+      <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ff4d4f]">
+        {error}
+      </div>
+    );
+  }
+
+  if (jobs.length === 0) {
     return (
       <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
         No due or overdue bin locations right now.
@@ -145,7 +216,7 @@ export function BinTodaysJobsTable() {
         </p>
       ) : null}
 
-      <div className="glass-card overflow-x-auto rounded-2xl">
+      <div className="glass-card portal-table-scroll rounded-2xl">
         <table className="min-w-[1200px] w-full text-left text-sm">
           <thead>
             <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
@@ -161,62 +232,68 @@ export function BinTodaysJobsTable() {
             </tr>
           </thead>
           <tbody>
-            {locations.map((location) => {
-              const status = getBinServiceStatus(location);
-              const daysSince = computeDaysSinceLastService(location.lastServiceDate);
+            {jobs.map((job) => {
+              const styles = getRotationStatusStyles(job.rotation.color);
+              const daysSince = job.lastServiceDate
+                ? computeDaysSinceLastService(job.lastServiceDate)
+                : "—";
 
               return (
                 <tr
-                  key={location.id}
+                  key={job.id}
                   className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
                 >
                   <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
-                    {location.location}
-                  </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">{location.newBins}</td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">{location.regularBins}</td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {location.newBins + location.regularBins}
+                    {job.siteName}
                   </td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {formatBinDate(location.lastServiceDate)}
+                    {job.setup.expectedNewBins}
+                  </td>
+                  <td className="px-4 py-4 text-[#ebfbff]/70">
+                    {job.setup.expectedRegularBins}
+                  </td>
+                  <td className="px-4 py-4 text-[#ebfbff]/70">
+                    {job.setup.expectedNewBins + job.setup.expectedRegularBins}
+                  </td>
+                  <td className="px-4 py-4 text-[#ebfbff]/70">
+                    {job.lastServiceDate ? formatBinDate(job.lastServiceDate) : "—"}
                   </td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">{daysSince}</td>
                   <td className="px-4 py-4">
                     <span
-                      className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusColorClass(status.color)}`}
+                      className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${styles.badge}`}
                     >
-                      {status.label}
+                      {job.rotation.label}
                     </span>
                   </td>
                   <td className="max-w-[200px] px-4 py-4 text-[#ebfbff]/70">
-                    {location.displayNotes || "—"}
+                    {job.displayNotes || "—"}
                   </td>
                   <td className="px-4 py-4 sm:px-6">
                     <div className="flex min-w-[320px] flex-wrap gap-2">
                       <Link
-                        href={`/jobs/bin-management/job/${location.id}`}
+                        href={`/jobs/bin-management/job/${job.id}`}
                         className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
                       >
                         Start Job
                       </Link>
                       <button
                         type="button"
-                        onClick={() => openComplete(location)}
+                        onClick={() => openComplete(job)}
                         className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
                       >
                         Complete Service
                       </button>
                       <button
                         type="button"
-                        onClick={() => openCannotAccess(location)}
+                        onClick={() => openCannotAccess(job)}
                         className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#f5c542]/40 bg-[#f5c542]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
                       >
                         Cannot Access
                       </button>
                       <button
                         type="button"
-                        onClick={() => openIssue(location)}
+                        onClick={() => openIssue(job)}
                         className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
                       >
                         Report Issue
@@ -230,34 +307,54 @@ export function BinTodaysJobsTable() {
         </table>
       </div>
 
-      {activeLocation ? (
+      <button
+        type="button"
+        onClick={() => void refresh()}
+        className="text-sm text-[#00c6ff] hover:text-[#6cc801]"
+      >
+        Refresh list
+      </button>
+
+      {activeJob ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0c151d]/80 p-4 backdrop-blur-sm sm:items-center">
           <div className="glass-card w-full max-w-lg space-y-4 rounded-2xl p-5 sm:p-6">
-            <h3 className="text-lg font-bold text-[#ebfbff]">{activeLocation.location}</h3>
+            <h3 className="text-lg font-bold text-[#ebfbff]">{activeJob.siteName}</h3>
+
+            <label className="block">
+              <span className="text-sm text-[#ebfbff]/70">Service notes</span>
+              <textarea
+                value={serviceNotes}
+                onChange={(event) => setServiceNotes(event.target.value)}
+                rows={2}
+                className="mt-2 w-full rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-sm text-[#ebfbff]"
+              />
+            </label>
 
             {mode === "complete" ? (
               <>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <CounterField
-                    label={`Regular bins (expected ${activeLocation.regularBins})`}
+                    label={`Regular bins (expected ${activeJob.setup.expectedRegularBins})`}
                     value={regularServiced}
-                    onChange={(value) =>
-                      setRegularServiced(
-                        clampBinCount(value, activeLocation.regularBins),
-                      )
-                    }
-                    max={activeLocation.regularBins}
+                    onChange={setRegularServiced}
                   />
                   <CounterField
-                    label={`New bins (expected ${activeLocation.newBins})`}
+                    label={`New bins (expected ${activeJob.setup.expectedNewBins})`}
                     value={newServiced}
-                    onChange={(value) =>
-                      setNewServiced(clampBinCount(value, activeLocation.newBins))
-                    }
-                    max={activeLocation.newBins}
+                    onChange={setNewServiced}
                   />
                 </div>
-                <Button fullWidth className="min-h-[52px]" onClick={handleComplete}>
+                <CounterField
+                  label="Liners used"
+                  value={linersUsed}
+                  onChange={setLinersUsed}
+                />
+                <Button
+                  fullWidth
+                  className="min-h-[52px]"
+                  loading={saving}
+                  onClick={() => void handleComplete()}
+                >
                   Confirm Complete Service
                 </Button>
               </>
@@ -286,7 +383,8 @@ export function BinTodaysJobsTable() {
                   fullWidth
                   variant="secondary"
                   className="min-h-[52px]"
-                  onClick={handleCannotAccess}
+                  loading={saving}
+                  onClick={() => void handleCannotAccess()}
                 >
                   Save Cannot Access
                 </Button>
@@ -323,7 +421,8 @@ export function BinTodaysJobsTable() {
                   fullWidth
                   variant="secondary"
                   className="min-h-[52px]"
-                  onClick={handleReportIssue}
+                  loading={saving}
+                  onClick={() => void handleReportIssue()}
                 >
                   Save Issue Report
                 </Button>
@@ -333,10 +432,7 @@ export function BinTodaysJobsTable() {
             <Button
               fullWidth
               variant="ghost"
-              onClick={() => {
-                setActiveId(null);
-                router.refresh();
-              }}
+              onClick={() => setActiveJobId(null)}
             >
               Cancel
             </Button>

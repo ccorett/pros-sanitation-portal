@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { formatDisplayDate } from "@/lib/hr-mock-data";
+import { inboxRecordElementId, readInboxFocusParams } from "@/lib/inbox-focus";
 import type { VacationRequestDto } from "@/lib/vacation-request-service";
 import { workflowStatusClass } from "@/lib/vacation-workflow";
 import { VacationFinalStatus } from "@prisma/client";
@@ -36,6 +37,13 @@ export function SupervisorVacationReviewSection() {
   useEffect(() => {
     void loadRequests();
   }, [loadRequests]);
+
+  useEffect(() => {
+    const { requestId } = readInboxFocusParams();
+    if (!requestId || requests.length === 0) return;
+    const row = document.getElementById(inboxRecordElementId("vacation", requestId));
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [requests]);
 
   async function handleAwareness(
     requestId: string,
@@ -92,7 +100,7 @@ export function SupervisorVacationReviewSection() {
           No vacation requests are waiting for your Aware/Unaware review.
         </p>
       ) : (
-        <div className="glass-card overflow-x-auto rounded-2xl">
+        <div className="glass-card portal-table-scroll rounded-2xl">
           <table className="min-w-[1000px] w-full text-left text-sm">
             <thead>
               <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
@@ -109,6 +117,7 @@ export function SupervisorVacationReviewSection() {
               {requests.map((request) => (
                 <tr
                   key={request.id}
+                  id={inboxRecordElementId("vacation", request.id)}
                   className="border-b border-[#ebfbff]/5 align-top last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
                 >
                   <td className="px-4 py-4 sm:px-6">

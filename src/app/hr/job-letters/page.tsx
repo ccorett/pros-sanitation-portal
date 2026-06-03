@@ -12,6 +12,7 @@ export default async function HrJobLettersPage() {
       sectionLabel="Human Resources"
       title="Job Letters"
       subtitle="Request job, employment, or salary letters and track request status."
+          employeeId={employee.id}
           accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}
@@ -26,7 +27,7 @@ export default async function HrJobLettersPage() {
         </Link>
       </div>
 
-      <JobLettersSection employeeRecordId={employee.id} />
+      <JobLettersSection />
     </StaffWorkspaceShell>
   );
 }

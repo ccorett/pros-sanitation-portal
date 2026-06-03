@@ -10,7 +10,7 @@ import {
 } from "@/lib/equipment-supplies-mock-data";
 import type { EquipmentRequestDto } from "@/lib/equipment-request-service";
 import type { InventoryItemDto } from "@/lib/inventory-service";
-import { formatEditTimestamp } from "@/lib/platform-edit-history";
+import { formatEditTimestamp } from "@/lib/admin-format";
 import { Search, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -251,7 +251,7 @@ export function InventorySection() {
           No inventory items match your search.
         </div>
       ) : (
-        <div className="glass-card overflow-x-auto rounded-2xl">
+        <div className="glass-card portal-table-scroll rounded-2xl">
           <table className="min-w-[1100px] w-full text-left text-sm">
             <thead>
               <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">

@@ -1,6 +1,6 @@
 "use client";
 
-import { formatEditTimestamp } from "@/lib/platform-edit-history";
+import { formatEditTimestamp } from "@/lib/admin-format";
 import type { AccessHistoryRow } from "@/lib/admin-accounts-service";
 
 type AccessHistoryModalProps = {

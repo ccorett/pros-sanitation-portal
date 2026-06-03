@@ -9,22 +9,25 @@ type StaffWorkspaceShellProps = {
   sectionLabel: string;
   title: string;
   subtitle?: string;
+  employeeId: string;
   accessLevel: AccessLevel;
   operationalGroup: OperationalGroup;
   companyEmail: string;
   children: ReactNode;
 };
 
-export function StaffWorkspaceShell({
+export async function StaffWorkspaceShell({
   sectionLabel,
   title,
   subtitle,
+  employeeId,
   accessLevel,
   operationalGroup,
   companyEmail,
   children,
 }: StaffWorkspaceShellProps) {
-  const accessContext = toEmployeeAccessContext({
+  const accessContext = await toEmployeeAccessContext({
+    id: employeeId,
     accessLevel,
     operationalGroup,
     companyEmail,
@@ -36,8 +39,8 @@ export function StaffWorkspaceShell({
         aria-hidden="true"
       />
       <header className="relative z-10 border-b border-[#ebfbff]/10 bg-[#0c151d]/70 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-6xl min-w-0 flex-col gap-3 px-4 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:py-0 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 shrink-0 items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#ebfbff]/15 bg-gradient-to-br from-[#0c151d] to-[#259f00]/20 shadow-lg shadow-[#259f00]/10">
               <CompanyLogo
                 size="sm"
@@ -53,7 +56,7 @@ export function StaffWorkspaceShell({
         </div>
       </header>
 
-      <div className="relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto min-w-0 max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
           <p className="text-sm font-medium text-[#00c6ff]">{sectionLabel}</p>
           <h1 className="mt-2 text-2xl font-bold text-[#ebfbff] sm:text-3xl">

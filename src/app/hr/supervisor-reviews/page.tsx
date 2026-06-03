@@ -20,6 +20,7 @@ export default async function SupervisorReviewsPage() {
       sectionLabel="Human Resources"
       title="Team Vacation Reviews"
       subtitle="Review vacation requests for your assigned location or bin technicians. Mark Aware or Unaware — manager approval follows."
+      employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}

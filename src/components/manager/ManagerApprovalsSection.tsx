@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { formatDisplayDate } from "@/lib/hr-mock-data";
+import { inboxRecordElementId, readInboxFocusParams } from "@/lib/inbox-focus";
 import type { VacationRequestDto } from "@/lib/vacation-request-service";
 import { workflowStatusClass } from "@/lib/vacation-workflow";
 import { VacationFinalStatus } from "@prisma/client";
@@ -35,6 +36,13 @@ export function ManagerApprovalsSection() {
   useEffect(() => {
     void loadRequests();
   }, [loadRequests]);
+
+  useEffect(() => {
+    const { requestId } = readInboxFocusParams();
+    if (!requestId || requests.length === 0) return;
+    const row = document.getElementById(inboxRecordElementId("vacation", requestId));
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [requests]);
 
   async function handleDecision(
     requestId: string,
@@ -85,7 +93,7 @@ export function ManagerApprovalsSection() {
           Aware or Unaware, requests appear here.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-[#ebfbff]/10">
+        <div className="glass-card portal-table-scroll rounded-2xl border border-[#ebfbff]/10">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-[#0c151d]/80 text-xs uppercase tracking-wide text-[#ebfbff]/45">
               <tr>
@@ -103,6 +111,7 @@ export function ManagerApprovalsSection() {
               {requests.map((request) => (
                 <tr
                   key={request.id}
+                  id={inboxRecordElementId("vacation", request.id)}
                   className="border-t border-[#ebfbff]/10 text-[#ebfbff]/80"
                 >
                   <td className="px-4 py-4">

@@ -1,5 +1,5 @@
 import { AccessLevel, OperationalGroup } from "@prisma/client";
-import { EMPTY_JOB_ASSIGNMENTS } from "../src/lib/employee-job-assignments.ts";
+import { EMPTY_JOB_ASSIGNMENTS } from "../src/lib/job-assignment-types.ts";
 import { createEmployeeAccessContext } from "../src/lib/operational-access.ts";
 import {
   canAccessPathname,

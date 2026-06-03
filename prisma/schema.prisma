@@ -115,16 +115,27 @@ enum ClientLocationStatus {
   INACTIVE
 }
 
-enum ServiceType {
-  SANITARY_BIN_SERVICE
-  GROCERY_CLEANING
-}
-
-enum JobStatus {
-  NOT_STARTED
+enum CleaningJobStatus {
+  PENDING
+  ASSIGNED
   IN_PROGRESS
   COMPLETED
+  CANCELLED
   ISSUE_REPORTED
+}
+
+enum JobActionType {
+  STARTED
+  COMPLETED
+  ISSUE_REPORTED
+  CANCELLED
+}
+
+enum JobPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }
 
 enum NoticeCategory {
@@ -141,12 +152,15 @@ model Employee {
   firstName         String
   lastName          String
   companyEmail      String           @unique
-  phoneNumber        String?
-  department         String
-  jobTitle           String
-  position           String?
-  locationAssignment String?
-  supervisorName    String?
+  phoneNumber            String?
+  emergencyContactName   String?
+  emergencyContactPhone  String?
+  profilePictureUrl      String?
+  department             String
+  jobTitle               String
+  position               String?
+  locationAssignment     String?
+  supervisorName         String?
   employmentStatus  EmploymentStatus @default(ACTIVE)
   accessLevel       AccessLevel        @default(PENDING_VERIFICATION)
   operationalGroup  OperationalGroup   @default(GENERAL)
@@ -165,6 +179,9 @@ model Employee {
   binServiceLogs         BinServiceLog[]         @relation("BinLogTechnician")
   policyAcknowledgements PolicyAcknowledgement[]
   noticeAcknowledgements NoticeAcknowledgement[]
+  jobAssignments         JobAssignment[]
+  jobServiceLogs         JobServiceLog[]
+  payslips               Payslip[]
 
   @@map("employees")
 }
@@ -186,44 +203,106 @@ model AccessHistory {
 }
 
 model ClientLocation {
-  id            String               @id @default(uuid()) @db.Uuid
-  clientName    String
-  siteName      String?
-  address       String
-  contactPerson String?
-  contactNumber String?
-  status        ClientLocationStatus @default(ACTIVE)
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  id                 String               @id @default(uuid()) @db.Uuid
+  slug               String               @unique
+  locationName       String
+  clientName         String
+  serviceType        String?
+  area               String               @default("")
+  address            String
+  assignedTechnician String               @default("")
+  serviceDay         String               @default("")
+  status             ClientLocationStatus @default(ACTIVE)
+  lastServiceDate    DateTime?            @db.Date
+  nextServiceDate    DateTime?            @db.Date
+  notes              String?
+  siteName           String?
+  contactPerson      String?
+  contactNumber      String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
-  jobs Job[]
+  jobs            Job[]
+  jobAssignments  JobAssignment[]
 
+  @@index([status])
   @@map("client_locations")
 }
 
-model Job {
-  id                 String      @id @default(uuid()) @db.Uuid
-  jobCode            String      @unique
-  clientLocationId   String      @db.Uuid
-  assignedEmployeeId String      @db.Uuid
-  serviceType        ServiceType
-  scheduledDate      DateTime    @db.Date
-  instructions       String?
-  status             JobStatus   @default(NOT_STARTED)
-  completionNotes    String?
-  issueNotes         String?
-  startedAt          DateTime?
-  completedAt        DateTime?
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+model JobAssignment {
+  id               String   @id @default(uuid()) @db.Uuid
+  employeeId       String   @db.Uuid
+  employeeName     String
+  employeeEmail    String
+  clientLocationId String   @db.Uuid
+  clientLocation   String
+  assignedRole     String
+  assignedBy       String
+  assignedAt       DateTime @default(now())
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  clientLocation   ClientLocation @relation(fields: [clientLocationId], references: [id], onDelete: Restrict)
-  assignedEmployee Employee       @relation(fields: [assignedEmployeeId], references: [id], onDelete: Restrict)
+  employee         Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  location         ClientLocation @relation(fields: [clientLocationId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, clientLocationId])
+  @@index([employeeId, isActive])
+  @@index([clientLocationId])
+  @@map("job_assignments")
+}
+
+model Job {
+  id                   String            @id @default(uuid()) @db.Uuid
+  title                String
+  clientLocationId     String            @db.Uuid
+  clientLocation       String
+  serviceType          String
+  assignedEmployeeId   String?           @db.Uuid
+  assignedEmployeeName String?
+  assignedEmployeeEmail String?
+  assignedBy           String
+  scheduledDate        DateTime          @db.Date
+  dueDate              DateTime          @db.Date
+  priority             JobPriority       @default(NORMAL)
+  status               CleaningJobStatus @default(PENDING)
+  notes                String?
+  completedAt          DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  location         ClientLocation @relation(fields: [clientLocationId], references: [id], onDelete: Restrict)
+  assignedEmployee Employee?      @relation(fields: [assignedEmployeeId], references: [id], onDelete: SetNull)
+  serviceLogs      JobServiceLog[]
 
   @@index([assignedEmployeeId])
   @@index([clientLocationId])
   @@index([scheduledDate])
+  @@index([status])
   @@map("jobs")
+}
+
+model JobServiceLog {
+  id            String         @id @default(uuid()) @db.Uuid
+  jobId         String         @db.Uuid
+  job           String
+  employeeId    String         @db.Uuid
+  employeeName  String
+  employeeEmail String
+  actionType    JobActionType
+  notes         String?
+  issueNotes    String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime       @default(now())
+
+  cleaningJob Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+
+  @@index([jobId])
+  @@index([employeeId])
+  @@index([createdAt])
+  @@map("job_service_logs")
 }
 
 model InternalNotice {
@@ -401,6 +480,7 @@ model BinServiceLog {
   linersUsed          Int
   issueType           String?
   issueNotes          String?
+  serviceNotes        String?
   clientSignatureName String?
   noSignatureReason   String?
   outcome             BinServiceLogOutcome
@@ -433,11 +513,13 @@ model InventoryItem {
   reorderLevel      Int
   storageArea       String
   supplier          String?
-  isActive          Boolean           @default(true)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  lastEditedAt      DateTime?
-  lastEditedBy      String?
+  isActive                  Boolean           @default(true)
+  purchasingExcludedFromList Boolean          @default(false)
+  purchasingOrderedAt       DateTime?
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
+  lastEditedAt              DateTime?
+  lastEditedBy              String?
 
   stockEditHistory StockEditHistory[]
   equipmentRequests EquipmentRequest[]
@@ -559,4 +641,80 @@ model VacationRequest {
   @@index([finalStatus])
   @@index([createdAt])
   @@map("vacation_requests")
+}
+
+enum JobLetterType {
+  JOB_LETTER
+  EMPLOYMENT_LETTER
+  SALARY_LETTER
+}
+
+enum JobLetterRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model JobLetterRequest {
+  id               String                 @id @default(cuid())
+  employeeId       String
+  employeeName     String
+  employeeEmail    String
+  letterType       JobLetterType
+  notes            String?
+  status           JobLetterRequestStatus @default(PENDING)
+  reviewedById     String?
+  reviewedByName   String?
+  reviewedAt       DateTime?
+  decisionNotes    String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("job_letter_requests")
+}
+
+enum PayslipRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model PayslipRequest {
+  id               String               @id @default(cuid())
+  employeeId       String
+  employeeName     String
+  employeeEmail    String
+  payPeriod        String
+  notes            String?
+  status           PayslipRequestStatus @default(PENDING)
+  reviewedById     String?
+  reviewedByName   String?
+  reviewedAt       DateTime?
+  decisionNotes    String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("payslip_requests")
+}
+
+model Payslip {
+  id         String   @id @default(uuid()) @db.Uuid
+  employeeId String   @db.Uuid
+  payPeriod  String
+  fileName   String
+  fileUrl    String
+  uploadedBy String
+  uploadedAt DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([uploadedAt])
+  @@map("employee_payslips")
 }

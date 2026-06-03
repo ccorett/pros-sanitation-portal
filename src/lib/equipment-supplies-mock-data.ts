@@ -1,3 +1,7 @@
+/**
+ * SEED ONLY / display types — not a live source of truth.
+ * Inventory and equipment requests are served from Neon via inventory-service APIs.
+ */
 export type InventoryCategory =
   | "Equipment"
   | "Chemicals"

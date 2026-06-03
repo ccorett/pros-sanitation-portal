@@ -5,11 +5,14 @@ import {
   isEmployeeLocationAssignment,
   isEmployeePosition,
 } from "@/lib/employee-signup-options";
+import { updateEmployeeProfile } from "@/lib/employee-profile-service";
 import { prisma } from "@/lib/prisma";
 import { validateEmployeeSignup } from "@/lib/signup-access";
-import { Prisma } from "@prisma/client";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+
+const PROFILE_NOT_FOUND_MESSAGE =
+  "Employee profile not found. Contact admin.";
 
 type BootstrapBody = {
   firstName?: string;
@@ -20,42 +23,10 @@ type BootstrapBody = {
   department?: string;
   locationAssignment?: string;
   inviteCode?: string;
+  profilePictureUrl?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
 };
-
-function buildMockEmployee(
-  userId: string,
-  body: Required<
-    Pick<
-      BootstrapBody,
-      | "firstName"
-      | "lastName"
-      | "phoneNumber"
-      | "jobTitle"
-      | "position"
-      | "department"
-      | "locationAssignment"
-    >
-  >,
-  companyEmail: string,
-) {
-  return {
-    id: `mock-${userId}`,
-    userId,
-    employeeId: "PS-EMP-MOCK",
-    firstName: body.firstName,
-    lastName: body.lastName,
-    companyEmail,
-    phoneNumber: body.phoneNumber,
-    department: body.department,
-    jobTitle: body.jobTitle,
-    position: body.position,
-    locationAssignment: body.locationAssignment,
-    employmentStatus: "ACTIVE",
-    accessLevel: "PENDING_VERIFICATION",
-    accountStatus: "PENDING",
-    mock: true,
-  };
-}
 
 export async function POST(request: NextRequest) {
   const session = await auth.api.getSession({
@@ -153,43 +124,33 @@ export async function POST(request: NextRequest) {
       locationAssignment: profileInput.locationAssignment,
     });
 
+    const hasProfileExtras =
+      body.profilePictureUrl ||
+      body.emergencyContactName ||
+      body.emergencyContactPhone;
+
+    if (hasProfileExtras) {
+      await updateEmployeeProfile(employee.id, {
+        profilePictureUrl: body.profilePictureUrl ?? undefined,
+        emergencyContactName: body.emergencyContactName,
+        emergencyContactPhone: body.emergencyContactPhone,
+      });
+    }
+
+    const finalEmployee = await prisma.employee.findUniqueOrThrow({
+      where: { id: employee.id },
+    });
+
     return NextResponse.json({
-      employee,
+      employee: finalEmployee,
       userId: session.user.id,
     });
   } catch (error) {
-    const missingOptionalColumns =
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      (error.code === "P2022" || error.message.includes("position"));
-
-    if (missingOptionalColumns) {
-      try {
-        const employee = await createEmployeeWithAllocatedId({
-          userId: session.user.id,
-          firstName: profileInput.firstName,
-          lastName: profileInput.lastName,
-          companyEmail,
-          phoneNumber: profileInput.phoneNumber,
-          jobTitle: profileInput.jobTitle,
-          department: profileInput.department,
-        });
-
-        return NextResponse.json({
-          employee,
-          userId: session.user.id,
-          profileStoredLocally: true,
-        });
-      } catch {
-        // fall through to mock response
-      }
-    }
-
     console.error("[employees/bootstrap]", error);
 
-    return NextResponse.json({
-      employee: buildMockEmployee(session.user.id, profileInput, companyEmail),
-      userId: session.user.id,
-      profileMock: true,
-    });
+    return NextResponse.json(
+      { error: PROFILE_NOT_FOUND_MESSAGE },
+      { status: 500 },
+    );
   }
 }

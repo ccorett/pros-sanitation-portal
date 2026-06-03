@@ -1,4 +1,5 @@
 import { requireBinApiAccess } from "@/lib/bin-service/api-auth";
+import { assertBinJobAccess } from "@/lib/bin-service/field-service";
 import { completeBinServiceJob } from "@/lib/bin-service/service";
 import { NextResponse } from "next/server";
 
@@ -17,15 +18,19 @@ export async function POST(request: Request, context: RouteContext) {
     linersUsed?: number;
     clientSignatureName?: string;
     noSignatureReason?: string;
+    serviceNotes?: string;
   };
 
   try {
+    await assertBinJobAccess(jobId, access.employee);
+
     const setup = await completeBinServiceJob({
       jobId,
       technicianId: access.employee.id,
       regularBinsServiced: Math.max(0, Number(body.regularBinsServiced ?? 0)),
       newBinsServiced: Math.max(0, Number(body.newBinsServiced ?? 0)),
       linersUsed: Math.max(0, Number(body.linersUsed ?? 0)),
+      serviceNotes: body.serviceNotes?.trim() || null,
       clientSignatureName: body.clientSignatureName?.trim() || null,
       noSignatureReason: body.noSignatureReason?.trim() || null,
     });
@@ -33,6 +38,8 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ setup });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to complete job.";
-    return NextResponse.json({ error: message }, { status: 400 });
+    const status =
+      message === "Forbidden" ? 403 : message === "Job not found." ? 404 : 400;
+    return NextResponse.json({ error: message }, { status });
   }
 }

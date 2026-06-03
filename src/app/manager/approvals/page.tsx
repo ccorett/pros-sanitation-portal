@@ -13,6 +13,7 @@ export default async function ManagerApprovalsPage() {
       sectionLabel="Manager"
       title="Manager Approvals"
       subtitle="Approve or reject vacation requests after supervisor Aware/Unaware review."
+      employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}

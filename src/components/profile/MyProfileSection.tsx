@@ -2,35 +2,19 @@
 
 import { Button } from "@/components/ui/Button";
 import { authInputClassName, authLabelClassName } from "@/lib/auth-form-styles";
-import { getEmployeeOnboardingProfile } from "@/lib/employee-profile-storage";
-import {
-  getMergedProfileView,
-  saveMyProfileUpdates,
-} from "@/lib/my-profile-storage";
+import type { EmployeeProfileDto } from "@/lib/employee-profile-service";
 import { Camera, User } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const MAX_PROFILE_IMAGE_BYTES = 2 * 1024 * 1024;
 
-export type MyProfileInitialData = {
-  userId: string;
-  employeeRecordId: string;
-  employeePublicId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string | null;
-  jobTitle: string;
-  position: string | null;
-  department: string;
-  locationAssignment: string | null;
-  employmentStatus: string;
-  accountStatus: string;
-};
-
-type MyProfileSectionProps = {
-  initial: MyProfileInitialData;
-};
+function formatStatusLabel(value: string): string {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
 
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
@@ -43,47 +27,53 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function MyProfileSection({ initial }: MyProfileSectionProps) {
+export function MyProfileSection() {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [phoneNumber, setPhoneNumber] = useState(initial.phoneNumber ?? "");
+  const [profile, setProfile] = useState<EmployeeProfileDto | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [emergencyContactName, setEmergencyContactName] = useState("");
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [view, setView] = useState(() =>
-    getMergedProfileView(initial.userId, initial.employeeRecordId, {
-      firstName: initial.firstName,
-      lastName: initial.lastName,
-      email: initial.email,
-      phoneNumber: initial.phoneNumber,
-      jobTitle: initial.jobTitle,
-      position: initial.position,
-      department: initial.department,
-      locationAssignment: initial.locationAssignment,
-      employmentStatus: initial.employmentStatus,
-      accountStatus: initial.accountStatus,
-      employeePublicId: initial.employeePublicId,
-    }),
-  );
+
+  const loadProfile = useCallback(async () => {
+    setLoading(true);
+    setProfileError(null);
+    try {
+      const response = await fetch("/api/employees/me");
+      const data = (await response.json()) as {
+        profile?: EmployeeProfileDto;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to load profile.");
+      }
+
+      if (!data.profile) {
+        throw new Error("Employee profile not found. Contact admin.");
+      }
+
+      setProfile(data.profile);
+      setPhoneNumber(data.profile.phoneNumber ?? "");
+      setEmergencyContactName(data.profile.emergencyContactName ?? "");
+      setEmergencyContactPhone(data.profile.emergencyContactPhone ?? "");
+      setProfileImage(data.profile.profilePictureUrl);
+    } catch (error) {
+      setProfileError(
+        error instanceof Error ? error.message : "Unable to load profile.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const merged = getMergedProfileView(initial.userId, initial.employeeRecordId, {
-      firstName: initial.firstName,
-      lastName: initial.lastName,
-      email: initial.email,
-      phoneNumber: initial.phoneNumber,
-      jobTitle: initial.jobTitle,
-      position: initial.position,
-      department: initial.department,
-      locationAssignment: initial.locationAssignment,
-      employmentStatus: initial.employmentStatus,
-      accountStatus: initial.accountStatus,
-      employeePublicId: initial.employeePublicId,
-    });
-    setView(merged);
-    setPhoneNumber(merged.phoneNumber);
-    setProfileImage(merged.profilePicture);
-  }, [initial]);
+    void loadProfile();
+  }, [loadProfile]);
 
   function handleProfileChange(file: File | undefined) {
     setProfileError(null);
@@ -104,8 +94,9 @@ export function MyProfileSection({ initial }: MyProfileSectionProps) {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result;
-      if (typeof result !== "string") return;
-      setProfileImage(result);
+      if (typeof result === "string") {
+        setProfileImage(result);
+      }
     };
     reader.onerror = () => {
       setProfileError("Unable to read the selected image.");
@@ -113,50 +104,66 @@ export function MyProfileSection({ initial }: MyProfileSectionProps) {
     reader.readAsDataURL(file);
   }
 
-  function handleSave() {
+  async function handleSave() {
     setSaving(true);
     setProfileError(null);
     setSaveMessage(null);
 
     try {
-      const stored = getEmployeeOnboardingProfile(initial.userId);
-
-      saveMyProfileUpdates(initial.userId, initial.employeeRecordId, stored, {
-        phoneNumber,
-        profilePictureDataUrl: profileImage,
-        baseProfile: {
-          firstName: initial.firstName,
-          lastName: initial.lastName,
-          email: initial.email,
-          jobTitle: initial.jobTitle,
-          position: initial.position ?? "Technician",
-          department: initial.department,
-          locationAssignment: initial.locationAssignment ?? "Floating/Unassigned",
-        },
+      const response = await fetch("/api/employees/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phoneNumber,
+          emergencyContactName: emergencyContactName.trim() || null,
+          emergencyContactPhone: emergencyContactPhone.trim() || null,
+          profilePictureUrl: profileImage,
+        }),
       });
 
-      const merged = getMergedProfileView(initial.userId, initial.employeeRecordId, {
-        firstName: initial.firstName,
-        lastName: initial.lastName,
-        email: initial.email,
-        phoneNumber,
-        jobTitle: initial.jobTitle,
-        position: initial.position,
-        department: initial.department,
-        locationAssignment: initial.locationAssignment,
-        employmentStatus: initial.employmentStatus,
-        accountStatus: initial.accountStatus,
-        employeePublicId: initial.employeePublicId,
-      });
+      const data = (await response.json()) as {
+        profile?: EmployeeProfileDto;
+        error?: string;
+      };
 
-      setView(merged);
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to save profile changes.");
+      }
+
+      if (data.profile) {
+        setProfile(data.profile);
+        setProfileImage(data.profile.profilePictureUrl);
+      }
+
       setSaveMessage("Profile changes saved.");
-    } catch {
-      setProfileError("Unable to save profile changes. Please try again.");
+    } catch (error) {
+      setProfileError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save profile changes. Please try again.",
+      );
     } finally {
       setSaving(false);
     }
   }
+
+  if (loading) {
+    return (
+      <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+        Loading profile from Neon…
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ff4d4f]">
+        {profileError ?? "Employee profile not found. Contact admin."}
+      </div>
+    );
+  }
+
+  const fullName = `${profile.firstName} ${profile.lastName}`.trim();
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -179,7 +186,7 @@ export function MyProfileSection({ initial }: MyProfileSectionProps) {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={profileImage}
-                alt={`${view.fullName} profile`}
+                alt={`${fullName} profile`}
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -206,8 +213,8 @@ export function MyProfileSection({ initial }: MyProfileSectionProps) {
           </div>
         </div>
         <div className="mt-6 divide-y divide-[#ebfbff]/10 rounded-xl border border-[#ebfbff]/10">
-          <ReadOnlyField label="Full Name" value={view.fullName} />
-          <ReadOnlyField label="Employee ID" value={view.employeePublicId} />
+          <ReadOnlyField label="Full Name" value={fullName} />
+          <ReadOnlyField label="Employee ID" value={profile.employeeId} />
         </div>
       </section>
 
@@ -216,7 +223,7 @@ export function MyProfileSection({ initial }: MyProfileSectionProps) {
           Contact Information
         </h2>
         <div className="divide-y divide-[#ebfbff]/10">
-          <ReadOnlyField label="Email Address" value={view.email} />
+          <ReadOnlyField label="Email Address" value={profile.companyEmail} />
           <div className="px-5 py-4 sm:px-6">
             <label htmlFor="profile-phone" className={authLabelClassName}>
               Phone Number
@@ -237,15 +244,58 @@ export function MyProfileSection({ initial }: MyProfileSectionProps) {
 
       <section className="glass-card rounded-2xl">
         <h2 className="border-b border-[#ebfbff]/10 px-5 py-4 text-lg font-bold text-[#ebfbff] sm:px-6">
+          Emergency Contact
+        </h2>
+        <div className="space-y-0 divide-y divide-[#ebfbff]/10">
+          <div className="px-5 py-4 sm:px-6">
+            <label htmlFor="emergency-name" className={authLabelClassName}>
+              Contact Name
+            </label>
+            <input
+              id="emergency-name"
+              type="text"
+              value={emergencyContactName}
+              onChange={(event) => setEmergencyContactName(event.target.value)}
+              className={`${authInputClassName} mt-2`}
+              placeholder="Full name"
+            />
+          </div>
+          <div className="px-5 py-4 sm:px-6">
+            <label htmlFor="emergency-phone" className={authLabelClassName}>
+              Contact Phone
+            </label>
+            <input
+              id="emergency-phone"
+              type="tel"
+              value={emergencyContactPhone}
+              onChange={(event) => setEmergencyContactPhone(event.target.value)}
+              className={`${authInputClassName} mt-2`}
+              placeholder="868-555-0100"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="glass-card rounded-2xl">
+        <h2 className="border-b border-[#ebfbff]/10 px-5 py-4 text-lg font-bold text-[#ebfbff] sm:px-6">
           Employment Information
         </h2>
         <div className="divide-y divide-[#ebfbff]/10">
-          <ReadOnlyField label="Position" value={view.position} />
-          <ReadOnlyField label="Job Title" value={view.jobTitle} />
-          <ReadOnlyField label="Department" value={view.department} />
-          <ReadOnlyField label="Location Assignment" value={view.locationAssignment} />
-          <ReadOnlyField label="Employment Status" value={view.employmentStatus} />
-          <ReadOnlyField label="Account Status" value={view.accountStatus} />
+          <ReadOnlyField label="Position" value={profile.position ?? "—"} />
+          <ReadOnlyField label="Job Title" value={profile.jobTitle} />
+          <ReadOnlyField label="Department" value={profile.department} />
+          <ReadOnlyField
+            label="Location Assignment"
+            value={profile.locationAssignment ?? "—"}
+          />
+          <ReadOnlyField
+            label="Employment Status"
+            value={formatStatusLabel(profile.employmentStatus)}
+          />
+          <ReadOnlyField
+            label="Account Status"
+            value={formatStatusLabel(profile.accountStatus)}
+          />
         </div>
       </section>
 
@@ -255,7 +305,7 @@ export function MyProfileSection({ initial }: MyProfileSectionProps) {
         fullWidth
         loading={saving}
         className="min-h-[52px]"
-        onClick={handleSave}
+        onClick={() => void handleSave()}
       >
         Save Changes
       </Button>

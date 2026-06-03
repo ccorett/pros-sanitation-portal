@@ -6,7 +6,7 @@ import {
   getAssignableAccessLevels,
 } from "@/lib/admin-account-permissions";
 import { formatAccessLevelLabel } from "@/lib/access-levels";
-import { formatEditTimestamp } from "@/lib/platform-edit-history";
+import { formatEditTimestamp } from "@/lib/admin-format";
 import type {
   AccessHistoryRow,
   AdminAccountRow,
@@ -161,7 +161,7 @@ export function AdminAccountsSection() {
           Loading employee accounts…
         </div>
       ) : (
-        <div className="glass-card overflow-x-auto rounded-2xl">
+        <div className="glass-card portal-table-scroll rounded-2xl">
           <table className="min-w-[1500px] w-full text-left text-sm">
             <thead>
               <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
@@ -433,7 +433,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex min-h-[36px] items-center justify-center rounded-xl border px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40 ${classes}`}
+      className={`inline-flex min-h-[44px] items-center justify-center rounded-xl border px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40 ${classes}`}
     >
       {label}
     </button>

@@ -69,3 +69,50 @@ body {
     0 0 48px color-mix(in srgb, var(--color-accent) 14%, transparent),
     0 0 24px color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
+
+/* Horizontal scroll for wide data tables (mobile + desktop Chrome) */
+.portal-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  max-width: 100%;
+}
+
+.portal-table-scroll table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #0f1a24;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-foreground) 12%, transparent);
+}
+
+.portal-table-scroll table tbody td {
+  vertical-align: top;
+}
+
+/* Touch-friendly inline actions inside tables */
+.portal-table-scroll .table-action-btn {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Staff top nav: scrollable link row on narrow viewports */
+.staff-nav-scroll {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  max-width: 100%;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.staff-nav-scroll a {
+  flex-shrink: 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding-inline: 0.5rem;
+  white-space: nowrap;
+}

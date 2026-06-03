@@ -194,7 +194,7 @@ export function VacationRequestsSection({
             No vacation requests yet.
           </div>
         ) : (
-          <div className="glass-card overflow-x-auto rounded-2xl">
+          <div className="glass-card portal-table-scroll rounded-2xl">
             <table className="min-w-[900px] w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">

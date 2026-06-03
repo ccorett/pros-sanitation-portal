@@ -1,33 +1,13 @@
-import { countPendingVerificationAccounts } from "@/lib/admin-accounts-service";
-import { formatEditTimestamp } from "@/lib/platform-edit-history";
-import { prisma } from "@/lib/prisma";
+import type { Employee } from "@prisma/client";
+import {
+  type AdminHubCard,
+  getAdminHubSummary,
+} from "@/lib/admin-hub-summary-service";
 
-export type AdminHubCard = {
-  id: string;
-  title: string;
-  description: string;
-  href: string;
-  count: number;
-  lastEditedLabel: string | null;
-};
+export type { AdminHubCard } from "@/lib/admin-hub-summary-service";
 
-export async function getAccountAccessHubCard(): Promise<AdminHubCard> {
-  const pendingCount = await countPendingVerificationAccounts();
-
-  const latestHistory = await prisma.accessHistory.findFirst({
-    orderBy: { changedAt: "desc" },
-    select: { changedAt: true },
-  });
-
-  return {
-    id: "accounts",
-    title: "Account Access",
-    description:
-      "Approve pending accounts, assign access levels, and manage portal account status.",
-    href: "/admin/accounts",
-    count: pendingCount,
-    lastEditedLabel: latestHistory
-      ? formatEditTimestamp(latestHistory.changedAt.toISOString())
-      : null,
-  };
+/** @deprecated Prefer getAdminHubSummary or GET /api/admin/hub-summary */
+export async function getAdminHubCards(actor: Employee): Promise<AdminHubCard[]> {
+  const summary = await getAdminHubSummary(actor);
+  return summary.cards;
 }

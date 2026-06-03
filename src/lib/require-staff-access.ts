@@ -33,7 +33,7 @@ export async function requireStaffAccess(options?: RequireStaffAccessOptions) {
     redirect("/pending-verification");
   }
 
-  const accessContext = toEmployeeAccessContext(access.employee);
+  const accessContext = await toEmployeeAccessContext(access.employee);
 
   if (
     options?.pathname &&
@@ -42,7 +42,7 @@ export async function requireStaffAccess(options?: RequireStaffAccessOptions) {
     redirect(PORTAL_ACCESS_DENIED_REDIRECT);
   }
 
-  return { session, employee: access.employee };
+  return { session, employee: access.employee, accessContext };
 }
 
 export async function requirePendingVerificationAccess() {

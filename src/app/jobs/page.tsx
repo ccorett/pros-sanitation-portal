@@ -1,44 +1,48 @@
-import { CleaningLocationsTable } from "@/components/jobs/CleaningLocationsTable";
+import { CleaningJobsTable } from "@/components/jobs/CleaningJobsTable";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { filterClientLocationsForEmployee } from "@/lib/employee-job-assignments";
+import {
+  canActorActOnCleaningJob,
+  listCleaningJobsForActor,
+} from "@/lib/cleaning-jobs-service";
 import {
   canAccessBinManagement,
   isBinOperationalRole,
   isManagerOrAbove,
 } from "@/lib/operational-access";
-import { toEmployeeAccessContext } from "@/lib/portal-route-access";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import { redirect } from "next/navigation";
 import { ArrowRight, Recycle, Smartphone } from "lucide-react";
 import Link from "next/link";
 
 export default async function JobsPage() {
-  const { employee } = await requireStaffAccess({ pathname: "/jobs" });
-  const accessContext = toEmployeeAccessContext(employee);
-  const assignedLocations = filterClientLocationsForEmployee(accessContext);
+  const { employee, accessContext } = await requireStaffAccess({ pathname: "/jobs" });
+  const jobs = await listCleaningJobsForActor(employee, accessContext);
 
   const showCleaningSection =
-    !isBinOperationalRole(accessContext) || assignedLocations.length > 0;
+    !isBinOperationalRole(accessContext) || jobs.length > 0;
 
   const showBinManagementCard =
     canAccessBinManagement(accessContext) &&
     !isBinOperationalRole(accessContext) &&
     isManagerOrAbove(employee.accessLevel);
 
-  if (isBinOperationalRole(accessContext) && assignedLocations.length === 0) {
+  if (isBinOperationalRole(accessContext) && jobs.length === 0) {
     redirect("/jobs/bin-management");
   }
+
+  const canPerformActions = jobs.some((job) => canActorActOnCleaningJob(employee, job));
 
   return (
     <StaffWorkspaceShell
       sectionLabel="Job Management"
       title="Job Management"
       subtitle={
-        assignedLocations.length > 0
-          ? "Assigned non-bin client locations only."
-          : "Select a client location to view assigned service jobs."
+        jobs.length > 0
+          ? "Assigned cleaning service jobs from Neon."
+          : "No cleaning jobs are assigned to your account."
       }
+      employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}
@@ -77,11 +81,9 @@ export default async function JobsPage() {
       {showCleaningSection ? (
         <>
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-[#ebfbff]/50">
-            {assignedLocations.length > 0
-              ? "Assigned Cleaning Locations"
-              : "Cleaning Locations"}
+            Cleaning Jobs
           </h2>
-          <CleaningLocationsTable locations={assignedLocations} />
+          <CleaningJobsTable jobs={jobs} canPerformActions={canPerformActions} />
         </>
       ) : null}
     </StaffWorkspaceShell>

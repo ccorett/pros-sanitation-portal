@@ -1,57 +1,91 @@
 "use client";
 
-import { EditHistoryModal } from "@/components/admin/EditHistoryModal";
-import {
-  formatAdminDate,
-  suggestedPurchaseQuantity,
-  supplierByCategory,
-} from "@/lib/admin-mock-data";
-import {
-  formatInventoryDate,
-  type InventoryItem,
-} from "@/lib/equipment-supplies-mock-data";
-import { authClient } from "@/lib/auth-client";
-import {
-  getPurchasingListItems,
-  markPurchasingOrdered,
-  removeFromPurchasingList,
-} from "@/lib/platform-storage";
-import { useEffect, useState } from "react";
+import { StockEditHistoryModal } from "@/components/admin/StockEditHistoryModal";
+import { formatAdminDate } from "@/lib/admin-format";
+import type { InventoryItemDto } from "@/lib/inventory-service";
+import { suggestedPurchaseQuantity } from "@/lib/inventory-service";
+import { useCallback, useEffect, useState } from "react";
+
+function formatInventoryDate(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 // TODO: Restrict purchasing actions to admin role when RBAC is enabled.
 export function AdminPurchasingSection() {
-  const { data: session } = authClient.useSession();
-  const editor =
-    session?.user?.name?.trim() ||
-    session?.user?.email?.split("@")[0] ||
-    "Admin User";
-
-  const [items, setItems] = useState<InventoryItem[]>(() =>
-    typeof window !== "undefined" ? getPurchasingListItems() : [],
-  );
+  const [items, setItems] = useState<InventoryItemDto[]>([]);
+  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
-  const [historyTarget, setHistoryTarget] = useState<InventoryItem | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<InventoryItemDto | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
 
-  function refresh() {
-    setItems(getPurchasingListItems());
-  }
-
-  useEffect(() => {
-    refresh();
-    window.addEventListener("pros-platform-data-updated", refresh);
-    return () => window.removeEventListener("pros-platform-data-updated", refresh);
+  const loadItems = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/inventory/purchasing-list");
+      if (!response.ok) {
+        throw new Error("Unable to load purchasing list.");
+      }
+      const data = (await response.json()) as { items: InventoryItemDto[] };
+      setItems(data.items);
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Unable to load purchasing list.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    void loadItems();
+  }, [loadItems]);
+
+  async function patchPurchasingAction(
+    itemId: string,
+    action: "MARK_ORDERED" | "EXCLUDE_FROM_LIST",
+    successMessage: string,
+  ) {
+    setMessage(null);
+    setActingId(itemId);
+
+    try {
+      const response = await fetch(`/api/inventory/${itemId}/purchasing`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to update purchasing list.");
+      }
+
+      setMessage(successMessage);
+      await loadItems();
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Unable to update purchasing list.",
+      );
+    } finally {
+      setActingId(null);
+    }
+  }
+
   function handleOrdered(itemId: string) {
-    markPurchasingOrdered(itemId, editor);
-    refresh();
-    setMessage("Item marked as ordered.");
+    void patchPurchasingAction(itemId, "MARK_ORDERED", "Item marked as ordered.");
   }
 
   function handleRemove(itemId: string) {
-    removeFromPurchasingList(itemId, editor);
-    refresh();
-    setMessage("Item removed from purchasing list.");
+    void patchPurchasingAction(
+      itemId,
+      "EXCLUDE_FROM_LIST",
+      "Item removed from purchasing list.",
+    );
   }
 
   return (
@@ -75,12 +109,16 @@ export function AdminPurchasingSection() {
         </p>
       ) : null}
 
-      {items.length === 0 ? (
+      {loading ? (
+        <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+          Loading purchasing list…
+        </div>
+      ) : items.length === 0 ? (
         <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
           No items currently need purchasing.
         </div>
       ) : (
-        <div className="glass-card overflow-x-auto rounded-2xl">
+        <div className="glass-card portal-table-scroll rounded-2xl">
           <table className="min-w-[1200px] w-full text-left text-sm">
             <thead>
               <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
@@ -101,8 +139,10 @@ export function AdminPurchasingSection() {
                   key={item.id}
                   className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
                 >
-                  <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">{item.name}</td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">{item.category}</td>
+                  <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
+                    {item.itemName}
+                  </td>
+                  <td className="px-4 py-4 text-[#ebfbff]/70">{item.categoryLabel}</td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">{item.availableQuantity}</td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">{item.reorderLevel}</td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">
@@ -113,31 +153,33 @@ export function AdminPurchasingSection() {
                   </td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">{item.unit}</td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {supplierByCategory[item.category]}
+                    {item.supplier ?? "—"}
                   </td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {formatInventoryDate(item.lastUpdated)}
+                    {formatInventoryDate(item.lastEditedAt)}
                   </td>
                   <td className="px-4 py-4 sm:px-6">
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
+                        disabled={actingId === item.id}
                         onClick={() => handleOrdered(item.id)}
-                        className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-50"
                       >
                         Mark Ordered
                       </button>
                       <button
                         type="button"
+                        disabled={actingId === item.id}
                         onClick={() => handleRemove(item.id)}
-                        className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-50"
                       >
                         Remove From List
                       </button>
                       <button
                         type="button"
                         onClick={() => setHistoryTarget(item)}
-                        className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
                       >
                         View Edit History
                       </button>
@@ -151,14 +193,14 @@ export function AdminPurchasingSection() {
       )}
 
       <p className="text-xs text-[#ebfbff]/45">
-        Generated {formatAdminDate(new Date().toISOString().slice(0, 10))} from Equipment
-        &amp; Supplies stock levels.
+        Generated {formatAdminDate(new Date().toISOString().slice(0, 10))} from Neon
+        inventory stock levels.
       </p>
 
       {historyTarget ? (
-        <EditHistoryModal
-          recordId={historyTarget.id}
-          recordName={historyTarget.name}
+        <StockEditHistoryModal
+          itemId={historyTarget.id}
+          itemName={historyTarget.itemName}
           onClose={() => setHistoryTarget(null)}
         />
       ) : null}

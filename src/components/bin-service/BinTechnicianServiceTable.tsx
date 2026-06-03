@@ -2,16 +2,15 @@
 
 import { BinServiceUpdateModal } from "@/components/bin-service/BinServiceUpdateModal";
 import {
-  computeNextServiceDate,
   formatBinDate,
-  getBinServiceStatus,
   serviceStatusLabel,
   statusColorClass,
   type BinServiceStatusColor,
 } from "@/lib/bin-locations-status";
-import { getBinLocations, type BinLocationView } from "@/lib/bin-locations-storage";
-import { authClient } from "@/lib/auth-client";
-import { useEffect, useMemo, useState } from "react";
+import { fetchBinFieldSites } from "@/lib/bin-service/field-client";
+import { formatBinFieldDate } from "@/lib/bin-service/field-format";
+import type { BinFieldSiteRow } from "@/lib/bin-service/field-types";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const STATUS_FILTERS: Array<{ value: "all" | BinServiceStatusColor; label: string }> = [
   { value: "all", label: "All Statuses" },
@@ -29,30 +28,37 @@ type BinTechnicianServiceTableProps = {
 export function BinTechnicianServiceTable({
   readOnlySetup = false,
 }: BinTechnicianServiceTableProps) {
-  const { data: session } = authClient.useSession();
-  const updatedBy =
-    session?.user?.name?.trim() ||
-    session?.user?.email?.split("@")[0] ||
-    "Bin Technician";
-
-  const [locations, setLocations] = useState<BinLocationView[]>(() => getBinLocations());
+  const [locations, setLocations] = useState<BinFieldSiteRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | BinServiceStatusColor>("all");
-  const [activeLocation, setActiveLocation] = useState<BinLocationView | null>(null);
+  const [activeLocation, setActiveLocation] = useState<BinFieldSiteRow | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      setLocations(await fetchBinFieldSites());
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
 
     const items = locations.filter((location) => {
-      const status = getBinServiceStatus(location);
       const matchesStatus =
-        statusFilter === "all" || status.color === statusFilter;
+        statusFilter === "all" || location.rotation.color === statusFilter;
       const matchesLocation =
         !query ||
         location.location.toLowerCase().includes(query) ||
         location.displayNotes.toLowerCase().includes(query);
 
-      return matchesStatus && matchesLocation && location.active;
+      return matchesStatus && matchesLocation;
     });
 
     const rank = (color: string) => {
@@ -64,23 +70,11 @@ export function BinTechnicianServiceTable({
     };
 
     return [...items].sort((a, b) => {
-      const statusA = getBinServiceStatus(a);
-      const statusB = getBinServiceStatus(b);
-      const diff = rank(statusA.color) - rank(statusB.color);
+      const diff = rank(a.rotation.color) - rank(b.rotation.color);
       if (diff !== 0) return diff;
       return a.location.localeCompare(b.location);
     });
   }, [locations, search, statusFilter]);
-
-  function refresh() {
-    setLocations(getBinLocations());
-  }
-
-  useEffect(() => {
-    const handler = () => refresh();
-    window.addEventListener("pros-bin-locations-updated", handler);
-    return () => window.removeEventListener("pros-bin-locations-updated", handler);
-  }, []);
 
   return (
     <div className="space-y-4">
@@ -121,17 +115,21 @@ export function BinTechnicianServiceTable({
           </div>
         </div>
         <p className="text-xs text-[#ebfbff]/45">
-          Green = 0–13 days · Yellow = 14–17 days · Red = 18+ days · Orange = cannot
-          access / issue reported
+          Status colours follow schedule: green on schedule, yellow due, red overdue,
+          orange cannot access / issue reported.
         </p>
       </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+          Loading bin locations…
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
           No active locations match your filters.
         </div>
       ) : (
-        <div className="glass-card overflow-x-auto rounded-2xl">
+        <div className="glass-card portal-table-scroll rounded-2xl">
           <table className="min-w-[1200px] w-full text-left text-sm">
             <thead>
               <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
@@ -147,56 +145,53 @@ export function BinTechnicianServiceTable({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((location) => {
-                const status = getBinServiceStatus(location);
-                const nextService = computeNextServiceDate(location.lastServiceDate);
-
-                return (
-                  <tr
-                    key={location.id}
-                    className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
-                  >
-                    <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
-                      {location.location}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">{location.newBins}</td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">{location.regularBins}</td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {location.newBins + location.regularBins}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {formatBinDate(location.lastServiceDate)}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {formatBinDate(nextService)}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusColorClass(status.color)}`}
-                      >
-                        {status.label}
-                      </span>
-                      {location.serviceStatus ? (
-                        <p className="mt-1 text-xs text-[#ebfbff]/45">
-                          {serviceStatusLabel(location.serviceStatus)}
-                        </p>
-                      ) : null}
-                    </td>
-                    <td className="max-w-[220px] px-4 py-4 text-[#ebfbff]/70">
-                      {location.displayNotes || "—"}
-                    </td>
-                    <td className="px-4 py-4 sm:px-6">
-                      <button
-                        type="button"
-                        onClick={() => setActiveLocation(location)}
-                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] hover:bg-[#00c6ff]/20"
-                      >
-                        Update Service
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+              {filtered.map((location) => (
+                <tr
+                  key={location.siteId}
+                  className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
+                >
+                  <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
+                    {location.location}
+                  </td>
+                  <td className="px-4 py-4 text-[#ebfbff]/70">{location.newBins}</td>
+                  <td className="px-4 py-4 text-[#ebfbff]/70">{location.regularBins}</td>
+                  <td className="px-4 py-4 text-[#ebfbff]/70">
+                    {location.newBins + location.regularBins}
+                  </td>
+                  <td className="px-4 py-4 text-[#ebfbff]/70">
+                    {location.lastServiceDate
+                      ? formatBinDate(location.lastServiceDate)
+                      : "—"}
+                  </td>
+                  <td className="px-4 py-4 text-[#ebfbff]/70">
+                    {formatBinFieldDate(location.nextServiceDate)}
+                  </td>
+                  <td className="px-4 py-4">
+                    <span
+                      className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusColorClass(location.rotation.color)}`}
+                    >
+                      {location.rotation.label}
+                    </span>
+                    {location.serviceStatus ? (
+                      <p className="mt-1 text-xs text-[#ebfbff]/45">
+                        {serviceStatusLabel(location.serviceStatus)}
+                      </p>
+                    ) : null}
+                  </td>
+                  <td className="max-w-[220px] px-4 py-4 text-[#ebfbff]/70">
+                    {location.serviceNotes || location.displayNotes || "—"}
+                  </td>
+                  <td className="px-4 py-4 sm:px-6">
+                    <button
+                      type="button"
+                      onClick={() => setActiveLocation(location)}
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] hover:bg-[#00c6ff]/20"
+                    >
+                      Update Service
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -204,7 +199,7 @@ export function BinTechnicianServiceTable({
 
       <button
         type="button"
-        onClick={refresh}
+        onClick={() => void refresh()}
         className="text-sm text-[#00c6ff] hover:text-[#6cc801]"
       >
         Refresh list
@@ -213,9 +208,8 @@ export function BinTechnicianServiceTable({
       {activeLocation ? (
         <BinServiceUpdateModal
           location={activeLocation}
-          updatedBy={updatedBy}
           onClose={() => setActiveLocation(null)}
-          onSaved={refresh}
+          onSaved={() => void refresh()}
         />
       ) : null}
     </div>

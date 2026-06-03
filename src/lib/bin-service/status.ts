@@ -14,10 +14,17 @@ export type RotationStatusColor =
 
 export type RotationStatusInput = {
   active: boolean;
-  nextServiceDate: Date | null;
+  lastCompletedServiceDate?: Date | null;
+  nextServiceDate?: Date | null;
   openJobStatus?: BinServiceJobStatus | null;
   scheduledDate?: Date | null;
 };
+
+function daysSinceLastService(lastCompleted: Date, now = new Date()): number {
+  const last = startOfUtcDay(lastCompleted);
+  const today = startOfUtcDay(now);
+  return Math.floor((today.getTime() - last.getTime()) / 86_400_000);
+}
 
 export type RotationStatusResult = {
   color: RotationStatusColor;
@@ -89,6 +96,38 @@ export function getRotationStatus(
       isOverdue: dueDate ? startOfUtcDay(dueDate) < today : false,
       isDueSoon: false,
       needsAttention: true,
+    };
+  }
+
+  if (input.lastCompletedServiceDate) {
+    const days = daysSinceLastService(input.lastCompletedServiceDate, now);
+
+    if (days >= 18) {
+      return {
+        color: "red",
+        label: "Overdue",
+        isOverdue: true,
+        isDueSoon: false,
+        needsAttention: true,
+      };
+    }
+
+    if (days >= 14) {
+      return {
+        color: "yellow",
+        label: "Due",
+        isOverdue: false,
+        isDueSoon: true,
+        needsAttention: false,
+      };
+    }
+
+    return {
+      color: "green",
+      label: "On Schedule",
+      isOverdue: false,
+      isDueSoon: false,
+      needsAttention: false,
     };
   }
 

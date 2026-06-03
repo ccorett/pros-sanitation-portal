@@ -19,8 +19,8 @@ export function CreateEmployeeAccountLink({
       if (session.data?.session) {
         await authClient.signOut();
       }
-    } catch (error) {
-      console.error("[create-account-link]", error);
+    } catch {
+      // Continue to signup even if sign-out fails.
     }
 
     window.location.assign("/employee-signup");

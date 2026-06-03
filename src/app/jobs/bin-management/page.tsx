@@ -21,6 +21,7 @@ export default async function BinManagementPage() {
           ? "Review all bin service routes, due sites, and technician activity."
           : "Update service activity for assigned bin route locations. Location setup is managed by managers and admin."
       }
+      employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}

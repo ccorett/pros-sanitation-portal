@@ -1,4 +1,5 @@
 import { requireBinApiAccess } from "@/lib/bin-service/api-auth";
+import { assertBinJobAccess } from "@/lib/bin-service/field-service";
 import { binJobInclude } from "@/lib/bin-service/service";
 import { prisma } from "@/lib/prisma";
 import { BinServiceJobStatus } from "@prisma/client";
@@ -14,17 +15,21 @@ export async function POST(_request: Request, context: RouteContext) {
 
   const { jobId } = await context.params;
 
-  const job = await prisma.binServiceJob.findUnique({
-    where: { id: jobId },
-    include: binJobInclude,
-  });
+  let job;
+  try {
+    await assertBinJobAccess(jobId, access.employee);
+    job = await prisma.binServiceJob.findUnique({
+      where: { id: jobId },
+      include: binJobInclude,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Forbidden";
+    const status = message === "Job not found." ? 404 : 403;
+    return NextResponse.json({ error: message }, { status });
+  }
 
   if (!job) {
     return NextResponse.json({ error: "Job not found." }, { status: 404 });
-  }
-
-  if (job.assignedTechnicianId !== access.employee.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   if (

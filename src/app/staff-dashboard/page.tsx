@@ -1,3 +1,4 @@
+import { StaffDashboardMetrics } from "@/components/staff/StaffDashboardMetrics";
 import { StaffTopNav } from "@/components/layout/StaffTopNav";
 import { COMPANY } from "@/lib/constants";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -43,8 +44,8 @@ const dashboardCards = [
     title: "Policies",
     description: "Company procedures, PPE requirements, and compliance guides.",
     icon: FileText,
-    href: undefined,
-    feature: "jobs" as const,
+    href: "/policies",
+    feature: "humanResources" as const,
   },
 ];
 
@@ -58,7 +59,7 @@ export default async function StaffDashboardPage() {
     session.user.name?.split(" ")[0] ??
     session.user.email.split("@")[0];
 
-  const accessContext = toEmployeeAccessContext(employee);
+  const accessContext = await toEmployeeAccessContext(employee);
 
   const visibleCards = dashboardCards.filter((card) =>
     canAccessPortalFeature(accessContext, card.feature),
@@ -71,8 +72,8 @@ export default async function StaffDashboardPage() {
         aria-hidden="true"
       />
       <header className="relative z-10 border-b border-[#ebfbff]/10 bg-[#0c151d]/70 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-6xl min-w-0 flex-col gap-3 px-4 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:py-0 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 shrink-0 items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#ebfbff]/15 bg-gradient-to-br from-[#0c151d] to-[#259f00]/20 shadow-lg shadow-[#259f00]/10">
               <CompanyLogo
                 size="sm"
@@ -88,7 +89,7 @@ export default async function StaffDashboardPage() {
         </div>
       </header>
 
-      <div className="relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto min-w-0 max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="glass-card mb-6 rounded-2xl p-6 sm:p-8">
           <p className="text-sm font-medium text-[#00c6ff]">Welcome Card</p>
           <h1 className="mt-2 text-2xl font-bold text-[#ebfbff] sm:text-3xl">
@@ -97,6 +98,10 @@ export default async function StaffDashboardPage() {
           <p className="mt-3 max-w-2xl text-sm text-[#ebfbff]/60 sm:text-base">
             Your dashboard shows only the modules available for your access level.
           </p>
+        </div>
+
+        <div className="mb-8">
+          <StaffDashboardMetrics />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">

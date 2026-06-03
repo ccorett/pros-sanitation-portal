@@ -7,7 +7,7 @@ import {
   type InventoryStatus,
 } from "@/lib/equipment-supplies-mock-data";
 import type { InventoryItemDto } from "@/lib/inventory-service";
-import { formatEditTimestamp } from "@/lib/platform-edit-history";
+import { formatEditTimestamp } from "@/lib/admin-format";
 import { useCallback, useEffect, useState } from "react";
 
 // TODO: Restrict edit/disable to admin role when RBAC is enabled.
@@ -155,7 +155,7 @@ export function AdminStockSection() {
         </p>
       ) : null}
 
-      <div className="glass-card overflow-x-auto rounded-2xl">
+      <div className="glass-card portal-table-scroll rounded-2xl">
         <table className="min-w-[1400px] w-full text-left text-sm">
           <thead>
             <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
@@ -230,21 +230,21 @@ export function AdminStockSection() {
                       <button
                         type="button"
                         onClick={() => openEdit(item)}
-                        className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
                       >
                         Edit Stock
                       </button>
                       <button
                         type="button"
                         onClick={() => void disableItem(item)}
-                        className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
                       >
                         Disable Item
                       </button>
                       <button
                         type="button"
                         onClick={() => setHistoryTarget(item)}
-                        className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#ebfbff]/20 bg-[#ebfbff]/5 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ebfbff]/20 bg-[#ebfbff]/5 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
                       >
                         View Edit History
                       </button>

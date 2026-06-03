@@ -8,6 +8,8 @@ Internal employee operations portal landing page for field staff, supervisors, a
 - React 19
 - TypeScript
 - Tailwind CSS v4
+- Neon PostgreSQL + Prisma
+- Better Auth
 - Framer Motion
 - Lucide React
 
@@ -29,12 +31,15 @@ src/
     layout/         # Sidebar, top nav, portal shell, background
     sections/       # Landing page sections
     ui/             # Reusable buttons, cards, metrics
-  lib/              # Constants & mock operational data
+  lib/              # Services, auth helpers, display utilities
 ```
+
+See `ARCHITECTURE.md` (data model) and `DEPLOYMENT.md` (Vercel env vars).
 
 ## Scripts
 
-- `npm run dev` — development server
+- `npm run dev` — development server (port 3001)
 - `npm run build` — production build
 - `npm run start` — production server
 - `npm run lint` — ESLint
+- `npm run db:migrate` — Prisma migrate dev

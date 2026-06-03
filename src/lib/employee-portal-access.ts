@@ -25,8 +25,7 @@ export type EmployeePortalAccess =
 
 export const EMPLOYEE_ACCESS_MESSAGES: Record<EmployeePortalAccessCode, string> =
   {
-    "no-profile":
-      "Your employee profile is not set up yet. Contact an administrator.",
+    "no-profile": "Employee profile not found. Contact admin.",
     "account-inactive":
       "Your portal account is not active. Contact an administrator.",
     "pending-verification":

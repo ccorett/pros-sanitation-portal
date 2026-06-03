@@ -12,14 +12,10 @@ import {
   clampBinCount,
   type BinTechnicianServiceStatus,
 } from "@/lib/bin-locations-status";
-import {
-  applyTechnicianServiceUpdate,
-  type BinLocationView,
-} from "@/lib/bin-locations-storage";
+import type { BinFieldSiteRow } from "@/lib/bin-service/field-types";
 
 type BinServiceUpdateModalProps = {
-  location: BinLocationView;
-  updatedBy: string;
+  location: BinFieldSiteRow;
   onClose: () => void;
   onSaved: () => void;
 };
@@ -35,11 +31,9 @@ const SERVICE_STATUS_OPTIONS: Array<{
 
 export function BinServiceUpdateModal({
   location,
-  updatedBy,
   onClose,
   onSaved,
 }: BinServiceUpdateModalProps) {
-  const today = new Date().toISOString().slice(0, 10);
   const maxRegular = location.regularBins;
   const maxNew = location.newBins;
   const maxLiners = maxRegular + maxNew;
@@ -52,9 +46,6 @@ export function BinServiceUpdateModal({
     maxNew,
   );
 
-  const [lastServiceDate, setLastServiceDate] = useState(
-    location.lastServiceDate || today,
-  );
   const [regularBinsServiced, setRegularBinsServiced] = useState(defaultRegular);
   const [newBinsServiced, setNewBinsServiced] = useState(defaultNew);
   const [linersUsed, setLinersUsed] = useState(() =>
@@ -66,7 +57,9 @@ export function BinServiceUpdateModal({
   const [serviceStatus, setServiceStatus] = useState<BinTechnicianServiceStatus>(
     location.serviceStatus ?? "completed",
   );
-  const [notes, setNotes] = useState(location.displayNotes);
+  const [notes, setNotes] = useState(
+    location.serviceNotes ?? location.displayNotes,
+  );
   const [issueNotes, setIssueNotes] = useState(location.issueNotes ?? "");
   const [cannotAccessReason, setCannotAccessReason] = useState(
     location.cannotAccessReason ?? "",
@@ -99,11 +92,6 @@ export function BinServiceUpdateModal({
     event.preventDefault();
     setError(null);
 
-    if (serviceStatus === "completed" && !lastServiceDate.trim()) {
-      setError("Last Service Date is required when status is Completed.");
-      return;
-    }
-
     if (serviceStatus === "cannot_access" && !cannotAccessReason.trim()) {
       setError("Cannot Access Reason is required.");
       return;
@@ -114,7 +102,11 @@ export function BinServiceUpdateModal({
       return;
     }
 
-    if (location.signatureRequired && serviceStatus === "completed" && !clientSignatureName.trim()) {
+    if (
+      location.signatureRequired &&
+      serviceStatus === "completed" &&
+      !clientSignatureName.trim()
+    ) {
       setError("Client Signature Name is required for this location.");
       return;
     }
@@ -134,18 +126,30 @@ export function BinServiceUpdateModal({
     setSaving(true);
 
     try {
-      applyTechnicianServiceUpdate(location.id, {
-        lastServiceDate: lastServiceDate.trim() || today,
-        regularBinsServiced,
-        newBinsServiced,
-        linersUsed,
-        serviceStatus,
-        notes,
-        issueNotes: issueNotes.trim() || undefined,
-        cannotAccessReason: cannotAccessReason.trim() || undefined,
-        clientSignatureName: clientSignatureName.trim() || undefined,
-        updatedBy,
-      });
+      const response = await fetch(
+        `/api/bin-service/sites/${location.siteId}/service-update`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            serviceStatus,
+            regularBinsServiced,
+            newBinsServiced,
+            linersUsed,
+            serviceNotes: notes,
+            cannotAccessReason: cannotAccessReason.trim() || undefined,
+            issueType: serviceStatus === "issue_reported" ? "Technician Report" : undefined,
+            issueNotes: issueNotes.trim() || undefined,
+            clientSignatureName: clientSignatureName.trim() || undefined,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const data = (await response.json()) as { error?: string };
+        throw new Error(data.error ?? "Unable to save service update.");
+      }
+
       onSaved();
       onClose();
     } catch (cause) {
@@ -166,6 +170,7 @@ export function BinServiceUpdateModal({
         <p className="mt-1 text-sm text-[#ebfbff]/60">{location.location}</p>
         <p className="mt-1 text-xs text-[#ebfbff]/45">
           Expected: {location.regularBins} regular · {location.newBins} new
+          {location.lastServiceDate ? ` · Last service ${location.lastServiceDate}` : ""}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4" noValidate>
@@ -195,20 +200,6 @@ export function BinServiceUpdateModal({
             </select>
           </div>
 
-          <div>
-            <label htmlFor="last-service-date" className={authLabelClassName}>
-              Last Service Date
-            </label>
-            <input
-              id="last-service-date"
-              type="date"
-              required={serviceStatus === "completed"}
-              value={lastServiceDate}
-              onChange={(event) => setLastServiceDate(event.target.value)}
-              className={authInputClassName}
-            />
-          </div>
-
           <div className="grid gap-4 sm:grid-cols-2">
             <CounterField
               label="Regular Bins Serviced"
@@ -233,7 +224,7 @@ export function BinServiceUpdateModal({
 
           <div>
             <label htmlFor="service-notes" className={authLabelClassName}>
-              Notes
+              Service Notes
             </label>
             <textarea
               id="service-notes"

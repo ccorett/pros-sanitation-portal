@@ -6,41 +6,58 @@ import {
   formatBinDateTime,
   serviceStatusLabel,
 } from "@/lib/bin-locations-status";
-import {
-  getBinAttentionItems,
-  getBinLocationById,
-  type BinLocationView,
-} from "@/lib/bin-locations-storage";
-import { authClient } from "@/lib/auth-client";
-import { useEffect, useState } from "react";
+import { fetchBinFieldAttention, fetchBinFieldSites } from "@/lib/bin-service/field-client";
+import { readInboxFocusParams } from "@/lib/inbox-focus";
+import { formatBinFieldDate } from "@/lib/bin-service/field-format";
+import type { BinFieldAttentionItem, BinFieldSiteRow } from "@/lib/bin-service/field-types";
+import { useCallback, useEffect, useState } from "react";
 
 export function AdminBinAttentionSection() {
-  const { data: session } = authClient.useSession();
-  const updatedBy =
-    session?.user?.name?.trim() ||
-    session?.user?.email?.split("@")[0] ||
-    "Admin";
+  const [items, setItems] = useState<BinFieldAttentionItem[]>([]);
+  const [sites, setSites] = useState<BinFieldSiteRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeLocation, setActiveLocation] = useState<BinFieldSiteRow | null>(null);
 
-  const [items, setItems] = useState(() => getBinAttentionItems());
-  const [activeLocation, setActiveLocation] = useState<BinLocationView | null>(
-    null,
-  );
-
-  function refresh() {
-    setItems(getBinAttentionItems());
-  }
-
-  useEffect(() => {
-    const handler = () => refresh();
-    window.addEventListener("pros-bin-locations-updated", handler);
-    return () => window.removeEventListener("pros-bin-locations-updated", handler);
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [attention, allSites] = await Promise.all([
+        fetchBinFieldAttention(),
+        fetchBinFieldSites(),
+      ]);
+      setItems(attention);
+      setSites(allSites);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  function openUpdate(locationId: string) {
-    const location = getBinLocationById(locationId);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    const { siteId } = readInboxFocusParams();
+    if (!siteId || sites.length === 0) return;
+    const location = sites.find((site) => site.siteId === siteId);
     if (location) {
       setActiveLocation(location);
     }
+  }, [sites]);
+
+  function openUpdate(siteId: string) {
+    const location = sites.find((site) => site.siteId === siteId);
+    if (location) {
+      setActiveLocation(location);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="glass-card rounded-2xl p-6 text-sm text-[#ebfbff]/55">
+        Loading attention queue…
+      </div>
+    );
   }
 
   if (items.length === 0) {
@@ -53,7 +70,7 @@ export function AdminBinAttentionSection() {
 
   return (
     <>
-      <div className="glass-card overflow-x-auto rounded-2xl">
+      <div className="glass-card portal-table-scroll rounded-2xl">
         <table className="min-w-[1300px] w-full text-left text-sm">
           <thead>
             <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
@@ -71,7 +88,7 @@ export function AdminBinAttentionSection() {
           <tbody>
             {items.map((item) => (
               <tr
-                key={item.id}
+                key={item.siteId}
                 className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
               >
                 <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
@@ -97,15 +114,17 @@ export function AdminBinAttentionSection() {
                   {item.issueOrAccessReason}
                 </td>
                 <td className="px-4 py-4 text-[#ebfbff]/70">
-                  {formatBinDate(item.lastServiceDate)}
+                  {item.lastServiceDate
+                    ? formatBinDate(item.lastServiceDate)
+                    : "—"}
                 </td>
                 <td className="px-4 py-4 text-[#ebfbff]/70">
-                  {formatBinDate(item.nextServiceDate)}
+                  {formatBinFieldDate(item.nextServiceDate)}
                 </td>
                 <td className="px-4 py-4 sm:px-6">
                   <button
                     type="button"
-                    onClick={() => openUpdate(item.id)}
+                    onClick={() => openUpdate(item.siteId)}
                     className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] hover:bg-[#00c6ff]/20"
                   >
                     Update Service
@@ -118,7 +137,7 @@ export function AdminBinAttentionSection() {
         <div className="border-t border-[#ebfbff]/10 px-4 py-3">
           <button
             type="button"
-            onClick={refresh}
+            onClick={() => void refresh()}
             className="text-sm text-[#00c6ff] hover:text-[#6cc801]"
           >
             Refresh attention queue
@@ -129,9 +148,8 @@ export function AdminBinAttentionSection() {
       {activeLocation ? (
         <BinServiceUpdateModal
           location={activeLocation}
-          updatedBy={`Admin: ${updatedBy}`}
           onClose={() => setActiveLocation(null)}
-          onSaved={refresh}
+          onSaved={() => void refresh()}
         />
       ) : null}
     </>

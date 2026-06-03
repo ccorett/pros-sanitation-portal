@@ -1,6 +1,8 @@
 import { AccessLevel, OperationalGroup } from "@prisma/client";
-import type { EmployeeJobAssignments } from "@/lib/employee-job-assignments";
-import { EMPTY_JOB_ASSIGNMENTS } from "@/lib/employee-job-assignments";
+import {
+  EMPTY_JOB_ASSIGNMENTS,
+  type EmployeeJobAssignments,
+} from "@/lib/job-assignment-types";
 
 export type EmployeeAccessContext = {
   accessLevel: AccessLevel;

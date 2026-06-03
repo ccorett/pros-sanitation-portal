@@ -13,7 +13,6 @@ import {
   EMPLOYEE_LOCATION_ASSIGNMENTS,
   EMPLOYEE_POSITIONS,
 } from "@/lib/employee-signup-options";
-import { saveEmployeeOnboardingProfile } from "@/lib/employee-profile-storage";
 import {
   isPinValid,
   normalizePinInput,
@@ -151,6 +150,7 @@ export function EmployeeSignupForm({
           position,
           department,
           locationAssignment,
+          ...(profileDataUrl ? { profilePictureUrl: profileDataUrl } : {}),
           ...(policy.inviteRequired
             ? { inviteCode: inviteCode.trim() }
             : {}),
@@ -159,34 +159,18 @@ export function EmployeeSignupForm({
 
       const profilePayload = (await profile.json()) as {
         error?: string;
-        userId?: string;
       };
 
       if (!profile.ok) {
         setError(
           profilePayload.error ??
-            "Account created but employee profile setup failed. Contact admin.",
+            "Employee profile not found. Contact admin.",
         );
         return;
       }
 
-      if (profilePayload.userId) {
-        saveEmployeeOnboardingProfile(profilePayload.userId, {
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: email.trim(),
-          phoneNumber: phoneNumber.trim(),
-          jobTitle: jobTitle.trim(),
-          position,
-          department,
-          locationAssignment,
-          ...(profileDataUrl ? { profilePictureDataUrl: profileDataUrl } : {}),
-        });
-      }
-
       window.location.assign("/pending-verification");
     } catch (cause) {
-      console.error("[signup]", cause);
       setError(
         cause instanceof Error
           ? cause.message

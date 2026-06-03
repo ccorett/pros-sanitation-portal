@@ -1,6 +1,6 @@
 import { BinLocationJobClient } from "@/components/bin-service/BinLocationJobClient";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
-import { getSeedLocations } from "@/lib/bin-locations-storage";
+import { getBinFieldJobDetail } from "@/lib/bin-service/field-service";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -16,17 +16,18 @@ export default async function BinJobPage({ params }: BinJobPageProps) {
   });
 
   const { jobId } = await params;
-  const location = getSeedLocations().find((item) => item.id === jobId);
+  const job = await getBinFieldJobDetail(jobId, employee);
 
-  if (!location) {
+  if (!job) {
     notFound();
   }
 
   return (
     <StaffWorkspaceShell
       sectionLabel="Job Management · Bin Management"
-      title={location.location}
-      subtitle={`${location.newBins} new · ${location.regularBins} regular bins`}
+      title={job.siteName}
+      subtitle={`${job.expectedNewBins} new · ${job.expectedRegularBins} regular bins`}
+      employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}
@@ -41,7 +42,7 @@ export default async function BinJobPage({ params }: BinJobPageProps) {
         </Link>
       </div>
 
-      <BinLocationJobClient locationId={jobId} />
+      <BinLocationJobClient jobId={jobId} />
     </StaffWorkspaceShell>
   );
 }

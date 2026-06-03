@@ -4,10 +4,8 @@ import {
   ClientLocationStatus,
   EmploymentStatus,
   InventoryCategory,
-  JobStatus,
   NoticeCategory,
   PrismaClient,
-  ServiceType,
 } from "@prisma/client";
 import { seedAccessTestAccounts } from "./seed-access-test-accounts";
 
@@ -51,9 +49,14 @@ async function main() {
   if (employeeId) {
     const clientLocation = await prisma.clientLocation.upsert({
       where: { id: "00000000-0000-4000-8000-000000000001" },
-      update: {},
+      update: {
+        slug: "harbourview-commercial-plaza",
+        locationName: "Loading Dock & Waste Enclosure",
+      },
       create: {
         id: "00000000-0000-4000-8000-000000000001",
+        slug: "harbourview-commercial-plaza",
+        locationName: "Loading Dock & Waste Enclosure",
         clientName: "Harbourview Commercial Plaza",
         siteName: "Loading Dock & Waste Enclosure",
         address: "14 Industrial Park Road, Port of Spain",
@@ -63,35 +66,6 @@ async function main() {
       },
     });
 
-    await prisma.job.upsert({
-      where: { jobCode: "JOB-2026-0142" },
-      update: {},
-      create: {
-        jobCode: "JOB-2026-0142",
-        clientLocationId: clientLocation.id,
-        assignedEmployeeId: employeeId,
-        serviceType: ServiceType.SANITARY_BIN_SERVICE,
-        scheduledDate: new Date("2026-05-22"),
-        instructions:
-          "Service all sanitary bins at loading dock. Confirm chemical PPE before mixing degreaser.",
-        status: JobStatus.NOT_STARTED,
-      },
-    });
-
-    await prisma.job.upsert({
-    where: { jobCode: "JOB-2026-0143" },
-    update: {},
-    create: {
-      jobCode: "JOB-2026-0143",
-      clientLocationId: clientLocation.id,
-      assignedEmployeeId: employeeId,
-      serviceType: ServiceType.GROCERY_CLEANING,
-      scheduledDate: new Date("2026-05-23"),
-      instructions:
-        "Night shift grocery aisle sanitation. Coordinate with store manager before floor treatment.",
-      status: JobStatus.NOT_STARTED,
-    },
-  });
   }
 
   await prisma.internalNotice.upsert({
@@ -118,6 +92,21 @@ async function main() {
       effectiveDate: new Date("2026-01-15"),
     },
   });
+
+  if (employeeId) {
+    await prisma.payslip.upsert({
+      where: { id: "00000000-0000-4000-8000-000000000030" },
+      update: {},
+      create: {
+        id: "00000000-0000-4000-8000-000000000030",
+        employeeId,
+        payPeriod: "March 2026",
+        fileName: "payslip-march-2026.pdf",
+        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        uploadedBy: "System Seed",
+      },
+    });
+  }
 
   const inventoryItems = [
     {
@@ -318,7 +307,47 @@ async function main() {
     });
   }
 
+  const { seedCleaningClientLocations } = await import("./seed-cleaning-locations");
+  await seedCleaningClientLocations(prisma);
+
   await seedAccessTestAccounts(prisma);
+
+  const { seedJobAssignments } = await import("./seed-job-assignments");
+  await seedJobAssignments(prisma);
+
+  const { seedCleaningJobs } = await import("./seed-cleaning-jobs");
+  await seedCleaningJobs(prisma);
+
+  const binTech = await prisma.employee.findFirst({
+    where: { companyEmail: "bin.tech@prossanitation.com" },
+  });
+
+  if (binTech) {
+    await prisma.binServiceSetup.updateMany({
+      where: {
+        siteId: {
+          in: pennysaverSites.map((site) => site.id),
+        },
+      },
+      data: {
+        assignedTechnicianId: binTech.id,
+        lastCompletedServiceDate: new Date("2026-04-28"),
+        nextServiceDate: new Date("2026-05-18"),
+      },
+    });
+
+    for (const siteSeed of pennysaverSites) {
+      const setup = await prisma.binServiceSetup.findUnique({
+        where: { siteId: siteSeed.id },
+      });
+      if (setup?.active) {
+        const { ensureOpenJobForSetup } = await import(
+          "../src/lib/bin-service/service"
+        );
+        await ensureOpenJobForSetup(setup);
+      }
+    }
+  }
 
   const { seedDemoVacationRequest } = await import(
     "../src/lib/vacation-request-service"
@@ -328,10 +357,18 @@ async function main() {
   });
   if (teamMember) {
     await seedDemoVacationRequest(teamMember);
+    const { seedDemoJobLetterRequest } = await import(
+      "../src/lib/job-letter-request-service"
+    );
+    await seedDemoJobLetterRequest(teamMember);
+    const { seedDemoPayslipRequest } = await import(
+      "../src/lib/payslip-request-service"
+    );
+    await seedDemoPayslipRequest(teamMember);
   }
 
   console.log(
-    `Seed complete: platform records, ${inventoryItems.length} inventory items, access-level test accounts, and demo vacation request are ready.`,
+    `Seed complete: platform records, ${inventoryItems.length} inventory items, access-level test accounts, and demo HR requests are ready.`,
   );
 }
 

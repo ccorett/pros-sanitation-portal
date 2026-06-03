@@ -1,40 +1,31 @@
 "use client";
 
-import { EditHistoryModal } from "@/components/admin/EditHistoryModal";
 import {
-  formatEditTimestamp,
-  getAdminHrRecords,
-  updateAdminHrStatus,
-  type AdminHrRecord,
-} from "@/lib/platform-storage";
-import { formatDisplayDate } from "@/lib/hr-mock-data";
+  formatDisplayDate,
+  jobLetterStatusClass,
+} from "@/lib/hr-mock-data";
+import type { JobLetterRequestDto } from "@/lib/job-letter-request-service";
+import type { PayslipRequestDto } from "@/lib/payslip-request-service";
+import {
+  inboxRecordElementId,
+  readInboxFocusParams,
+  scrollToInboxRecord,
+} from "@/lib/inbox-focus";
 import type { VacationRequestDto } from "@/lib/vacation-request-service";
 import { workflowStatusClass } from "@/lib/vacation-workflow";
-import { authClient } from "@/lib/auth-client";
 import { useCallback, useEffect, useState } from "react";
-
-function statusClass(status: string): string {
-  if (status === "Approved") {
-    return "border-[#6cc801]/35 bg-[#6cc801]/15 text-[#6cc801]";
-  }
-  if (status === "Rejected") {
-    return "border-[#ff4d4f]/35 bg-[#ff4d4f]/15 text-[#ff4d4f]";
-  }
-  return "border-[#f5c542]/35 bg-[#f5c542]/15 text-[#f5c542]";
-}
 
 // TODO: Restrict approve/reject actions to admin role when RBAC is enabled.
 export function AdminHumanResourcesSection() {
-  const { data: session } = authClient.useSession();
-  const editor =
-    session?.user?.name?.trim() ||
-    session?.user?.email?.split("@")[0] ||
-    "Admin User";
-
-  const [records, setRecords] = useState<AdminHrRecord[]>(() => getAdminHrRecords());
   const [vacationRequests, setVacationRequests] = useState<VacationRequestDto[]>([]);
+  const [jobLetterRequests, setJobLetterRequests] = useState<JobLetterRequestDto[]>([]);
+  const [payslipRequests, setPayslipRequests] = useState<PayslipRequestDto[]>([]);
   const [vacationLoading, setVacationLoading] = useState(true);
-  const [historyTarget, setHistoryTarget] = useState<AdminHrRecord | null>(null);
+  const [jobLetterLoading, setJobLetterLoading] = useState(true);
+  const [payslipLoading, setPayslipLoading] = useState(true);
+  const [actingJobLetterId, setActingJobLetterId] = useState<string | null>(null);
+  const [actingPayslipId, setActingPayslipId] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   const loadVacationRequests = useCallback(async () => {
     setVacationLoading(true);
@@ -49,27 +40,122 @@ export function AdminHumanResourcesSection() {
     }
   }, []);
 
-  useEffect(() => {
-    function refresh() {
-      setRecords(getAdminHrRecords());
+  const loadJobLetterRequests = useCallback(async () => {
+    setJobLetterLoading(true);
+    try {
+      const response = await fetch("/api/hr/job-letter-requests");
+      if (response.ok) {
+        const data = (await response.json()) as { requests: JobLetterRequestDto[] };
+        setJobLetterRequests(data.requests);
+      }
+    } finally {
+      setJobLetterLoading(false);
     }
-    refresh();
-    window.addEventListener("pros-platform-data-updated", refresh);
-    return () => window.removeEventListener("pros-platform-data-updated", refresh);
+  }, []);
+
+  const loadPayslipRequests = useCallback(async () => {
+    setPayslipLoading(true);
+    try {
+      const response = await fetch("/api/hr/payslip-requests");
+      if (response.ok) {
+        const data = (await response.json()) as { requests: PayslipRequestDto[] };
+        setPayslipRequests(data.requests);
+      }
+    } finally {
+      setPayslipLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     void loadVacationRequests();
-  }, [loadVacationRequests]);
+    void loadJobLetterRequests();
+    void loadPayslipRequests();
+  }, [loadVacationRequests, loadJobLetterRequests, loadPayslipRequests]);
 
-  function handleStatus(id: string, status: "Approved" | "Rejected") {
-    setRecords(updateAdminHrStatus(id, status, editor));
+  useEffect(() => {
+    const { focus, requestId } = readInboxFocusParams();
+    if (!focus || !requestId) return;
+    if (focus === "job-letter" || focus === "payslip" || focus === "vacation") {
+      scrollToInboxRecord(focus, requestId);
+    }
+  }, [vacationRequests, jobLetterRequests, payslipRequests]);
+
+  async function handleJobLetterReview(
+    requestId: string,
+    status: "APPROVED" | "REJECTED",
+  ) {
+    setMessage(null);
+    setActingJobLetterId(requestId);
+
+    try {
+      const response = await fetch(`/api/hr/job-letter-requests/${requestId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to update job letter request.");
+      }
+
+      setMessage(
+        `Job letter request ${status === "APPROVED" ? "approved" : "rejected"}.`,
+      );
+      await loadJobLetterRequests();
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to update job letter request.",
+      );
+    } finally {
+      setActingJobLetterId(null);
+    }
   }
 
-  const legacySections = ["Job Letter Requests", "Payslip Requests"] as const;
+  async function handlePayslipReview(
+    requestId: string,
+    status: "APPROVED" | "REJECTED",
+  ) {
+    setMessage(null);
+    setActingPayslipId(requestId);
+
+    try {
+      const response = await fetch(`/api/hr/payslip-requests/${requestId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to update payslip request.");
+      }
+
+      setMessage(
+        `Payslip request ${status === "APPROVED" ? "approved" : "rejected"}.`,
+      );
+      await loadPayslipRequests();
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to update payslip request.",
+      );
+    } finally {
+      setActingPayslipId(null);
+    }
+  }
 
   return (
     <div className="space-y-10">
+      {message ? (
+        <p className="rounded-xl border border-[#00c6ff]/30 bg-[#00c6ff]/10 px-4 py-3 text-sm text-[#00c6ff]">
+          {message}
+        </p>
+      ) : null}
+
       <section className="space-y-4">
         <div>
           <h2 className="text-xl font-bold text-[#ebfbff]">Vacation Requests</h2>
@@ -87,7 +173,7 @@ export function AdminHumanResourcesSection() {
             No vacation requests at this time.
           </div>
         ) : (
-          <div className="glass-card overflow-x-auto rounded-2xl">
+          <div className="glass-card portal-table-scroll rounded-2xl">
             <table className="min-w-[1100px] w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
@@ -103,6 +189,7 @@ export function AdminHumanResourcesSection() {
                 {vacationRequests.map((request) => (
                   <tr
                     key={request.id}
+                    id={inboxRecordElementId("vacation", request.id)}
                     className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
                   >
                     <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
@@ -139,110 +226,195 @@ export function AdminHumanResourcesSection() {
         )}
       </section>
 
-      {legacySections.map((sectionTitle) => {
-        const rows = records.filter((r) => r.requestType === sectionTitle);
-        return (
-          <section key={sectionTitle} className="space-y-4">
-            <div>
-              <h2 className="text-xl font-bold text-[#ebfbff]">{sectionTitle}</h2>
-              <p className="mt-1 text-sm text-[#ebfbff]/55">
-                Review and action employee HR submissions.
-              </p>
-            </div>
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-bold text-[#ebfbff]">Job Letter Requests</h2>
+          <p className="mt-1 text-sm text-[#ebfbff]/55">
+            Review and approve or reject employee letter requests.
+          </p>
+        </div>
 
-            {rows.length === 0 ? (
-              <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
-                No {sectionTitle.toLowerCase()} at this time.
-              </div>
-            ) : (
-              <div className="glass-card overflow-x-auto rounded-2xl">
-                <table className="min-w-[1100px] w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
-                      <th className="px-4 py-4 font-semibold sm:px-6">Request Type</th>
-                      <th className="px-4 py-4 font-semibold">Employee</th>
-                      <th className="px-4 py-4 font-semibold">Details</th>
-                      <th className="px-4 py-4 font-semibold">Date Submitted</th>
-                      <th className="px-4 py-4 font-semibold">Status</th>
-                      <th className="px-4 py-4 font-semibold">Last Edited</th>
-                      <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((record) => (
-                      <tr
-                        key={record.id}
-                        className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
+        {jobLetterLoading ? (
+          <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+            Loading job letter requests…
+          </div>
+        ) : jobLetterRequests.length === 0 ? (
+          <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+            No job letter requests at this time.
+          </div>
+        ) : (
+          <div className="glass-card portal-table-scroll rounded-2xl">
+            <table className="min-w-[1100px] w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
+                  <th className="px-4 py-4 font-semibold sm:px-6">Employee</th>
+                  <th className="px-4 py-4 font-semibold">Letter Type</th>
+                  <th className="px-4 py-4 font-semibold">Details</th>
+                  <th className="px-4 py-4 font-semibold">Date Submitted</th>
+                  <th className="px-4 py-4 font-semibold">Status</th>
+                  <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {jobLetterRequests.map((request) => (
+                  <tr
+                    key={request.id}
+                    id={inboxRecordElementId("job-letter", request.id)}
+                    className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
+                  >
+                    <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
+                      {request.employeeName}
+                      <span className="mt-1 block text-xs font-normal text-[#ebfbff]/45">
+                        {request.employeeEmail}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {request.letterTypeLabel}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {request.notes ?? "—"}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {formatDisplayDate(request.createdAt)}
+                    </td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${jobLetterStatusClass(request.statusLabel)}`}
                       >
-                        <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
-                          {record.requestType}
-                        </td>
-                        <td className="px-4 py-4 text-[#ebfbff]/70">{record.employee}</td>
-                        <td className="px-4 py-4 text-[#ebfbff]/70">{record.details}</td>
-                        <td className="px-4 py-4 text-[#ebfbff]/70">
-                          {record.dateSubmitted}
-                        </td>
-                        <td className="px-4 py-4">
-                          <span
-                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClass(record.status)}`}
-                          >
-                            {record.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-[#ebfbff]/70">
-                          {record.lastEditedAt
-                            ? formatEditTimestamp(record.lastEditedAt)
-                            : record.lastEdited ?? "—"}
-                          {record.editedBy ? (
-                            <span className="block text-xs text-[#ebfbff]/45">
-                              {record.editedBy}
-                            </span>
-                          ) : null}
-                        </td>
-                        <td className="px-4 py-4 sm:px-6">
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              disabled={record.status !== "Pending"}
-                              onClick={() => handleStatus(record.id, "Approved")}
-                              className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              type="button"
-                              disabled={record.status !== "Pending"}
-                              onClick={() => handleStatus(record.id, "Rejected")}
-                              className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
-                            >
-                              Reject
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setHistoryTarget(record)}
-                              className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
-                            >
-                              View History
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        );
-      })}
+                        {request.statusLabel}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 sm:px-6">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={
+                            request.statusLabel !== "Pending" ||
+                            actingJobLetterId === request.id
+                          }
+                          onClick={() =>
+                            void handleJobLetterReview(request.id, "APPROVED")
+                          }
+                          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          disabled={
+                            request.statusLabel !== "Pending" ||
+                            actingJobLetterId === request.id
+                          }
+                          onClick={() =>
+                            void handleJobLetterReview(request.id, "REJECTED")
+                          }
+                          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
-      {historyTarget ? (
-        <EditHistoryModal
-          recordId={historyTarget.id}
-          recordName={`${historyTarget.employee} — ${historyTarget.requestType}`}
-          onClose={() => setHistoryTarget(null)}
-        />
-      ) : null}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-bold text-[#ebfbff]">Payslip Requests</h2>
+          <p className="mt-1 text-sm text-[#ebfbff]/55">
+            Review and approve or reject employee payslip copy requests.
+          </p>
+        </div>
+
+        {payslipLoading ? (
+          <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+            Loading payslip requests…
+          </div>
+        ) : payslipRequests.length === 0 ? (
+          <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+            No payslip requests at this time.
+          </div>
+        ) : (
+          <div className="glass-card portal-table-scroll rounded-2xl">
+            <table className="min-w-[1100px] w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
+                  <th className="px-4 py-4 font-semibold sm:px-6">Employee</th>
+                  <th className="px-4 py-4 font-semibold">Pay Period</th>
+                  <th className="px-4 py-4 font-semibold">Notes</th>
+                  <th className="px-4 py-4 font-semibold">Date Submitted</th>
+                  <th className="px-4 py-4 font-semibold">Status</th>
+                  <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payslipRequests.map((request) => (
+                  <tr
+                    key={request.id}
+                    id={inboxRecordElementId("payslip", request.id)}
+                    className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
+                  >
+                    <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
+                      {request.employeeName}
+                      <span className="mt-1 block text-xs font-normal text-[#ebfbff]/45">
+                        {request.employeeEmail}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">{request.payPeriod}</td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {request.notes ?? "—"}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {formatDisplayDate(request.createdAt)}
+                    </td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${jobLetterStatusClass(request.statusLabel)}`}
+                      >
+                        {request.statusLabel}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 sm:px-6">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={
+                            request.statusLabel !== "Pending" ||
+                            actingPayslipId === request.id
+                          }
+                          onClick={() =>
+                            void handlePayslipReview(request.id, "APPROVED")
+                          }
+                          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          disabled={
+                            request.statusLabel !== "Pending" ||
+                            actingPayslipId === request.id
+                          }
+                          onClick={() =>
+                            void handlePayslipReview(request.id, "REJECTED")
+                          }
+                          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

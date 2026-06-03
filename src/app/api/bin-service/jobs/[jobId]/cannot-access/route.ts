@@ -1,4 +1,5 @@
 import { requireBinApiAccess } from "@/lib/bin-service/api-auth";
+import { assertBinJobAccess } from "@/lib/bin-service/field-service";
 import { markBinJobCannotAccess } from "@/lib/bin-service/service";
 import { NextResponse } from "next/server";
 
@@ -11,23 +12,28 @@ export async function POST(request: Request, context: RouteContext) {
   if ("error" in access) return access.error;
 
   const { jobId } = await context.params;
-  const body = (await request.json()) as { reason?: string };
+  const body = (await request.json()) as { reason?: string; serviceNotes?: string };
 
   if (!body.reason?.trim()) {
     return NextResponse.json({ error: "A reason is required." }, { status: 400 });
   }
 
   try {
+    await assertBinJobAccess(jobId, access.employee);
+
     const job = await markBinJobCannotAccess({
       jobId,
       technicianId: access.employee.id,
       reason: body.reason.trim(),
+      serviceNotes: body.serviceNotes?.trim() || null,
     });
 
     return NextResponse.json({ job });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to save cannot access.";
-    return NextResponse.json({ error: message }, { status: 400 });
+    const status =
+      message === "Forbidden" ? 403 : message === "Job not found." ? 404 : 400;
+    return NextResponse.json({ error: message }, { status });
   }
 }

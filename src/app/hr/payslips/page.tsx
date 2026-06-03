@@ -11,7 +11,8 @@ export default async function HrPayslipsPage() {
     <StaffWorkspaceShell
       sectionLabel="Human Resources"
       title="Payslips"
-      subtitle="View and download your available payslip PDFs. Read-only — no payroll calculations."
+      subtitle="Request payslip copies and track approval status. View available payslip PDFs below."
+          employeeId={employee.id}
           accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}

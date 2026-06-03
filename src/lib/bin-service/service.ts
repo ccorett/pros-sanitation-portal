@@ -275,6 +275,7 @@ export async function completeBinServiceJob(input: {
   regularBinsServiced: number;
   newBinsServiced: number;
   linersUsed: number;
+  serviceNotes?: string | null;
   clientSignatureName?: string | null;
   noSignatureReason?: string | null;
 }) {
@@ -306,6 +307,7 @@ export async function completeBinServiceJob(input: {
         newBinsExpected: job.setup.expectedNewBins,
         newBinsServiced: input.newBinsServiced,
         linersUsed: input.linersUsed,
+        serviceNotes: input.serviceNotes?.trim() || null,
         clientSignatureName: input.clientSignatureName,
         noSignatureReason: input.noSignatureReason,
         outcome: "COMPLETED",
@@ -338,6 +340,7 @@ export async function markBinJobCannotAccess(input: {
   jobId: string;
   technicianId: string;
   reason: string;
+  serviceNotes?: string | null;
 }) {
   const job = await prisma.binServiceJob.findUnique({
     where: { id: input.jobId },
@@ -362,6 +365,7 @@ export async function markBinJobCannotAccess(input: {
         newBinsServiced: 0,
         linersUsed: 0,
         issueNotes: input.reason,
+        serviceNotes: input.serviceNotes?.trim() || null,
         outcome: "CANNOT_ACCESS",
         completedAt,
       },
@@ -382,6 +386,7 @@ export async function reportBinJobIssue(input: {
   technicianId: string;
   issueType: string;
   issueNotes?: string;
+  serviceNotes?: string | null;
 }) {
   const job = await prisma.binServiceJob.findUnique({
     where: { id: input.jobId },
@@ -407,6 +412,7 @@ export async function reportBinJobIssue(input: {
         linersUsed: 0,
         issueType: input.issueType,
         issueNotes: input.issueNotes,
+        serviceNotes: input.serviceNotes?.trim() || null,
         outcome: "ISSUE_REPORTED",
         completedAt,
       },
@@ -446,6 +452,7 @@ export function enrichSiteWithStatus(site: BinSiteWithRelations) {
 
   const rotation = getRotationStatus({
     active: setup?.active ?? false,
+    lastCompletedServiceDate: setup?.lastCompletedServiceDate ?? null,
     nextServiceDate: setup?.nextServiceDate ?? null,
     openJobStatus: openJob?.status ?? null,
     scheduledDate: openJob?.scheduledDate ?? setup?.nextServiceDate ?? null,
@@ -457,6 +464,7 @@ export function enrichSiteWithStatus(site: BinSiteWithRelations) {
 export function enrichJobWithStatus(job: BinJobWithRelations) {
   const rotation = getRotationStatus({
     active: job.setup.active,
+    lastCompletedServiceDate: job.setup.lastCompletedServiceDate,
     nextServiceDate: job.setup.nextServiceDate,
     openJobStatus: job.status,
     scheduledDate: job.scheduledDate,

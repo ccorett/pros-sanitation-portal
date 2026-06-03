@@ -10,6 +10,7 @@ export default async function EquipmentSuppliesPage() {
       sectionLabel="Equipment & Supplies"
       title="Equipment & Supplies"
       subtitle="Search inventory, check availability, and request equipment, supplies, and consumables."
+          employeeId={employee.id}
           accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}

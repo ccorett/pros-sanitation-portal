@@ -2,7 +2,8 @@
 
 import { Button } from "@/components/ui/Button";
 import type { EquipmentRequestDto } from "@/lib/equipment-request-service";
-import { formatEditTimestamp } from "@/lib/platform-edit-history";
+import { readInboxFocusParams } from "@/lib/inbox-focus";
+import { formatEditTimestamp } from "@/lib/admin-format";
 import { useCallback, useEffect, useState } from "react";
 
 function urgencyClass(urgency: string): string {
@@ -70,6 +71,15 @@ export function EquipmentRequestsApprovalSection() {
   useEffect(() => {
     void loadRequests();
   }, [loadRequests]);
+
+  useEffect(() => {
+    const { equipmentRequestId } = readInboxFocusParams();
+    if (!equipmentRequestId || requests.length === 0) return;
+    const match = requests.find((row) => row.id === equipmentRequestId);
+    if (match) {
+      setSelected(match);
+    }
+  }, [requests]);
 
   async function updateStatus(
     requestId: string,
@@ -145,7 +155,7 @@ export function EquipmentRequestsApprovalSection() {
         </p>
       ) : null}
 
-      <div className="glass-card overflow-x-auto rounded-2xl">
+      <div className="glass-card portal-table-scroll rounded-2xl">
         <table className="min-w-[1400px] w-full text-left text-sm">
           <thead>
             <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
@@ -219,7 +229,7 @@ export function EquipmentRequestsApprovalSection() {
                       <button
                         type="button"
                         onClick={() => setSelected(request)}
-                        className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
                       >
                         View Details
                       </button>
@@ -227,7 +237,7 @@ export function EquipmentRequestsApprovalSection() {
                         type="button"
                         disabled={request.status !== "PENDING" || busyId === request.id}
                         onClick={() => void updateStatus(request.id, "APPROVED")}
-                        className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
                       >
                         Approve
                       </button>
@@ -235,7 +245,7 @@ export function EquipmentRequestsApprovalSection() {
                         type="button"
                         disabled={request.status !== "PENDING" || busyId === request.id}
                         onClick={() => void updateStatus(request.id, "REJECTED")}
-                        className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
                       >
                         Reject
                       </button>
@@ -243,7 +253,7 @@ export function EquipmentRequestsApprovalSection() {
                         type="button"
                         disabled={request.status !== "APPROVED" || busyId === request.id}
                         onClick={() => void updateStatus(request.id, "FULFILLED")}
-                        className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
                       >
                         Mark Fulfilled
                       </button>

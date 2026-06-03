@@ -11,6 +11,7 @@ export default async function AdminPurchasingListPage() {
       sectionLabel="Admin"
       title="Purchasing List"
       subtitle="Auto-generated when available quantity is at or below reorder level."
+          employeeId={employee.id}
           accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}

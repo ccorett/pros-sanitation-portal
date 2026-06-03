@@ -14,6 +14,7 @@ export default async function AdminBinServicesPage() {
       sectionLabel="Admin"
       title="Bin Services"
       subtitle="Sites, route locations, due/overdue bins, setup, and technician updates."
+          employeeId={employee.id}
           accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}

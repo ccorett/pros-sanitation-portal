@@ -14,6 +14,7 @@ export default async function BinJobsTodayPage() {
       sectionLabel="Job Management · Bin Management"
       title="Today's Bin Jobs"
       subtitle="Due and overdue bin locations only. Complete service to reset last service date to today."
+          employeeId={employee.id}
           accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}

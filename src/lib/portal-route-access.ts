@@ -1,8 +1,6 @@
 import { AccessLevel, OperationalGroup } from "@prisma/client";
-import {
-  canAccessGeneralJobs,
-  getEmployeeJobAssignments,
-} from "@/lib/employee-job-assignments";
+import { canAccessGeneralJobs } from "@/lib/job-assignment-access";
+import { resolveEmployeeJobAssignments } from "@/lib/job-assignment-service";
 import {
   canAccessBinManagement,
   canAccessEquipmentSupplies,
@@ -86,19 +84,22 @@ const PATH_RULES: { prefix: string; feature: PortalFeature }[] = [
   { prefix: "/jobs", feature: "jobs" },
   { prefix: "/staff-dashboard", feature: "dashboard" },
   { prefix: "/staff", feature: "dashboard" },
-  { prefix: "/policies", feature: "jobs" },
+  { prefix: "/policies", feature: "humanResources" },
   { prefix: "/notices", feature: "jobs" },
 ];
 
-export function toEmployeeAccessContext(employee: {
+export async function toEmployeeAccessContext(employee: {
+  id: string;
   accessLevel: AccessLevel;
   operationalGroup: OperationalGroup;
   companyEmail: string;
-}): EmployeeAccessContext {
+}): Promise<EmployeeAccessContext> {
+  const assignments = await resolveEmployeeJobAssignments(employee);
+
   return createEmployeeAccessContext({
     accessLevel: employee.accessLevel,
     operationalGroup: employee.operationalGroup,
-    assignments: getEmployeeJobAssignments(employee.companyEmail),
+    assignments,
   });
 }
 

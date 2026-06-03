@@ -11,6 +11,7 @@ export default async function AdminStockManagementPage() {
       sectionLabel="Admin"
       title="Stock Management"
       subtitle="Edits sync with Equipment & Supplies for all staff."
+          employeeId={employee.id}
           accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}

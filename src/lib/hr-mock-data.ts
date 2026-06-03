@@ -1,3 +1,8 @@
+/**
+ * SEED ONLY / UI helpers — not a live source of truth.
+ * Operational HR data (vacation, job letters, payslip requests) is stored in Neon.
+ * Display helpers and static HR navigation only — not live data.
+ */
 import { CalendarDays, FileText, Receipt, type LucideIcon } from "lucide-react";
 
 export type VacationRequestStatus = "Pending" | "Approved" | "Rejected";
@@ -16,13 +21,6 @@ export type VacationRequest = {
   reason: string;
   status: VacationRequestStatus;
   submittedAt: string;
-};
-
-export type Payslip = {
-  id: string;
-  periodLabel: string;
-  payDate: string;
-  fileName: string;
 };
 
 export type JobLetterRequest = {
@@ -61,57 +59,6 @@ export const hrModules: HrModule[] = [
   },
 ];
 
-export const mockLocationAssignment = "Tobago Field Operations";
-
-export const seedVacationRequests: VacationRequest[] = [
-  {
-    id: "vac-seed-001",
-    startDate: "2026-06-10",
-    endDate: "2026-06-14",
-    reason: "Family travel",
-    status: "Approved",
-    submittedAt: "2026-05-01T10:00:00.000Z",
-  },
-  {
-    id: "vac-seed-002",
-    startDate: "2026-07-22",
-    endDate: "2026-07-24",
-    reason: "Personal appointment",
-    status: "Pending",
-    submittedAt: "2026-05-18T14:30:00.000Z",
-  },
-];
-
-export const mockPayslips: Payslip[] = [
-  {
-    id: "payslip-2026-03",
-    periodLabel: "March 2026",
-    payDate: "2026-03-31",
-    fileName: "payslip-march-2026.pdf",
-  },
-  {
-    id: "payslip-2026-02",
-    periodLabel: "February 2026",
-    payDate: "2026-02-28",
-    fileName: "payslip-february-2026.pdf",
-  },
-  {
-    id: "payslip-2026-01",
-    periodLabel: "January 2026",
-    payDate: "2026-01-31",
-    fileName: "payslip-january-2026.pdf",
-  },
-];
-
-export const seedJobLetterRequests: JobLetterRequest[] = [
-  {
-    id: "letter-seed-001",
-    letterType: "Employment Letter",
-    status: "Approved",
-    requestedAt: "2026-04-12T09:00:00.000Z",
-    notes: "For bank account opening",
-  },
-];
 
 export function vacationStatusClass(status: VacationRequestStatus): string {
   if (status === "Approved") {
@@ -123,8 +70,10 @@ export function vacationStatusClass(status: VacationRequestStatus): string {
   return "border-[#f5c542]/35 bg-[#f5c542]/15 text-[#f5c542]";
 }
 
-export function jobLetterStatusClass(status: JobLetterRequestStatus): string {
-  return vacationStatusClass(status);
+export function jobLetterStatusClass(
+  status: JobLetterRequestStatus | string,
+): string {
+  return vacationStatusClass(status as VacationRequestStatus);
 }
 
 export function formatDisplayDate(isoDate: string): string {

@@ -12,6 +12,7 @@ export default async function HrVacationPage() {
       sectionLabel="Human Resources"
       title="Vacation Requests"
       subtitle="Submit time off requests and track supervisor and manager review status."
+      employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}

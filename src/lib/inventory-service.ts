@@ -58,6 +58,35 @@ export function computeStockStatus(
   return "In Stock";
 }
 
+export function isLowStockItem(item: Pick<
+  InventoryItem,
+  "availableQuantity" | "reorderLevel" | "isActive"
+>): boolean {
+  return item.isActive && item.availableQuantity <= item.reorderLevel;
+}
+
+export function isOnPurchasingList(item: Pick<
+  InventoryItem,
+  | "availableQuantity"
+  | "reorderLevel"
+  | "isActive"
+  | "purchasingExcludedFromList"
+  | "purchasingOrderedAt"
+>): boolean {
+  return (
+    isLowStockItem(item) &&
+    !item.purchasingExcludedFromList &&
+    item.purchasingOrderedAt === null
+  );
+}
+
+export function suggestedPurchaseQuantity(
+  availableQuantity: number,
+  reorderLevel: number,
+): number {
+  return Math.max(reorderLevel * 2 - availableQuantity, reorderLevel);
+}
+
 export function serializeInventoryItem(item: InventoryItem): InventoryItemDto {
   return {
     id: item.id,
@@ -171,6 +200,7 @@ export async function updateInventoryItem(
   const nextSupplier =
     input.supplier !== undefined ? input.supplier : existing.supplier;
   const nextIsActive = input.isActive ?? existing.isActive;
+  const stockRecovered = nextAvailableQuantity > nextReorderLevel;
 
   if (nextAvailableQuantity < 0 || nextReorderLevel < 0) {
     throw new Error("Quantities cannot be negative.");
@@ -221,11 +251,143 @@ export async function updateInventoryItem(
         isActive: nextIsActive,
         lastEditedAt: editedAt,
         lastEditedBy: input.editedBy,
+        ...(stockRecovered
+          ? {
+              purchasingExcludedFromList: false,
+              purchasingOrderedAt: null,
+            }
+          : {}),
       },
     });
   });
 
   return serializeInventoryItem(updated);
+}
+
+export async function countLowStockActiveItems(): Promise<number> {
+  const items = await prisma.inventoryItem.findMany({
+    where: { isActive: true },
+    select: {
+      availableQuantity: true,
+      reorderLevel: true,
+      isActive: true,
+    },
+  });
+
+  return items.filter(isLowStockItem).length;
+}
+
+export async function listPurchasingListItems(): Promise<InventoryItemDto[]> {
+  const items = await prisma.inventoryItem.findMany({
+    where: { isActive: true },
+    orderBy: [{ category: "asc" }, { itemName: "asc" }],
+  });
+
+  return items.filter(isOnPurchasingList).map(serializeInventoryItem);
+}
+
+export async function markPurchasingOrdered(
+  id: string,
+  editedBy: string,
+): Promise<InventoryItemDto> {
+  const existing = await prisma.inventoryItem.findUnique({ where: { id } });
+
+  if (!existing) {
+    throw new Error("Inventory item not found.");
+  }
+
+  if (!isLowStockItem(existing)) {
+    throw new Error("Only low-stock items can be marked ordered.");
+  }
+
+  const editedAt = new Date();
+
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.stockEditHistory.create({
+      data: {
+        inventoryItemId: existing.id,
+        previousQuantity: existing.availableQuantity,
+        newQuantity: existing.availableQuantity,
+        previousReorderLevel: existing.reorderLevel,
+        newReorderLevel: existing.reorderLevel,
+        previousStorageArea: existing.storageArea,
+        newStorageArea: existing.storageArea,
+        previousSupplier: existing.supplier,
+        newSupplier: existing.supplier,
+        editedBy,
+        editedAt,
+        notes: "Marked Ordered: Needs Purchase → Ordered",
+      },
+    });
+
+    return tx.inventoryItem.update({
+      where: { id },
+      data: {
+        purchasingOrderedAt: editedAt,
+        lastEditedAt: editedAt,
+        lastEditedBy: editedBy,
+      },
+    });
+  });
+
+  return serializeInventoryItem(updated);
+}
+
+export async function excludeFromPurchasingList(
+  id: string,
+  editedBy: string,
+): Promise<InventoryItemDto> {
+  const existing = await prisma.inventoryItem.findUnique({ where: { id } });
+
+  if (!existing) {
+    throw new Error("Inventory item not found.");
+  }
+
+  if (!isLowStockItem(existing)) {
+    throw new Error("Only low-stock items can be removed from the purchasing list.");
+  }
+
+  const editedAt = new Date();
+
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.stockEditHistory.create({
+      data: {
+        inventoryItemId: existing.id,
+        previousQuantity: existing.availableQuantity,
+        newQuantity: existing.availableQuantity,
+        previousReorderLevel: existing.reorderLevel,
+        newReorderLevel: existing.reorderLevel,
+        previousStorageArea: existing.storageArea,
+        newStorageArea: existing.storageArea,
+        previousSupplier: existing.supplier,
+        newSupplier: existing.supplier,
+        editedBy,
+        editedAt,
+        notes: "Removed From List: Active → Removed",
+      },
+    });
+
+    return tx.inventoryItem.update({
+      where: { id },
+      data: {
+        purchasingExcludedFromList: true,
+        lastEditedAt: editedAt,
+        lastEditedBy: editedBy,
+      },
+    });
+  });
+
+  return serializeInventoryItem(updated);
+}
+
+export async function getLatestInventoryActivityLabel(): Promise<string | null> {
+  const latest = await prisma.inventoryItem.findFirst({
+    where: { isActive: true, lastEditedAt: { not: null } },
+    orderBy: { lastEditedAt: "desc" },
+    select: { lastEditedAt: true },
+  });
+
+  return latest?.lastEditedAt?.toISOString() ?? null;
 }
 
 export async function listInventoryEditHistory(

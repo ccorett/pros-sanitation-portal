@@ -26,7 +26,7 @@ export async function requireInventoryReadActor() {
     } as const;
   }
 
-  const accessContext = toEmployeeAccessContext(access.employee);
+  const accessContext = await toEmployeeAccessContext(access.employee);
   const canRead =
     canAccessAdminModule(access.employee.accessLevel) ||
     canAccessEquipmentSupplies(accessContext);

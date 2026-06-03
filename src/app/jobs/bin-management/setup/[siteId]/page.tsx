@@ -38,6 +38,7 @@ export default async function BinSetupPage({ params, searchParams }: SetupPagePr
       sectionLabel="Admin · Bin Management"
       title="Bin Service Setup"
       subtitle={`Configure rotation schedule and expected bin counts for ${site.name}.`}
+      employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}
