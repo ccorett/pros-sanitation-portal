@@ -7,8 +7,11 @@ import {
   updateAdminHrStatus,
   type AdminHrRecord,
 } from "@/lib/platform-storage";
+import { formatDisplayDate } from "@/lib/hr-mock-data";
+import type { VacationRequestDto } from "@/lib/vacation-request-service";
+import { workflowStatusClass } from "@/lib/vacation-workflow";
 import { authClient } from "@/lib/auth-client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 function statusClass(status: string): string {
   if (status === "Approved") {
@@ -29,7 +32,22 @@ export function AdminHumanResourcesSection() {
     "Admin User";
 
   const [records, setRecords] = useState<AdminHrRecord[]>(() => getAdminHrRecords());
+  const [vacationRequests, setVacationRequests] = useState<VacationRequestDto[]>([]);
+  const [vacationLoading, setVacationLoading] = useState(true);
   const [historyTarget, setHistoryTarget] = useState<AdminHrRecord | null>(null);
+
+  const loadVacationRequests = useCallback(async () => {
+    setVacationLoading(true);
+    try {
+      const response = await fetch("/api/hr/vacation-requests");
+      if (response.ok) {
+        const data = (await response.json()) as { requests: VacationRequestDto[] };
+        setVacationRequests(data.requests);
+      }
+    } finally {
+      setVacationLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     function refresh() {
@@ -40,19 +58,88 @@ export function AdminHumanResourcesSection() {
     return () => window.removeEventListener("pros-platform-data-updated", refresh);
   }, []);
 
+  useEffect(() => {
+    void loadVacationRequests();
+  }, [loadVacationRequests]);
+
   function handleStatus(id: string, status: "Approved" | "Rejected") {
     setRecords(updateAdminHrStatus(id, status, editor));
   }
 
-  const sections = [
-    "Vacation Requests",
-    "Job Letter Requests",
-    "Payslip Requests",
-  ] as const;
+  const legacySections = ["Job Letter Requests", "Payslip Requests"] as const;
 
   return (
     <div className="space-y-10">
-      {sections.map((sectionTitle) => {
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-bold text-[#ebfbff]">Vacation Requests</h2>
+          <p className="mt-1 text-sm text-[#ebfbff]/55">
+            Live vacation requests from Neon (supervisor → manager workflow).
+          </p>
+        </div>
+
+        {vacationLoading ? (
+          <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+            Loading vacation requests…
+          </div>
+        ) : vacationRequests.length === 0 ? (
+          <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+            No vacation requests at this time.
+          </div>
+        ) : (
+          <div className="glass-card overflow-x-auto rounded-2xl">
+            <table className="min-w-[1100px] w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
+                  <th className="px-4 py-4 font-semibold sm:px-6">Employee</th>
+                  <th className="px-4 py-4 font-semibold">Details</th>
+                  <th className="px-4 py-4 font-semibold">Date Submitted</th>
+                  <th className="px-4 py-4 font-semibold">Supervisor</th>
+                  <th className="px-4 py-4 font-semibold">Manager</th>
+                  <th className="px-4 py-4 font-semibold sm:px-6">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vacationRequests.map((request) => (
+                  <tr
+                    key={request.id}
+                    className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
+                  >
+                    <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
+                      {request.employeeName}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {formatDisplayDate(request.startDate)} –{" "}
+                      {formatDisplayDate(request.endDate)} · {request.reason}
+                      <span className="mt-1 block text-xs text-[#ebfbff]/45">
+                        {request.locationAssignment}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {formatDisplayDate(request.createdAt)}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {request.supervisorStatusLabel}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {request.managerStatusLabel}
+                    </td>
+                    <td className="px-4 py-4 sm:px-6">
+                      <span
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${workflowStatusClass(request.finalStatusLabel)}`}
+                      >
+                        {request.finalStatusLabel}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {legacySections.map((sectionTitle) => {
         const rows = records.filter((r) => r.requestType === sectionTitle);
         return (
           <section key={sectionTitle} className="space-y-4">

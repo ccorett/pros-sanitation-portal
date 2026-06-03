@@ -3,6 +3,7 @@ import {
   AccountStatus,
   ClientLocationStatus,
   EmploymentStatus,
+  InventoryCategory,
   JobStatus,
   NoticeCategory,
   PrismaClient,
@@ -118,6 +119,105 @@ async function main() {
     },
   });
 
+  const inventoryItems = [
+    {
+      id: "seed-inventory-pressure-washer",
+      itemName: "Pressure Washer",
+      category: InventoryCategory.EQUIPMENT,
+      availableQuantity: 3,
+      unit: "unit",
+      reorderLevel: 1,
+      storageArea: "Equipment Room",
+      supplier: "To be confirmed",
+    },
+    {
+      id: "seed-inventory-wet-dry-vacuum",
+      itemName: "Wet/Dry Vacuum",
+      category: InventoryCategory.EQUIPMENT,
+      availableQuantity: 0,
+      unit: "unit",
+      reorderLevel: 1,
+      storageArea: "Equipment Room",
+      supplier: "To be confirmed",
+    },
+    {
+      id: "seed-inventory-bin-liners",
+      itemName: "Bin Liners",
+      category: InventoryCategory.CONSUMABLES,
+      availableQuantity: 250,
+      unit: "pack",
+      reorderLevel: 50,
+      storageArea: "Stock Room",
+      supplier: "To be confirmed",
+    },
+    {
+      id: "seed-inventory-gloves",
+      itemName: "Gloves",
+      category: InventoryCategory.PPE,
+      availableQuantity: 100,
+      unit: "box",
+      reorderLevel: 25,
+      storageArea: "PPE Shelf",
+      supplier: "To be confirmed",
+    },
+    {
+      id: "seed-inventory-disinfectant",
+      itemName: "Disinfectant",
+      category: InventoryCategory.CHEMICALS,
+      availableQuantity: 12,
+      unit: "gallon",
+      reorderLevel: 5,
+      storageArea: "Chemical Store",
+      supplier: "To be confirmed",
+    },
+    {
+      id: "seed-inventory-soap",
+      itemName: "Soap",
+      category: InventoryCategory.CONSUMABLES,
+      availableQuantity: 20,
+      unit: "case",
+      reorderLevel: 5,
+      storageArea: "Stock Room",
+      supplier: "To be confirmed",
+    },
+    {
+      id: "seed-inventory-paper-towels",
+      itemName: "Paper Towels",
+      category: InventoryCategory.CONSUMABLES,
+      availableQuantity: 8,
+      unit: "case",
+      reorderLevel: 10,
+      storageArea: "Stock Room",
+      supplier: "To be confirmed",
+    },
+  ] as const;
+
+  for (const item of inventoryItems) {
+    await prisma.inventoryItem.upsert({
+      where: { id: item.id },
+      update: {
+        itemName: item.itemName,
+        category: item.category,
+        availableQuantity: item.availableQuantity,
+        unit: item.unit,
+        reorderLevel: item.reorderLevel,
+        storageArea: item.storageArea,
+        supplier: item.supplier,
+        isActive: true,
+      },
+      create: {
+        id: item.id,
+        itemName: item.itemName,
+        category: item.category,
+        availableQuantity: item.availableQuantity,
+        unit: item.unit,
+        reorderLevel: item.reorderLevel,
+        storageArea: item.storageArea,
+        supplier: item.supplier,
+      },
+    });
+  }
+
   const pennysaverClient = await prisma.binClient.upsert({
     where: { id: "00000000-0000-4000-8000-000000000100" },
     update: { name: "Pennysaver" },
@@ -220,8 +320,18 @@ async function main() {
 
   await seedAccessTestAccounts(prisma);
 
+  const { seedDemoVacationRequest } = await import(
+    "../src/lib/vacation-request-service"
+  );
+  const teamMember = await prisma.employee.findFirst({
+    where: { companyEmail: "team.member@prossanitation.com" },
+  });
+  if (teamMember) {
+    await seedDemoVacationRequest(teamMember);
+  }
+
   console.log(
-    "Seed complete: platform records and access-level test accounts are ready.",
+    `Seed complete: platform records, ${inventoryItems.length} inventory items, access-level test accounts, and demo vacation request are ready.`,
   );
 }
 

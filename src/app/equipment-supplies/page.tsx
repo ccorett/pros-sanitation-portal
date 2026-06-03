@@ -14,7 +14,7 @@ export default async function EquipmentSuppliesPage() {
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}
     >
-      <InventorySection employeeRecordId={employee.id} />
+      <InventorySection />
     </StaffWorkspaceShell>
   );
 }

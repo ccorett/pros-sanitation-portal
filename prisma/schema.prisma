@@ -416,3 +416,147 @@ model BinServiceLog {
   @@index([completedAt])
   @@map("bin_service_logs")
 }
+
+enum InventoryCategory {
+  EQUIPMENT
+  CHEMICALS
+  PPE
+  CONSUMABLES
+}
+
+model InventoryItem {
+  id                String            @id @default(cuid())
+  itemName          String
+  category          InventoryCategory
+  availableQuantity Int
+  unit              String
+  reorderLevel      Int
+  storageArea       String
+  supplier          String?
+  isActive          Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  lastEditedAt      DateTime?
+  lastEditedBy      String?
+
+  stockEditHistory StockEditHistory[]
+  equipmentRequests EquipmentRequest[]
+
+  @@index([category])
+  @@index([isActive])
+  @@map("inventory_items")
+}
+
+model StockEditHistory {
+  id                   String   @id @default(cuid())
+  inventoryItemId      String
+  previousQuantity     Int
+  newQuantity          Int
+  previousReorderLevel Int?
+  newReorderLevel      Int?
+  previousStorageArea  String?
+  newStorageArea       String?
+  previousSupplier     String?
+  newSupplier          String?
+  editedBy             String
+  editedAt             DateTime @default(now())
+  notes                String?
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryItemId])
+  @@index([editedAt])
+  @@map("stock_edit_history")
+}
+
+enum RequestUrgency {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum EquipmentRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+  CANCELLED
+}
+
+model EquipmentRequest {
+  id                String                 @id @default(cuid())
+  inventoryItemId   String
+  requestedById     String
+  requestedByName   String
+  requestedByEmail  String
+  quantityRequested Int
+  reason            String
+  urgency           RequestUrgency
+  status            EquipmentRequestStatus @default(PENDING)
+  reviewedById      String?
+  reviewedByName    String?
+  reviewedAt        DateTime?
+  decisionNotes     String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+
+  @@index([inventoryItemId])
+  @@index([requestedById])
+  @@index([status])
+  @@index([createdAt])
+  @@map("equipment_requests")
+}
+
+enum VacationSupervisorStatus {
+  PENDING
+  AWARE
+  UNAWARE
+}
+
+enum VacationManagerStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum VacationFinalStatus {
+  PENDING_SUPERVISOR_REVIEW
+  PENDING_MANAGER_REVIEW
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model VacationRequest {
+  id                   String                   @id @default(cuid())
+  employeeId           String
+  employeeName         String
+  employeeEmail        String
+  locationAssignment   String
+  supervisorId         String?
+  supervisorName       String?
+  startDate            DateTime
+  endDate              DateTime
+  reason               String
+  supervisorStatus     VacationSupervisorStatus @default(PENDING)
+  supervisorNotes      String?
+  supervisorReviewedAt DateTime?
+  managerStatus        VacationManagerStatus    @default(PENDING)
+  managerNotes         String?
+  managerReviewedById  String?
+  managerReviewedByName String?
+  managerReviewedAt    DateTime?
+  finalStatus          VacationFinalStatus      @default(PENDING_SUPERVISOR_REVIEW)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  @@index([employeeId])
+  @@index([locationAssignment])
+  @@index([supervisorId])
+  @@index([finalStatus])
+  @@index([createdAt])
+  @@map("vacation_requests")
+}

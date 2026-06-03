@@ -34,7 +34,7 @@ export default async function SupervisorReviewsPage() {
         </Link>
       </div>
 
-      <SupervisorVacationReviewSection supervisor={employee} />
+      <SupervisorVacationReviewSection />
     </StaffWorkspaceShell>
   );
 }

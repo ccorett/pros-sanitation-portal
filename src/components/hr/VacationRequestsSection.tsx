@@ -1,65 +1,77 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
-import {
-  addVacationRequest,
-  getVacationRequests,
-  type VacationSubmitMeta,
-} from "@/lib/hr-client-storage";
-import {
-  formatDisplayDate,
-  vacationStatusClass,
-  type VacationRequest,
-} from "@/lib/hr-mock-data";
-import {
-  workflowStatusClass,
-  type VacationWorkflowRequest,
-} from "@/lib/vacation-workflow";
-import { useEffect, useState } from "react";
+import { formatDisplayDate } from "@/lib/hr-mock-data";
+import type { VacationRequestDto } from "@/lib/vacation-request-service";
+import { workflowStatusClass } from "@/lib/vacation-workflow";
+import { useCallback, useEffect, useState } from "react";
 
 type VacationRequestsSectionProps = {
-  employeeMeta: VacationSubmitMeta;
-  serverSeed?: VacationWorkflowRequest[];
+  locationAssignment: string;
 };
 
-function displayStatus(request: VacationRequest): string {
-  const workflow = request as VacationWorkflowRequest;
-  return workflow.workflowStatus ?? request.status;
+function supervisorStatusClass(status: string): string {
+  if (status === "Aware") {
+    return "border-[#6cc801]/35 bg-[#6cc801]/15 text-[#6cc801]";
+  }
+  if (status === "Unaware") {
+    return "border-[#ff4d4f]/35 bg-[#ff4d4f]/15 text-[#ff4d4f]";
+  }
+  return "border-[#f5c542]/35 bg-[#f5c542]/15 text-[#f5c542]";
+}
+
+function managerStatusClass(status: string): string {
+  if (status === "Approved") {
+    return "border-[#6cc801]/35 bg-[#6cc801]/15 text-[#6cc801]";
+  }
+  if (status === "Rejected") {
+    return "border-[#ff4d4f]/35 bg-[#ff4d4f]/15 text-[#ff4d4f]";
+  }
+  return "border-[#f5c542]/35 bg-[#f5c542]/15 text-[#f5c542]";
 }
 
 export function VacationRequestsSection({
-  employeeMeta,
-  serverSeed,
+  locationAssignment,
 }: VacationRequestsSectionProps) {
-  const [requests, setRequests] = useState<VacationRequest[]>(() =>
-    getVacationRequests(employeeMeta.employeeId, serverSeed),
-  );
+  const [requests, setRequests] = useState<VacationRequestDto[]>([]);
+  const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadRequests = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/hr/vacation-requests");
+      if (!response.ok) {
+        throw new Error("Unable to load vacation requests.");
+      }
+      const data = (await response.json()) as { requests: VacationRequestDto[] };
+      setRequests(data.requests);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Unable to load vacation requests.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!serverSeed?.length) return;
+    void loadRequests();
+  }, [loadRequests]);
 
-    void import("@/lib/platform-hr-storage").then(({ upsertVacationFromEmployee }) => {
-      for (const request of serverSeed) {
-        upsertVacationFromEmployee(
-          employeeMeta.employeeId,
-          employeeMeta.employeeName,
-          request,
-        );
-      }
-    });
-  }, [employeeMeta.employeeId, employeeMeta.employeeName, serverSeed]);
-
-  function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
     setSuccess(null);
 
-    if (!employeeMeta.locationAssignment) {
+    if (!locationAssignment) {
       setError(
         "Location assignment is required before submitting vacation requests.",
       );
@@ -76,23 +88,43 @@ export function VacationRequestsSection({
       return;
     }
 
-    const updated = addVacationRequest(employeeMeta, {
-      startDate,
-      endDate,
-      reason: reason.trim(),
-    });
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/hr/vacation-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startDate,
+          endDate,
+          reason: reason.trim(),
+        }),
+      });
 
-    setRequests(updated);
-    setStartDate("");
-    setEndDate("");
-    setReason("");
-    setSuccess(
-      "Vacation request submitted. Status: Pending Supervisor Review.",
-    );
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to submit vacation request.");
+      }
+
+      setStartDate("");
+      setEndDate("");
+      setReason("");
+      setSuccess(
+        "Vacation request submitted. Status: Pending Supervisor Review.",
+      );
+      await loadRequests();
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Unable to submit vacation request.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <form onSubmit={handleSubmit} className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">
         <h2 className="text-lg font-bold text-[#ebfbff]">Submit Vacation Request</h2>
 
@@ -141,51 +173,82 @@ export function VacationRequestsSection({
           </p>
         ) : null}
 
-        <Button type="submit" fullWidth className="min-h-[56px] text-base">
-          Submit Vacation Request
+        <Button
+          type="submit"
+          fullWidth
+          className="min-h-[56px] text-base"
+          disabled={submitting}
+        >
+          {submitting ? "Submitting…" : "Submit Vacation Request"}
         </Button>
       </form>
 
       <div className="space-y-3">
         <h2 className="text-lg font-bold text-[#ebfbff]">Your Requests</h2>
-        {requests.length === 0 ? (
+        {loading ? (
+          <div className="glass-card rounded-2xl p-6 text-sm text-[#ebfbff]/55">
+            Loading vacation requests…
+          </div>
+        ) : requests.length === 0 ? (
           <div className="glass-card rounded-2xl p-6 text-sm text-[#ebfbff]/55">
             No vacation requests yet.
           </div>
         ) : (
-          requests.map((request) => {
-            const statusLabel = displayStatus(request);
-            const statusClass =
-              "workflowStatus" in request &&
-              typeof (request as VacationWorkflowRequest).workflowStatus ===
-                "string"
-                ? workflowStatusClass(
-                    (request as VacationWorkflowRequest).workflowStatus,
-                  )
-                : vacationStatusClass(request.status);
-
-            return (
-              <article key={request.id} className="glass-card rounded-2xl p-5 sm:p-6">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-[#00c6ff]">
-                      {formatDisplayDate(request.startDate)} –{" "}
-                      {formatDisplayDate(request.endDate)}
-                    </p>
-                    <p className="mt-2 text-sm text-[#ebfbff]/70">{request.reason}</p>
-                  </div>
-                  <span
-                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClass}`}
+          <div className="glass-card overflow-x-auto rounded-2xl">
+            <table className="min-w-[900px] w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
+                  <th className="px-4 py-4 font-semibold sm:px-6">Start Date</th>
+                  <th className="px-4 py-4 font-semibold">End Date</th>
+                  <th className="px-4 py-4 font-semibold">Reason</th>
+                  <th className="px-4 py-4 font-semibold">Supervisor Status</th>
+                  <th className="px-4 py-4 font-semibold">Manager Status</th>
+                  <th className="px-4 py-4 font-semibold">Final Status</th>
+                  <th className="px-4 py-4 font-semibold sm:px-6">Date Submitted</th>
+                </tr>
+              </thead>
+              <tbody>
+                {requests.map((request) => (
+                  <tr
+                    key={request.id}
+                    className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
                   >
-                    {statusLabel}
-                  </span>
-                </div>
-                <p className="mt-3 text-xs text-[#ebfbff]/45">
-                  Submitted {formatDisplayDate(request.submittedAt)}
-                </p>
-              </article>
-            );
-          })
+                    <td className="px-4 py-4 text-[#ebfbff]/80 sm:px-6">
+                      {formatDisplayDate(request.startDate)}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/80">
+                      {formatDisplayDate(request.endDate)}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">{request.reason}</td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${supervisorStatusClass(request.supervisorStatusLabel)}`}
+                      >
+                        {request.supervisorStatusLabel}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${managerStatusClass(request.managerStatusLabel)}`}
+                      >
+                        {request.managerStatusLabel}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${workflowStatusClass(request.finalStatusLabel)}`}
+                      >
+                        {request.finalStatusLabel}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70 sm:px-6">
+                      {formatDisplayDate(request.createdAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

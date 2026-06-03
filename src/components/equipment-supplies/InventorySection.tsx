@@ -1,54 +1,110 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
-import { addInventoryRequest, getInventoryRequests } from "@/lib/equipment-client-storage";
 import {
-  formatInventoryDate,
-  formatRequestDate,
-  getInventoryStatus,
-  inventoryCategories,
-  inventoryItems,
   inventoryStatusClass,
   urgencyClass,
   urgencyOptions,
-  type InventoryCategory,
-  type InventoryItem,
-  type InventoryRequest,
+  type InventoryStatus,
   type InventoryUrgency,
 } from "@/lib/equipment-supplies-mock-data";
-import { getManagedInventoryItems } from "@/lib/platform-storage";
+import type { EquipmentRequestDto } from "@/lib/equipment-request-service";
+import type { InventoryItemDto } from "@/lib/inventory-service";
+import { formatEditTimestamp } from "@/lib/platform-edit-history";
 import { Search, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-type InventorySectionProps = {
-  employeeRecordId: string;
-};
+const INVENTORY_CATEGORY_FILTERS = [
+  { value: "All", label: "All" },
+  { value: "EQUIPMENT", label: "Equipment" },
+  { value: "CHEMICALS", label: "Chemicals" },
+  { value: "PPE", label: "PPE" },
+  { value: "CONSUMABLES", label: "Consumables" },
+] as const;
 
-export function InventorySection({ employeeRecordId }: InventorySectionProps) {
+function requestStatusClass(status: string): string {
+  if (status === "APPROVED" || status === "Approved") {
+    return "border-[#6cc801]/35 bg-[#6cc801]/15 text-[#6cc801]";
+  }
+  if (status === "REJECTED" || status === "Rejected") {
+    return "border-[#ff4d4f]/35 bg-[#ff4d4f]/15 text-[#ff4d4f]";
+  }
+  if (status === "FULFILLED" || status === "Fulfilled") {
+    return "border-[#00c6ff]/35 bg-[#00c6ff]/15 text-[#00c6ff]";
+  }
+  return "border-[#f5c542]/35 bg-[#f5c542]/15 text-[#f5c542]";
+}
+
+export function InventorySection() {
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<InventoryCategory | "All">("All");
-  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [category, setCategory] = useState<(typeof INVENTORY_CATEGORY_FILTERS)[number]["value"]>("All");
+  const [selectedItem, setSelectedItem] = useState<InventoryItemDto | null>(null);
   const [isRestock, setIsRestock] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState("");
   const [urgency, setUrgency] = useState<InventoryUrgency>("Normal");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [requests, setRequests] = useState<InventoryRequest[]>(() =>
-    getInventoryRequests(employeeRecordId),
-  );
-  const [inventory, setInventory] = useState<InventoryItem[]>(() =>
-    typeof window !== "undefined" ? getManagedInventoryItems() : inventoryItems,
-  );
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [requests, setRequests] = useState<EquipmentRequestDto[]>([]);
+  const [inventory, setInventory] = useState<InventoryItemDto[]>([]);
+
+  const loadRequests = useCallback(async () => {
+    setRequestsLoading(true);
+
+    try {
+      const response = await fetch("/api/equipment-requests");
+      const data = (await response.json()) as {
+        requests?: EquipmentRequestDto[];
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to load recent requests.");
+      }
+
+      setRequests(data.requests ?? []);
+    } catch {
+      setRequests([]);
+    } finally {
+      setRequestsLoading(false);
+    }
+  }, []);
+
+  const loadInventory = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+
+    try {
+      const response = await fetch("/api/inventory");
+      const data = (await response.json()) as {
+        items?: InventoryItemDto[];
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to load inventory.");
+      }
+
+      setInventory(data.items ?? []);
+    } catch (fetchError) {
+      setLoadError(
+        fetchError instanceof Error
+          ? fetchError.message
+          : "Unable to load inventory.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    function refresh() {
-      setInventory(getManagedInventoryItems());
-    }
-    refresh();
-    window.addEventListener("pros-platform-data-updated", refresh);
-    return () => window.removeEventListener("pros-platform-data-updated", refresh);
-  }, []);
+    void loadInventory();
+    void loadRequests();
+  }, [loadInventory, loadRequests]);
 
   const filteredItems = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -56,14 +112,15 @@ export function InventorySection({ employeeRecordId }: InventorySectionProps) {
       const matchesCategory = category === "All" || item.category === category;
       const matchesSearch =
         !query ||
-        item.name.toLowerCase().includes(query) ||
-        item.category.toLowerCase().includes(query) ||
-        item.storageArea.toLowerCase().includes(query);
+        item.itemName.toLowerCase().includes(query) ||
+        item.categoryLabel.toLowerCase().includes(query) ||
+        item.storageArea.toLowerCase().includes(query) ||
+        (item.supplier ?? "").toLowerCase().includes(query);
       return matchesCategory && matchesSearch;
     });
   }, [search, category, inventory]);
 
-  function openRequestForm(item: InventoryItem, restock: boolean) {
+  function openRequestForm(item: InventoryItemDto, restock: boolean) {
     setSelectedItem(item);
     setIsRestock(restock);
     setQuantity(1);
@@ -77,7 +134,7 @@ export function InventorySection({ employeeRecordId }: InventorySectionProps) {
     setSelectedItem(null);
   }
 
-  function handleSubmitRequest(event: React.FormEvent) {
+  async function handleSubmitRequest(event: React.FormEvent) {
     event.preventDefault();
     if (!selectedItem) return;
 
@@ -91,19 +148,44 @@ export function InventorySection({ employeeRecordId }: InventorySectionProps) {
       return;
     }
 
-    const updated = addInventoryRequest(employeeRecordId, {
-      itemId: selectedItem.id,
-      itemName: selectedItem.name,
-      quantity,
-      reason: reason.trim(),
-      urgency,
-    });
+    setSubmitting(true);
+    setError(null);
 
-    setRequests(updated);
-    setSelectedItem(null);
-    setSuccess(
-      `${isRestock ? "Restock" : "Item"} request submitted for ${selectedItem.name}.`,
-    );
+    try {
+      const response = await fetch("/api/equipment-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inventoryItemId: selectedItem.id,
+          quantityRequested: quantity,
+          reason: reason.trim(),
+          urgency,
+        }),
+      });
+
+      const data = (await response.json()) as {
+        request?: EquipmentRequestDto;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to submit request.");
+      }
+
+      await loadRequests();
+      setSelectedItem(null);
+      setSuccess(
+        `${isRestock ? "Restock" : "Item"} request submitted for ${selectedItem.itemName}.`,
+      );
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Unable to submit request.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -120,7 +202,7 @@ export function InventorySection({ employeeRecordId }: InventorySectionProps) {
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by item name or category"
+              placeholder="Search by item name, category, storage area, or supplier"
               className="w-full min-h-[52px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 py-3 pl-12 pr-4 text-base text-[#ebfbff] placeholder:text-[#ebfbff]/35 focus:border-[#00c6ff]/50 focus:outline-none"
             />
           </div>
@@ -129,24 +211,30 @@ export function InventorySection({ employeeRecordId }: InventorySectionProps) {
         <div className="mt-5">
           <p className="mb-2 text-sm text-[#ebfbff]/70">Browse categories</p>
           <div className="flex flex-wrap gap-2">
-            {(["All", ...inventoryCategories] as const).map((option) => (
+            {INVENTORY_CATEGORY_FILTERS.map((option) => (
               <button
-                key={option}
+                key={option.value}
                 type="button"
-                onClick={() => setCategory(option)}
+                onClick={() => setCategory(option.value)}
                 className={[
                   "min-h-[44px] rounded-xl border px-4 py-2 text-sm font-semibold transition-colors",
-                  category === option
+                  category === option.value
                     ? "border-[#6cc801]/50 bg-[#6cc801]/15 text-[#6cc801]"
                     : "border-[#ebfbff]/15 bg-[#ebfbff]/5 text-[#ebfbff]/70 hover:bg-[#ebfbff]/10",
                 ].join(" ")}
               >
-                {option}
+                {option.label}
               </button>
             ))}
           </div>
         </div>
       </div>
+
+      {loadError ? (
+        <p className="rounded-xl border border-[#ff4d4f]/30 bg-[#ff4d4f]/10 px-4 py-3 text-sm text-[#ff4d4f]">
+          {loadError}
+        </p>
+      ) : null}
 
       {success ? (
         <p className="rounded-xl border border-[#6cc801]/30 bg-[#6cc801]/10 px-4 py-3 text-sm text-[#6cc801]">
@@ -154,13 +242,17 @@ export function InventorySection({ employeeRecordId }: InventorySectionProps) {
         </p>
       ) : null}
 
-      {filteredItems.length === 0 ? (
+      {loading ? (
+        <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+          Loading inventory from database…
+        </div>
+      ) : filteredItems.length === 0 ? (
         <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
           No inventory items match your search.
         </div>
       ) : (
         <div className="glass-card overflow-x-auto rounded-2xl">
-          <table className="min-w-[1000px] w-full text-left text-sm">
+          <table className="min-w-[1100px] w-full text-left text-sm">
             <thead>
               <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
                 <th className="px-4 py-4 font-semibold sm:px-6">Item Name</th>
@@ -168,18 +260,15 @@ export function InventorySection({ employeeRecordId }: InventorySectionProps) {
                 <th className="px-4 py-4 font-semibold">Available Quantity</th>
                 <th className="px-4 py-4 font-semibold">Unit</th>
                 <th className="px-4 py-4 font-semibold">Stock Status</th>
-                <th className="px-4 py-4 font-semibold">Location/Storage Area</th>
+                <th className="px-4 py-4 font-semibold">Storage Area</th>
+                <th className="px-4 py-4 font-semibold">Supplier</th>
                 <th className="px-4 py-4 font-semibold">Last Updated</th>
                 <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
               </tr>
             </thead>
             <tbody>
               {filteredItems.map((item) => {
-                const status = getInventoryStatus(
-                  item.availableQuantity,
-                  item.reorderLevel,
-                );
-                const outOfStock = status === "Out of Stock";
+                const outOfStock = item.stockStatus === "Out of Stock";
 
                 return (
                   <tr
@@ -187,23 +276,26 @@ export function InventorySection({ employeeRecordId }: InventorySectionProps) {
                     className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
                   >
                     <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
-                      {item.name}
+                      {item.itemName}
                     </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">{item.category}</td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">{item.categoryLabel}</td>
                     <td className="px-4 py-4 text-[#ebfbff]/70">
                       {item.availableQuantity}
                     </td>
                     <td className="px-4 py-4 text-[#ebfbff]/70">{item.unit}</td>
                     <td className="px-4 py-4">
                       <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${inventoryStatusClass(status)}`}
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${inventoryStatusClass(item.stockStatus as InventoryStatus)}`}
                       >
-                        {status}
+                        {item.stockStatus}
                       </span>
                     </td>
                     <td className="px-4 py-4 text-[#ebfbff]/70">{item.storageArea}</td>
                     <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {formatInventoryDate(item.lastUpdated)}
+                      {item.supplier ?? "—"}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {formatEditTimestamp(item.lastEditedAt ?? item.updatedAt)}
                     </td>
                     <td className="px-4 py-4 sm:px-6">
                       <button
@@ -222,7 +314,7 @@ export function InventorySection({ employeeRecordId }: InventorySectionProps) {
         </div>
       )}
 
-      {requests.length > 0 ? (
+      {!requestsLoading && requests.length > 0 ? (
         <div className="space-y-3">
           <h2 className="text-lg font-bold text-[#ebfbff]">Recent Requests</h2>
           {requests.slice(0, 5).map((request) => (
@@ -231,17 +323,24 @@ export function InventorySection({ employeeRecordId }: InventorySectionProps) {
                 <div>
                   <h3 className="text-base font-bold text-[#ebfbff]">{request.itemName}</h3>
                   <p className="mt-1 text-sm text-[#ebfbff]/60">
-                    Qty {request.quantity} · {request.reason}
+                    Qty {request.quantityRequested} {request.unit} · {request.reason}
                   </p>
                 </div>
-                <span
-                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${urgencyClass(request.urgency)}`}
-                >
-                  {request.urgency}
-                </span>
+                <div className="flex flex-wrap gap-2">
+                  <span
+                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${urgencyClass(request.urgencyLabel as InventoryUrgency)}`}
+                  >
+                    {request.urgencyLabel}
+                  </span>
+                  <span
+                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${requestStatusClass(request.status)}`}
+                  >
+                    {request.statusLabel}
+                  </span>
+                </div>
               </div>
               <p className="mt-3 text-xs text-[#ebfbff]/45">
-                Submitted {formatRequestDate(request.submittedAt)}
+                Requested {formatEditTimestamp(request.createdAt)}
               </p>
             </article>
           ))}
@@ -259,7 +358,9 @@ export function InventorySection({ employeeRecordId }: InventorySectionProps) {
                 <p className="text-sm font-medium text-[#00c6ff]">
                   {isRestock ? "Request Restock" : "Request Item"}
                 </p>
-                <h2 className="mt-1 text-xl font-bold text-[#ebfbff]">{selectedItem.name}</h2>
+                <h2 className="mt-1 text-xl font-bold text-[#ebfbff]">
+                  {selectedItem.itemName}
+                </h2>
               </div>
               <button
                 type="button"
@@ -276,7 +377,9 @@ export function InventorySection({ employeeRecordId }: InventorySectionProps) {
                 <p className="text-xs font-semibold uppercase tracking-wide text-[#ebfbff]/50">
                   Item
                 </p>
-                <p className="mt-1 text-sm font-medium text-[#ebfbff]">{selectedItem.name}</p>
+                <p className="mt-1 text-sm font-medium text-[#ebfbff]">
+                  {selectedItem.itemName}
+                </p>
               </div>
 
               <label className="block">
@@ -344,8 +447,13 @@ export function InventorySection({ employeeRecordId }: InventorySectionProps) {
               </p>
             ) : null}
 
-            <Button type="submit" fullWidth className="mt-6 min-h-[56px] text-base">
-              Submit Request
+            <Button
+              type="submit"
+              fullWidth
+              className="mt-6 min-h-[56px] text-base"
+              disabled={submitting}
+            >
+              {submitting ? "Submitting…" : "Submit Request"}
             </Button>
           </form>
         </div>

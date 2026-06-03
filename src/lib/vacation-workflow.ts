@@ -90,7 +90,9 @@ export function canSupervisorReviewRequest(
   return false;
 }
 
-export function workflowStatusClass(status: VacationWorkflowStatus): string {
+export function workflowStatusClass(
+  status: VacationWorkflowStatus | string,
+): string {
   if (status === "Approved") {
     return "border-[#6cc801]/35 bg-[#6cc801]/15 text-[#6cc801]";
   }

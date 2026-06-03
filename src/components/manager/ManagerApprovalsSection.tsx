@@ -1,42 +1,72 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
-import {
-  getVacationWorkflowRecords,
-  managerDecideVacationRequest,
-} from "@/lib/platform-hr-storage";
 import { formatDisplayDate } from "@/lib/hr-mock-data";
+import type { VacationRequestDto } from "@/lib/vacation-request-service";
 import { workflowStatusClass } from "@/lib/vacation-workflow";
-import { useMemo, useState } from "react";
+import { VacationFinalStatus } from "@prisma/client";
+import { useCallback, useEffect, useState } from "react";
 
-type ManagerApprovalsSectionProps = {
-  managerName: string;
-};
-
-export function ManagerApprovalsSection({
-  managerName,
-}: ManagerApprovalsSectionProps) {
+export function ManagerApprovalsSection() {
   const [message, setMessage] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [requests, setRequests] = useState<VacationRequestDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actingId, setActingId] = useState<string | null>(null);
 
-  const queue = useMemo(() => {
-    void refreshKey;
-    return getVacationWorkflowRecords().filter(
-      (request) => request.workflowStatus === "Pending Manager Review",
-    );
-  }, [refreshKey]);
+  const loadRequests = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/hr/vacation-requests");
+      if (!response.ok) {
+        throw new Error("Unable to load vacation requests.");
+      }
+      const data = (await response.json()) as { requests: VacationRequestDto[] };
+      setRequests(
+        data.requests.filter(
+          (request) =>
+            request.finalStatus === VacationFinalStatus.PENDING_MANAGER_REVIEW,
+        ),
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  function handleDecision(
+  useEffect(() => {
+    void loadRequests();
+  }, [loadRequests]);
+
+  async function handleDecision(
     requestId: string,
-    decision: "Approved" | "Rejected",
+    action: "APPROVED" | "REJECTED",
   ) {
-    managerDecideVacationRequest({
-      requestId,
-      decision,
-      editedBy: managerName,
-    });
-    setMessage(`Request ${decision.toLowerCase()}.`);
-    setRefreshKey((value) => value + 1);
+    setMessage(null);
+    setActingId(requestId);
+
+    try {
+      const response = await fetch(
+        `/api/hr/vacation-requests/${requestId}/manager`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        },
+      );
+
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to update vacation request.");
+      }
+
+      setMessage(`Request ${action === "APPROVED" ? "approved" : "rejected"}.`);
+      await loadRequests();
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Unable to update vacation request.",
+      );
+    } finally {
+      setActingId(null);
+    }
   }
 
   return (
@@ -47,7 +77,9 @@ export function ManagerApprovalsSection({
         </p>
       ) : null}
 
-      {queue.length === 0 ? (
+      {loading ? (
+        <p className="text-sm text-[#ebfbff]/60">Loading vacation requests…</p>
+      ) : requests.length === 0 ? (
         <p className="text-sm text-[#ebfbff]/60">
           No requests are waiting for manager approval. After a supervisor marks
           Aware or Unaware, requests appear here.
@@ -58,17 +90,17 @@ export function ManagerApprovalsSection({
             <thead className="bg-[#0c151d]/80 text-xs uppercase tracking-wide text-[#ebfbff]/45">
               <tr>
                 <th className="px-4 py-3">Employee</th>
-                <th className="px-4 py-3">Request Type</th>
                 <th className="px-4 py-3">Location</th>
-                <th className="px-4 py-3">Supervisor</th>
+                <th className="px-4 py-3">Start Date</th>
+                <th className="px-4 py-3">End Date</th>
                 <th className="px-4 py-3">Supervisor Status</th>
-                <th className="px-4 py-3">Dates</th>
-                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Supervisor Notes</th>
+                <th className="px-4 py-3">Final Status</th>
                 <th className="px-4 py-3">Action</th>
               </tr>
             </thead>
             <tbody>
-              {queue.map((request) => (
+              {requests.map((request) => (
                 <tr
                   key={request.id}
                   className="border-t border-[#ebfbff]/10 text-[#ebfbff]/80"
@@ -81,28 +113,26 @@ export function ManagerApprovalsSection({
                       {request.employeeEmail}
                     </p>
                   </td>
-                  <td className="px-4 py-4">Vacation Request</td>
                   <td className="px-4 py-4">{request.locationAssignment}</td>
-                  <td className="px-4 py-4">{request.supervisorEmail}</td>
                   <td className="px-4 py-4">
-                    <span className="font-semibold text-[#00c6ff]">
-                      {request.supervisorAwareness ?? "—"}
-                    </span>
-                    {request.supervisorNotes ? (
-                      <p className="mt-1 text-xs text-[#ebfbff]/50">
-                        {request.supervisorNotes}
-                      </p>
-                    ) : null}
+                    {formatDisplayDate(request.startDate)}
                   </td>
                   <td className="px-4 py-4">
-                    {formatDisplayDate(request.startDate)} –{" "}
                     {formatDisplayDate(request.endDate)}
                   </td>
                   <td className="px-4 py-4">
+                    <span className="font-semibold text-[#00c6ff]">
+                      {request.supervisorStatusLabel}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 text-xs text-[#ebfbff]/50">
+                    {request.supervisorNotes ?? "—"}
+                  </td>
+                  <td className="px-4 py-4">
                     <span
-                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${workflowStatusClass(request.workflowStatus)}`}
+                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${workflowStatusClass(request.finalStatusLabel)}`}
                     >
-                      {request.workflowStatus}
+                      {request.finalStatusLabel}
                     </span>
                   </td>
                   <td className="px-4 py-4">
@@ -110,14 +140,16 @@ export function ManagerApprovalsSection({
                       <Button
                         type="button"
                         variant="login"
-                        onClick={() => handleDecision(request.id, "Approved")}
+                        disabled={actingId === request.id}
+                        onClick={() => void handleDecision(request.id, "APPROVED")}
                       >
                         Approve
                       </Button>
                       <Button
                         type="button"
                         variant="secondary"
-                        onClick={() => handleDecision(request.id, "Rejected")}
+                        disabled={actingId === request.id}
+                        onClick={() => void handleDecision(request.id, "REJECTED")}
                       >
                         Reject
                       </Button>

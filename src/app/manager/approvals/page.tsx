@@ -1,3 +1,4 @@
+import { EquipmentRequestsApprovalSection } from "@/components/equipment-supplies/EquipmentRequestsApprovalSection";
 import { ManagerApprovalsSection } from "@/components/manager/ManagerApprovalsSection";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
 import { requireStaffAccess } from "@/lib/require-staff-access";
@@ -16,9 +17,10 @@ export default async function ManagerApprovalsPage() {
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}
     >
-      <ManagerApprovalsSection
-        managerName={`${employee.firstName} ${employee.lastName}`}
-      />
+      <ManagerApprovalsSection />
+      <div className="mt-12">
+        <EquipmentRequestsApprovalSection />
+      </div>
     </StaffWorkspaceShell>
   );
 }

@@ -11,12 +11,10 @@ import {
 } from "@/lib/hr-client-storage";
 import { appendEditHistory } from "@/lib/platform-edit-history";
 import { OperationalGroup } from "@prisma/client";
-import {
-  DEMO_VACATION_REQUEST,
-  DEMO_VACATION_REQUEST_ID,
-  type SupervisorAwarenessStatus,
-  type VacationWorkflowRequest,
-  type VacationWorkflowStatus,
+import type {
+  SupervisorAwarenessStatus,
+  VacationWorkflowRequest,
+  VacationWorkflowStatus,
 } from "@/lib/vacation-workflow";
 
 export type AdminHrRecord = {
@@ -46,28 +44,6 @@ const HR_ADMIN_PREFIX = "pros-platform-hr-admin:";
 
 const seedHrAdminRecords: AdminHrRecord[] = [
   {
-    id: DEMO_VACATION_REQUEST_ID,
-    requestType: "Vacation Requests",
-    employee: DEMO_VACATION_REQUEST.employeeName,
-    employeeId: "team-member-demo",
-    employeeEmail: DEMO_VACATION_REQUEST.employeeEmail,
-    details: "Jun 10–12 · Family appointment",
-    dateSubmitted: "2026-06-01",
-    status: "Pending",
-    workflowStatus: "Pending Supervisor Review",
-    locationAssignment: DEMO_VACATION_REQUEST.locationAssignment,
-    supervisorEmail: DEMO_VACATION_REQUEST.supervisorEmail,
-    employeeOperationalGroup: DEMO_VACATION_REQUEST.employeeOperationalGroup,
-    supervisorAwareness: null,
-    supervisorNotes: null,
-    startDate: DEMO_VACATION_REQUEST.startDate,
-    endDate: DEMO_VACATION_REQUEST.endDate,
-    reason: DEMO_VACATION_REQUEST.reason,
-    lastEdited: "2026-06-01",
-    lastEditedAt: DEMO_VACATION_REQUEST.submittedAt,
-    editedBy: DEMO_VACATION_REQUEST.employeeName,
-  },
-  {
     id: "letter-seed-001",
     requestType: "Job Letter Requests",
     employee: "Jordan Mitchell",
@@ -87,11 +63,7 @@ function readHrRecords(): AdminHrRecord[] {
   if (!raw) return seedHrAdminRecords;
   try {
     const parsed = JSON.parse(raw) as AdminHrRecord[];
-    const records = Array.isArray(parsed) ? parsed : seedHrAdminRecords;
-    if (!records.some((row) => row.id === DEMO_VACATION_REQUEST_ID)) {
-      return [seedHrAdminRecords[0], ...records];
-    }
-    return records;
+    return Array.isArray(parsed) ? parsed : seedHrAdminRecords;
   } catch {
     return seedHrAdminRecords;
   }
