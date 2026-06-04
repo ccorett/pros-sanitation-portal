@@ -73,7 +73,7 @@ export function StaffDashboardMetrics() {
     <div className="glass-card rounded-2xl p-6 sm:p-8">
       <h2 className="text-lg font-bold text-[#ebfbff]">Your activity</h2>
       <p className="mt-1 text-sm text-[#ebfbff]/55">
-        Live counts from Neon — no cached mock data.
+        Counts for your account only, unless you have manager or admin access.
       </p>
       <ul className="mt-6 grid gap-3 sm:grid-cols-2">
         {METRIC_LINKS.map((item) => (

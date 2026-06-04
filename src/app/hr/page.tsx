@@ -1,8 +1,11 @@
 import { HrModuleCard } from "@/components/hr/HrModuleCard";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
+import { canAccessHrOrganisation } from "@/lib/hr-organisation-service";
 import { hrModules } from "@/lib/hr-mock-data";
+import { isManagerOrAbove } from "@/lib/operational-access";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import { AccessLevel } from "@prisma/client";
+import { Building2 } from "lucide-react";
 import Link from "next/link";
 
 export default async function HrPage() {
@@ -23,13 +26,33 @@ export default async function HrPage() {
           <p className="text-sm font-semibold text-[#00c6ff]">Supervisor review queue</p>
           <p className="mt-2 text-sm text-[#ebfbff]/65">
             Vacation requests for your location or bin technicians are waiting for
-            Aware or Unaware review before manager approval.
+            Agree or Disagree review before manager approval.
           </p>
           <Link
             href="/hr/supervisor-reviews"
             className="mt-4 inline-flex min-h-[44px] items-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-4 py-2 text-sm font-semibold text-[#6cc801] hover:bg-[#6cc801]/20"
           >
             Open Team Requests
+          </Link>
+        </div>
+      ) : null}
+
+      {canAccessHrOrganisation(employee) ? (
+        <div className="mb-6 glass-card rounded-2xl border border-[#6cc801]/25 p-5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#6cc801]/15 text-[#6cc801]">
+            <Building2 className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <p className="mt-4 text-lg font-bold text-[#ebfbff]">Organisation View</p>
+          <p className="mt-2 text-sm text-[#ebfbff]/65">
+            {isManagerOrAbove(employee.accessLevel)
+              ? "See every location with assigned supervisors and team members."
+              : "See supervisors and team members for your assigned location."}
+          </p>
+          <Link
+            href="/hr/organisation"
+            className="mt-4 inline-flex min-h-[44px] items-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-4 py-2 text-sm font-semibold text-[#6cc801] hover:bg-[#6cc801]/20"
+          >
+            Open Organisation View
           </Link>
         </div>
       ) : null}

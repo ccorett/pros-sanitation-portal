@@ -70,12 +70,19 @@ body {
     0 0 24px color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
-/* Horizontal scroll for wide data tables (mobile + desktop Chrome) */
+/* Wide tables: scroll inside the card so the horizontal bar sits under the table viewport */
 .portal-table-scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
+  display: block;
+  width: 100%;
   max-width: 100%;
+  max-height: min(70dvh, 42rem);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.glass-card.portal-table-scroll {
+  padding: 0;
 }
 
 .portal-table-scroll table thead th {
@@ -96,16 +103,26 @@ body {
   min-width: 44px;
 }
 
-/* Staff top nav: scrollable link row on narrow viewports */
+/* Staff top nav: wrap on reduced desktop; horizontal scroll only when needed */
 .staff-nav-scroll {
   display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem 0.75rem;
   max-width: 100%;
   padding-bottom: 2px;
-  scrollbar-width: thin;
+}
+
+@media (max-width: 480px) {
+  .staff-nav-scroll {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    justify-content: flex-start;
+    scrollbar-width: thin;
+  }
 }
 
 .staff-nav-scroll a {

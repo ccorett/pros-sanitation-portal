@@ -13,14 +13,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   const { employeeId } = await params;
   const body = (await request.json()) as {
-    action?: "approve" | "changeAccessLevel" | "disable" | "remove";
+    action?:
+      | "approve"
+      | "changeAccessLevel"
+      | "updateWorkProfile"
+      | "disable"
+      | "remove";
     accessLevel?: AccessLevel;
     notes?: string;
+    jobTitle?: string;
+    position?: string;
+    department?: string;
+    locationAssignment?: string;
   };
 
   if (
     !body.action ||
-    !["approve", "changeAccessLevel", "disable", "remove"].includes(body.action)
+    ![
+      "approve",
+      "changeAccessLevel",
+      "updateWorkProfile",
+      "disable",
+      "remove",
+    ].includes(body.action)
   ) {
     return NextResponse.json({ error: "Invalid action." }, { status: 400 });
   }
@@ -30,6 +45,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       action: body.action,
       accessLevel: body.accessLevel,
       notes: body.notes,
+      workProfile:
+        body.action === "updateWorkProfile"
+          ? {
+              jobTitle: body.jobTitle?.trim() ?? "",
+              position: body.position?.trim() ?? "",
+              department: body.department?.trim() ?? "",
+              locationAssignment: body.locationAssignment?.trim() ?? "",
+            }
+          : undefined,
     });
 
     return NextResponse.json({ account });

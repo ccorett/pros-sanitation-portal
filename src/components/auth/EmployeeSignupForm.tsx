@@ -10,6 +10,7 @@ import {
 } from "@/lib/auth-form-styles";
 import {
   EMPLOYEE_DEPARTMENTS,
+  EMPLOYEE_JOB_TITLES,
   EMPLOYEE_LOCATION_ASSIGNMENTS,
   EMPLOYEE_POSITIONS,
 } from "@/lib/employee-signup-options";
@@ -112,8 +113,10 @@ export function EmployeeSignupForm({
       }
     }
 
-    if (!position || !department || !locationAssignment) {
-      setError("Select your position, department, and location assignment.");
+    if (!jobTitle || !position || !department || !locationAssignment) {
+      setError(
+        "Select your job title, position, department, and location assignment.",
+      );
       return;
     }
 
@@ -146,7 +149,7 @@ export function EmployeeSignupForm({
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           phoneNumber: phoneNumber.trim(),
-          jobTitle: jobTitle.trim(),
+          jobTitle,
           position,
           department,
           locationAssignment,
@@ -327,16 +330,21 @@ export function EmployeeSignupForm({
             <label htmlFor="jobTitle" className={authLabelClassName}>
               Job Title
             </label>
-            <input
+            <select
               id="jobTitle"
               name="jobTitle"
-              type="text"
               required
               value={jobTitle}
               onChange={(e) => setJobTitle(e.target.value)}
-              placeholder="e.g. Field Sanitation Lead"
-              className={authInputClassName}
-            />
+              className={selectClassName}
+            >
+              <option value="">Select job title</option>
+              {EMPLOYEE_JOB_TITLES.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label htmlFor="position" className={authLabelClassName}>

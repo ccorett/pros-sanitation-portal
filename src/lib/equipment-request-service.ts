@@ -8,6 +8,7 @@ import type {
 import { AccessLevel } from "@prisma/client";
 import { canAccessAdminModule } from "@/lib/access-levels";
 import { isManagerOrAbove } from "@/lib/operational-access";
+import { getSupervisorVisibleEmployeeIds } from "@/lib/supervisor-team-scope";
 import { prisma } from "@/lib/prisma";
 
 export type EquipmentRequestDto = {
@@ -93,21 +94,6 @@ const requestInclude = {
   inventoryItem: true,
 } as const;
 
-async function getSupervisorVisibleRequesterIds(
-  supervisor: Employee,
-): Promise<string[]> {
-  if (!supervisor.locationAssignment) {
-    return [supervisor.id];
-  }
-
-  const teamMembers = await prisma.employee.findMany({
-    where: { locationAssignment: supervisor.locationAssignment },
-    select: { id: true },
-  });
-
-  return teamMembers.map((member) => member.id);
-}
-
 export async function listEquipmentRequestsForActor(
   actor: Employee,
 ): Promise<EquipmentRequestDto[]> {
@@ -119,7 +105,7 @@ export async function listEquipmentRequestsForActor(
   ) {
     where = {};
   } else if (actor.accessLevel === AccessLevel.SUPERVISOR) {
-    const requesterIds = await getSupervisorVisibleRequesterIds(actor);
+    const requesterIds = await getSupervisorVisibleEmployeeIds(actor);
     where = { requestedById: { in: requesterIds } };
   } else {
     where = { requestedById: actor.id };

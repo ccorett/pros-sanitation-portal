@@ -7,6 +7,16 @@ export const EMPLOYEE_DEPARTMENTS = [
   "Management",
 ] as const;
 
+export const EMPLOYEE_JOB_TITLES = [
+  "Cleaner",
+  "Sanitation Technician",
+  "Bin Technician",
+  "Driver",
+  "Supervisor",
+  "Bin Service Supervisor",
+  "Manager",
+] as const;
+
 export const EMPLOYEE_POSITIONS = [
   "Technician",
   "Driver",
@@ -27,9 +37,14 @@ export const EMPLOYEE_LOCATION_ASSIGNMENTS = [
 ] as const;
 
 export type EmployeeDepartment = (typeof EMPLOYEE_DEPARTMENTS)[number];
+export type EmployeeJobTitle = (typeof EMPLOYEE_JOB_TITLES)[number];
 export type EmployeePosition = (typeof EMPLOYEE_POSITIONS)[number];
 export type EmployeeLocationAssignment =
   (typeof EMPLOYEE_LOCATION_ASSIGNMENTS)[number];
+
+export function isEmployeeJobTitle(value: string): value is EmployeeJobTitle {
+  return (EMPLOYEE_JOB_TITLES as readonly string[]).includes(value);
+}
 
 export function isEmployeeDepartment(value: string): value is EmployeeDepartment {
   return (EMPLOYEE_DEPARTMENTS as readonly string[]).includes(value);

@@ -24,7 +24,7 @@ export default async function BinJobPage({ params }: BinJobPageProps) {
 
   return (
     <StaffWorkspaceShell
-      sectionLabel="Job Management · Bin Management"
+      sectionLabel="Bin Management"
       title={job.siteName}
       subtitle={`${job.expectedNewBins} new · ${job.expectedRegularBins} regular bins`}
       employeeId={employee.id}

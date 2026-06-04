@@ -3,11 +3,12 @@ import { EmployeeLoginForm } from "@/components/auth/EmployeeLoginForm";
 import { auth } from "@/lib/auth";
 import { COMPANY } from "@/lib/constants";
 import { getEmployeePortalAccess } from "@/lib/employee-portal-access";
+import { resolvePostLoginRedirect } from "@/lib/portal-auth-redirect";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 type EmployeeLoginPageProps = {
-  searchParams: Promise<{ access?: string }>;
+  searchParams: Promise<{ access?: string; returnTo?: string }>;
 };
 
 export default async function EmployeeLoginPage({
@@ -17,12 +18,14 @@ export default async function EmployeeLoginPage({
   const session = await auth.api.getSession({
     headers: requestHeaders,
   });
-  const { access: accessCode } = await searchParams;
+  const { access: accessCode, returnTo } = await searchParams;
 
   if (session) {
     const portalAccess = await getEmployeePortalAccess(session.user.id);
     if (portalAccess.allowed) {
-      redirect(portalAccess.redirectTo);
+      redirect(
+        resolvePostLoginRedirect(returnTo, portalAccess.redirectTo),
+      );
     }
     await auth.api.signOut({ headers: requestHeaders });
   }
@@ -32,7 +35,10 @@ export default async function EmployeeLoginPage({
       title="Secure Employee Login"
       subtitle="Sign in with your company credentials to continue."
     >
-      <EmployeeLoginForm accessCode={accessCode ?? null} />
+      <EmployeeLoginForm
+        accessCode={accessCode ?? null}
+        returnTo={returnTo ?? null}
+      />
       <p className="mt-6 text-center text-xs text-[#ebfbff]/40">
         {COMPANY.name} — Authorized employees only. Unauthorized access is
         prohibited and monitored.

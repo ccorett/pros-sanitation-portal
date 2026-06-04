@@ -4,6 +4,12 @@ import {
   defaultApprovalAccessLevel,
 } from "@/lib/admin-account-permissions";
 import { formatAccessLevelLabel, formatAccountStatusLabel } from "@/lib/access-levels";
+import {
+  isEmployeeDepartment,
+  isEmployeeJobTitle,
+  isEmployeeLocationAssignment,
+  isEmployeePosition,
+} from "@/lib/employee-signup-options";
 import { prisma } from "@/lib/prisma";
 import {
   AccessLevel,
@@ -22,6 +28,8 @@ export type AdminAccountRow = {
   accountStatusLabel: string;
   locationAssignment: string;
   department: string;
+  jobTitle: string;
+  position: string;
   lastLoginAt: string | null;
   lastEditedAt: string | null;
   editedBy: string | null;
@@ -87,6 +95,8 @@ export async function listAdminAccounts(): Promise<AdminAccountRow[]> {
       accountStatusLabel: formatAccountStatusLabel(employee.accountStatus),
       locationAssignment: employee.locationAssignment ?? "—",
       department: employee.department,
+      jobTitle: employee.jobTitle,
+      position: employee.position ?? "—",
       lastLoginAt: toIso(lastLogin),
       lastEditedAt: toIso(employee.lastEditedAt),
       editedBy: employee.editedBy,
@@ -171,11 +181,39 @@ export async function updateEmployeeLastLogin(userId: string) {
   });
 }
 
+export type EmployeeWorkProfileInput = {
+  jobTitle: string;
+  position: string;
+  department: string;
+  locationAssignment: string;
+};
+
 export type AccountMutationInput = {
-  action: "approve" | "changeAccessLevel" | "disable" | "remove";
+  action:
+    | "approve"
+    | "changeAccessLevel"
+    | "updateWorkProfile"
+    | "disable"
+    | "remove";
   accessLevel?: AccessLevel;
   notes?: string;
+  workProfile?: EmployeeWorkProfileInput;
 };
+
+function validateWorkProfileInput(input: EmployeeWorkProfileInput): void {
+  if (!isEmployeeJobTitle(input.jobTitle)) {
+    throw new Error("Select a valid job title.");
+  }
+  if (!isEmployeePosition(input.position)) {
+    throw new Error("Select a valid position.");
+  }
+  if (!isEmployeeDepartment(input.department)) {
+    throw new Error("Select a valid department.");
+  }
+  if (!isEmployeeLocationAssignment(input.locationAssignment)) {
+    throw new Error("Select a valid location assignment.");
+  }
+}
 
 export async function mutateAdminAccount(
   actor: Employee,
@@ -262,6 +300,35 @@ export async function mutateAdminAccount(
     await touchEmployeeAudit(target.id, actorName, {
       accessLevel: input.accessLevel,
       accountStatus: nextStatus,
+    });
+  } else if (input.action === "updateWorkProfile") {
+    if (!input.workProfile) {
+      throw new Error("Work profile fields are required.");
+    }
+
+    if (
+      !canPerformAccountAction(
+        actor.accessLevel,
+        target.accessLevel,
+        target.accountStatus,
+        "editWorkProfile",
+      )
+    ) {
+      throw new Error("You cannot edit this employee profile.");
+    }
+
+    validateWorkProfileInput(input.workProfile);
+
+    await prisma.employee.update({
+      where: { id: target.id },
+      data: {
+        jobTitle: input.workProfile.jobTitle,
+        position: input.workProfile.position,
+        department: input.workProfile.department,
+        locationAssignment: input.workProfile.locationAssignment,
+        lastEditedAt: new Date(),
+        editedBy: actorName,
+      },
     });
   } else if (input.action === "disable") {
     if (

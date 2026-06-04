@@ -7,7 +7,7 @@ export type VacationWorkflowStatus =
   | "Approved"
   | "Rejected";
 
-export type SupervisorAwarenessStatus = "Aware" | "Unaware";
+export type SupervisorAwarenessStatus = "Agree" | "Disagree";
 
 export type VacationWorkflowRequest = VacationRequest & {
   workflowStatus: VacationWorkflowStatus;

@@ -5,7 +5,9 @@ import {
   VacationFinalStatus,
   type Employee,
 } from "@prisma/client";
+import { canAccessAdminModule } from "@/lib/access-levels";
 import { countUnacknowledgedPolicies } from "@/lib/policy-service";
+import { isManagerOrAbove } from "@/lib/operational-access";
 import { prisma } from "@/lib/prisma";
 import { listBinFieldJobsToday } from "@/lib/bin-service/field-service";
 
@@ -28,9 +30,18 @@ export type DashboardSummary = {
   metrics: DashboardSummaryMetrics;
 };
 
+function canSeeOrganizationActivity(employee: Employee): boolean {
+  return (
+    isManagerOrAbove(employee.accessLevel) ||
+    canAccessAdminModule(employee.accessLevel)
+  );
+}
+
 export async function getDashboardSummary(
   employee: Employee,
 ): Promise<DashboardSummary> {
+  const orgWide = canSeeOrganizationActivity(employee);
+
   const [
     assignedCleaningJobs,
     pendingVacationRequests,
@@ -41,37 +52,56 @@ export async function getDashboardSummary(
     todaysBinJobs,
   ] = await Promise.all([
     prisma.job.count({
-      where: {
-        assignedEmployeeId: employee.id,
-        status: {
-          in: [
-            CleaningJobStatus.PENDING,
-            CleaningJobStatus.ASSIGNED,
-            CleaningJobStatus.IN_PROGRESS,
-            CleaningJobStatus.ISSUE_REPORTED,
-          ],
-        },
-      },
+      where: orgWide
+        ? {
+            status: {
+              in: [
+                CleaningJobStatus.PENDING,
+                CleaningJobStatus.ASSIGNED,
+                CleaningJobStatus.IN_PROGRESS,
+                CleaningJobStatus.ISSUE_REPORTED,
+              ],
+            },
+          }
+        : {
+            assignedEmployeeId: employee.id,
+            status: {
+              in: [
+                CleaningJobStatus.PENDING,
+                CleaningJobStatus.ASSIGNED,
+                CleaningJobStatus.IN_PROGRESS,
+                CleaningJobStatus.ISSUE_REPORTED,
+              ],
+            },
+          },
     }),
     prisma.vacationRequest.count({
-      where: {
-        employeeId: employee.id,
-        finalStatus: { in: OPEN_VACATION_STATUSES },
-      },
+      where: orgWide
+        ? { finalStatus: { in: OPEN_VACATION_STATUSES } }
+        : {
+            employeeId: employee.id,
+            finalStatus: { in: OPEN_VACATION_STATUSES },
+          },
     }),
     prisma.equipmentRequest.count({
-      where: {
-        requestedById: employee.id,
-        status: EquipmentRequestStatus.PENDING,
-      },
+      where: orgWide
+        ? { status: EquipmentRequestStatus.PENDING }
+        : {
+            requestedById: employee.id,
+            status: EquipmentRequestStatus.PENDING,
+          },
     }),
     prisma.payslipRequest.count({
-      where: {
-        employeeId: employee.id,
-        status: PayslipRequestStatus.PENDING,
-      },
+      where: orgWide
+        ? { status: PayslipRequestStatus.PENDING }
+        : {
+            employeeId: employee.id,
+            status: PayslipRequestStatus.PENDING,
+          },
     }),
-    prisma.payslip.count({ where: { employeeId: employee.id } }),
+    orgWide
+      ? prisma.payslip.count()
+      : prisma.payslip.count({ where: { employeeId: employee.id } }),
     countUnacknowledgedPolicies(employee.id),
     listBinFieldJobsToday(employee).then((jobs) => jobs.length),
   ]);

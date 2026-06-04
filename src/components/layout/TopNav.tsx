@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Menu, Shield } from "lucide-react";
+import { Menu, Shield } from "lucide-react";
 import Link from "next/link";
 import { COMPANY } from "@/lib/constants";
 
@@ -27,14 +27,6 @@ export function TopNav({ onMenuClick }: TopNavProps) {
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
-          <button
-            type="button"
-            className="relative rounded-xl p-2.5 text-[#ebfbff]/70 hover:bg-[#ebfbff]/10 min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00c6ff]"
-            aria-label="View notifications (3 unread)"
-          >
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#00c6ff]" aria-hidden="true" />
-          </button>
           <Link
             href="#login"
             className="hidden sm:inline-flex items-center justify-center rounded-xl border border-[#259f00]/40 bg-[#259f00]/15 px-4 py-2.5 text-sm font-semibold text-[#6cc801] hover:bg-[#259f00]/25 transition-colors min-h-[44px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00c6ff]"

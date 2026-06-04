@@ -7,7 +7,9 @@ import { authErrorClassName } from "@/lib/auth-form-styles";
 import { signInEmployee } from "@/lib/employee-sign-in";
 import { normalizePinInput } from "@/lib/pin";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { CreateEmployeeAccountLink } from "@/components/auth/CreateEmployeeAccountLink";
+import { resolvePostLoginRedirect } from "@/lib/portal-auth-redirect";
 import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -15,6 +17,8 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { COMPANY } from "@/lib/constants";
 
 export function LoginCTASection() {
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
   const { data: session, isPending } = authClient.useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,21 +32,21 @@ export function LoginCTASection() {
     if (isPending) return;
 
     if (session) {
-      window.location.assign("/staff-dashboard");
+      window.location.assign(resolvePostLoginRedirect(returnTo));
       return;
     }
 
     setLoading(true);
 
     try {
-      const result = await signInEmployee({ email, pin });
+      const result = await signInEmployee({ email, pin, returnTo });
 
       if (!result.ok) {
         setError(result.error);
         return;
       }
 
-      window.location.assign("/staff-dashboard");
+      window.location.assign(result.redirectTo);
     } finally {
       setLoading(false);
     }

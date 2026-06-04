@@ -11,6 +11,12 @@ import type {
   AccessHistoryRow,
   AdminAccountRow,
 } from "@/lib/admin-accounts-service";
+import {
+  EMPLOYEE_DEPARTMENTS,
+  EMPLOYEE_JOB_TITLES,
+  EMPLOYEE_LOCATION_ASSIGNMENTS,
+  EMPLOYEE_POSITIONS,
+} from "@/lib/employee-signup-options";
 import { AccessLevel, AccountStatus } from "@prisma/client";
 import { useCallback, useEffect, useState } from "react";
 
@@ -49,6 +55,11 @@ export function AdminAccountsSection() {
   const [historyTarget, setHistoryTarget] = useState<AdminAccountRow | null>(null);
   const [history, setHistory] = useState<AccessHistoryRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [editTarget, setEditTarget] = useState<AdminAccountRow | null>(null);
+  const [editJobTitle, setEditJobTitle] = useState("");
+  const [editPosition, setEditPosition] = useState("");
+  const [editDepartment, setEditDepartment] = useState("");
+  const [editLocationAssignment, setEditLocationAssignment] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const loadAccounts = useCallback(async () => {
@@ -74,8 +85,14 @@ export function AdminAccountsSection() {
 
   async function runAction(
     account: AdminAccountRow,
-    action: "approve" | "changeAccessLevel" | "disable" | "remove",
-    accessLevel?: AccessLevel,
+    action: "approve" | "changeAccessLevel" | "updateWorkProfile" | "disable" | "remove",
+    options?: {
+      accessLevel?: AccessLevel;
+      jobTitle?: string;
+      position?: string;
+      department?: string;
+      locationAssignment?: string;
+    },
   ) {
     setBusyId(account.id);
     setError(null);
@@ -85,7 +102,14 @@ export function AdminAccountsSection() {
       const response = await fetch(`/api/admin/accounts/${account.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, accessLevel }),
+        body: JSON.stringify({
+          action,
+          accessLevel: options?.accessLevel,
+          jobTitle: options?.jobTitle,
+          position: options?.position,
+          department: options?.department,
+          locationAssignment: options?.locationAssignment,
+        }),
       });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) {
@@ -94,12 +118,47 @@ export function AdminAccountsSection() {
       setMessage(`Updated ${account.employeeName}.`);
       setLevelTarget(null);
       setApproveTarget(null);
+      setEditTarget(null);
       await loadAccounts();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Action failed.");
     } finally {
       setBusyId(null);
     }
+  }
+
+  function openWorkProfileEditor(account: AdminAccountRow) {
+    setEditTarget(account);
+    setEditJobTitle(
+      EMPLOYEE_JOB_TITLES.includes(
+        account.jobTitle as (typeof EMPLOYEE_JOB_TITLES)[number],
+      )
+        ? account.jobTitle
+        : "",
+    );
+    setEditPosition(
+      EMPLOYEE_POSITIONS.includes(
+        account.position as (typeof EMPLOYEE_POSITIONS)[number],
+      )
+        ? account.position
+        : "",
+    );
+    setEditDepartment(
+      EMPLOYEE_DEPARTMENTS.includes(
+        account.department as (typeof EMPLOYEE_DEPARTMENTS)[number],
+      )
+        ? account.department
+        : "",
+    );
+    setEditLocationAssignment(
+      account.locationAssignment === "—"
+        ? ""
+        : EMPLOYEE_LOCATION_ASSIGNMENTS.includes(
+              account.locationAssignment as (typeof EMPLOYEE_LOCATION_ASSIGNMENTS)[number],
+            )
+          ? account.locationAssignment
+          : "",
+    );
   }
 
   async function openHistory(account: AdminAccountRow) {
@@ -144,7 +203,7 @@ export function AdminAccountsSection() {
     : [];
 
   return (
-    <section className="space-y-4">
+    <section className="min-w-0 space-y-4">
       {message ? (
         <p className="rounded-xl border border-[#6cc801]/30 bg-[#6cc801]/10 px-4 py-3 text-sm text-[#6cc801]">
           {message}
@@ -162,11 +221,13 @@ export function AdminAccountsSection() {
         </div>
       ) : (
         <div className="glass-card portal-table-scroll rounded-2xl">
-          <table className="min-w-[1500px] w-full text-left text-sm">
+          <table className="min-w-[1700px] w-full text-left text-sm">
             <thead>
               <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
                 <th className="px-4 py-4 font-semibold sm:px-6">Employee Name</th>
                 <th className="px-4 py-4 font-semibold">Email</th>
+                <th className="px-4 py-4 font-semibold">Job Title</th>
+                <th className="px-4 py-4 font-semibold">Position</th>
                 <th className="px-4 py-4 font-semibold">Access Level</th>
                 <th className="px-4 py-4 font-semibold">Account Status</th>
                 <th className="px-4 py-4 font-semibold">Location Assignment</th>
@@ -187,6 +248,8 @@ export function AdminAccountsSection() {
                     {account.employeeName}
                   </td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">{account.email}</td>
+                  <td className="px-4 py-4 text-[#ebfbff]/70">{account.jobTitle}</td>
+                  <td className="px-4 py-4 text-[#ebfbff]/70">{account.position}</td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">
                     {account.accessLevelLabel}
                   </td>
@@ -239,6 +302,11 @@ export function AdminAccountsSection() {
                         disabled={!canAct(account, "changeAccessLevel")}
                       />
                       <ActionButton
+                        label="Edit Work Profile"
+                        onClick={() => openWorkProfileEditor(account)}
+                        disabled={!canAct(account, "editWorkProfile")}
+                      />
+                      <ActionButton
                         label="Disable"
                         tone="danger"
                         onClick={() => runAction(account, "disable")}
@@ -284,6 +352,14 @@ export function AdminAccountsSection() {
               <div>
                 <dt className="text-[#ebfbff]/45">Account Status</dt>
                 <dd>{viewTarget.accountStatusLabel}</dd>
+              </div>
+              <div>
+                <dt className="text-[#ebfbff]/45">Job Title</dt>
+                <dd>{viewTarget.jobTitle}</dd>
+              </div>
+              <div>
+                <dt className="text-[#ebfbff]/45">Position</dt>
+                <dd>{viewTarget.position}</dd>
               </div>
               <div>
                 <dt className="text-[#ebfbff]/45">Department</dt>
@@ -341,7 +417,9 @@ export function AdminAccountsSection() {
               <button
                 type="button"
                 onClick={() =>
-                  runAction(approveTarget, "approve", selectedLevel)
+                  runAction(approveTarget, "approve", {
+                    accessLevel: selectedLevel,
+                  })
                 }
                 disabled={busyId === approveTarget.id}
                 className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-4 py-3 text-sm font-semibold text-[#ebfbff] disabled:opacity-40"
@@ -386,9 +464,120 @@ export function AdminAccountsSection() {
               <button
                 type="button"
                 onClick={() =>
-                  runAction(levelTarget, "changeAccessLevel", selectedLevel)
+                  runAction(levelTarget, "changeAccessLevel", {
+                    accessLevel: selectedLevel,
+                  })
                 }
                 disabled={busyId === levelTarget.id}
+                className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-4 py-3 text-sm font-semibold text-[#ebfbff] disabled:opacity-40"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {editTarget ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0c151d]/80 p-4 backdrop-blur-sm sm:items-center">
+          <div className="glass-card w-full max-w-lg space-y-4 rounded-2xl p-5 sm:p-6">
+            <h3 className="text-lg font-bold text-[#ebfbff]">
+              Edit Work Profile · {editTarget.employeeName}
+            </h3>
+            <p className="text-sm text-[#ebfbff]/60">
+              Admin and Super Admin only. Changes save to Neon and update the
+              employee profile immediately.
+            </p>
+            <label className="block">
+              <span className="text-sm text-[#ebfbff]/70">Job Title</span>
+              <select
+                value={editJobTitle}
+                onChange={(event) => setEditJobTitle(event.target.value)}
+                className="mt-2 w-full min-h-[48px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-[#ebfbff]"
+              >
+                <option value="">Select job title</option>
+                {EMPLOYEE_JOB_TITLES.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-sm text-[#ebfbff]/70">Position</span>
+              <select
+                value={editPosition}
+                onChange={(event) => setEditPosition(event.target.value)}
+                className="mt-2 w-full min-h-[48px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-[#ebfbff]"
+              >
+                <option value="">Select position</option>
+                {EMPLOYEE_POSITIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-sm text-[#ebfbff]/70">Department</span>
+              <select
+                value={editDepartment}
+                onChange={(event) => setEditDepartment(event.target.value)}
+                className="mt-2 w-full min-h-[48px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-[#ebfbff]"
+              >
+                <option value="">Select department</option>
+                {EMPLOYEE_DEPARTMENTS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-sm text-[#ebfbff]/70">Location Assignment</span>
+              <select
+                value={editLocationAssignment}
+                onChange={(event) =>
+                  setEditLocationAssignment(event.target.value)
+                }
+                className="mt-2 w-full min-h-[48px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-[#ebfbff]"
+              >
+                <option value="">Select location</option>
+                {EMPLOYEE_LOCATION_ASSIGNMENTS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setEditTarget(null)}
+                className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-[#ebfbff]/20 bg-[#ebfbff]/5 px-4 py-3 text-sm font-semibold text-[#ebfbff]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    !editJobTitle ||
+                    !editPosition ||
+                    !editDepartment ||
+                    !editLocationAssignment
+                  ) {
+                    setError("Complete all work profile fields.");
+                    return;
+                  }
+                  void runAction(editTarget, "updateWorkProfile", {
+                    jobTitle: editJobTitle,
+                    position: editPosition,
+                    department: editDepartment,
+                    locationAssignment: editLocationAssignment,
+                  });
+                }}
+                disabled={busyId === editTarget.id}
                 className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-4 py-3 text-sm font-semibold text-[#ebfbff] disabled:opacity-40"
               >
                 Save

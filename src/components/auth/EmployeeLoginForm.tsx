@@ -16,9 +16,13 @@ import { Button } from "@/components/ui/Button";
 
 type EmployeeLoginFormProps = {
   accessCode?: string | null;
+  returnTo?: string | null;
 };
 
-export function EmployeeLoginForm({ accessCode = null }: EmployeeLoginFormProps) {
+export function EmployeeLoginForm({
+  accessCode = null,
+  returnTo = null,
+}: EmployeeLoginFormProps) {
   const [email, setEmail] = useState("");
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,7 +34,7 @@ export function EmployeeLoginForm({ accessCode = null }: EmployeeLoginFormProps)
     setLoading(true);
 
     try {
-      const result = await signInEmployee({ email, pin });
+      const result = await signInEmployee({ email, pin, returnTo });
 
       if (!result.ok) {
         setError(result.error);

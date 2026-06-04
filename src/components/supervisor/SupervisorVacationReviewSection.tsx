@@ -18,7 +18,9 @@ export function SupervisorVacationReviewSection() {
   const loadRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/hr/vacation-requests");
+      const response = await fetch("/api/hr/vacation-requests", {
+        cache: "no-store",
+      });
       if (!response.ok) {
         throw new Error("Unable to load vacation requests.");
       }
@@ -71,7 +73,7 @@ export function SupervisorVacationReviewSection() {
       }
 
       setMessage(
-        `Marked ${action === "AWARE" ? "Aware" : "Unaware"}. Request sent to manager for final approval.`,
+        `Marked ${action === "AWARE" ? "Agree" : "Disagree"}. Request sent to manager for final approval.`,
       );
       await loadRequests();
     } catch (error) {
@@ -97,7 +99,7 @@ export function SupervisorVacationReviewSection() {
         </p>
       ) : requests.length === 0 ? (
         <p className="glass-card rounded-2xl p-6 text-sm text-[#ebfbff]/60">
-          No vacation requests are waiting for your Aware/Unaware review.
+          No vacation requests are waiting for your Agree/Disagree review.
         </p>
       ) : (
         <div className="glass-card portal-table-scroll rounded-2xl">
@@ -164,7 +166,7 @@ export function SupervisorVacationReviewSection() {
                         disabled={actingId === request.id}
                         onClick={() => void handleAwareness(request.id, "AWARE")}
                       >
-                        Aware
+                        Agree
                       </Button>
                       <Button
                         type="button"
@@ -172,7 +174,7 @@ export function SupervisorVacationReviewSection() {
                         disabled={actingId === request.id}
                         onClick={() => void handleAwareness(request.id, "UNAWARE")}
                       >
-                        Unaware
+                        Disagree
                       </Button>
                     </div>
                   </td>

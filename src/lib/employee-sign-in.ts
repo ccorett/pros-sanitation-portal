@@ -2,18 +2,21 @@ import { DEV_APP_ORIGIN } from "@/lib/app-url";
 import { authClient } from "@/lib/auth-client";
 import { AUTH_POST_LOGIN_PATH } from "@/lib/auth-routes";
 import { LOGIN_LOCKOUT_MESSAGE, normalizeEmail } from "@/lib/login-attempts";
+import { resolvePostLoginRedirect } from "@/lib/portal-auth-redirect";
 
 export type EmployeeSignInResult =
-  | { ok: true; redirectTo: "/pending-verification" | "/staff-dashboard" }
+  | { ok: true; redirectTo: string }
   | { ok: false; error: string };
 
 export async function signInEmployee(input: {
   email: string;
   pin: string;
+  returnTo?: string | null;
 }): Promise<EmployeeSignInResult> {
   const email = normalizeEmail(input.email);
 
   try {
+    await authClient.signOut();
     const check = await fetch(
       `/api/auth/login-check?email=${encodeURIComponent(email)}`,
     );
@@ -73,7 +76,9 @@ export async function signInEmployee(input: {
       body: JSON.stringify({ email }),
     });
 
-    const accessResponse = await fetch("/api/employees/portal-access");
+    const accessResponse = await fetch("/api/employees/portal-access", {
+      cache: "no-store",
+    });
     const accessData = (await accessResponse.json()) as {
       allowed?: boolean;
       message?: string;
@@ -92,7 +97,10 @@ export async function signInEmployee(input: {
 
     return {
       ok: true,
-      redirectTo: accessData.redirectTo ?? "/staff-dashboard",
+      redirectTo: resolvePostLoginRedirect(
+        input.returnTo,
+        accessData.redirectTo ?? "/staff-dashboard",
+      ),
     };
   } catch {
     return {

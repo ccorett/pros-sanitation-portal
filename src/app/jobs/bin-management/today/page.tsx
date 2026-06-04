@@ -11,7 +11,7 @@ export default async function BinJobsTodayPage() {
 
   return (
     <StaffWorkspaceShell
-      sectionLabel="Job Management · Bin Management"
+      sectionLabel="Bin Management"
       title="Today's Bin Jobs"
       subtitle="Due and overdue bin locations only. Complete service to reset last service date to today."
           employeeId={employee.id}
@@ -26,12 +26,6 @@ export default async function BinJobsTodayPage() {
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Bin Management
-        </Link>
-        <Link
-          href="/jobs"
-          className="text-sm text-[#ebfbff]/55 hover:text-[#ebfbff]"
-        >
-          Job Management
         </Link>
       </div>
 

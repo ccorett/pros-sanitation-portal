@@ -43,7 +43,7 @@ export function MyProfileSection() {
     setLoading(true);
     setProfileError(null);
     try {
-      const response = await fetch("/api/employees/me");
+      const response = await fetch("/api/employees/me", { cache: "no-store" });
       const data = (await response.json()) as {
         profile?: EmployeeProfileDto;
         error?: string;

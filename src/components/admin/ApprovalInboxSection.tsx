@@ -8,10 +8,10 @@ function statusClass(status: string): string {
   if (status === "Pending" || status.includes("Pending")) {
     return "border-[#f5c542]/35 bg-[#f5c542]/15 text-[#f5c542]";
   }
-  if (status === "Approved" || status === "Aware") {
+  if (status === "Approved" || status === "Agree" || status === "Aware") {
     return "border-[#6cc801]/35 bg-[#6cc801]/15 text-[#6cc801]";
   }
-  if (status === "Rejected" || status === "Unaware") {
+  if (status === "Rejected" || status === "Disagree" || status === "Unaware") {
     return "border-[#ff4d4f]/35 bg-[#ff4d4f]/15 text-[#ff4d4f]";
   }
   if (status.includes("Cannot Access") || status.includes("Issue")) {

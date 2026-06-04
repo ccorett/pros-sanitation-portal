@@ -1,25 +1,30 @@
-import { SupervisorVacationReviewSection } from "@/components/supervisor/SupervisorVacationReviewSection";
+import { HrOrganisationView } from "@/components/hr/HrOrganisationView";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
+import { canAccessHrOrganisation } from "@/lib/hr-organisation-service";
+import { isManagerOrAbove } from "@/lib/operational-access";
 import { requireStaffAccess } from "@/lib/require-staff-access";
-import { AccessLevel } from "@prisma/client";
-import { redirect } from "next/navigation";
-import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
-export default async function SupervisorReviewsPage() {
+export default async function HrOrganisationPage() {
   const { employee } = await requireStaffAccess({
-    pathname: "/hr/supervisor-reviews",
+    pathname: "/hr/organisation",
   });
 
-  if (employee.accessLevel !== AccessLevel.SUPERVISOR) {
+  if (!canAccessHrOrganisation(employee)) {
     redirect("/staff-dashboard");
   }
+
+  const subtitle = isManagerOrAbove(employee.accessLevel)
+    ? "All locations with supervisors and team members assigned in Neon."
+    : `Organisation for ${employee.locationAssignment ?? "your location"}.`;
 
   return (
     <StaffWorkspaceShell
       sectionLabel="Human Resources"
-      title="Team Vacation Reviews"
-      subtitle="Review vacation requests for your assigned location or bin technicians. Mark Agree or Disagree — manager approval follows."
+      title="Organisation View"
+      subtitle={subtitle}
       employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
@@ -35,7 +40,7 @@ export default async function SupervisorReviewsPage() {
         </Link>
       </div>
 
-      <SupervisorVacationReviewSection />
+      <HrOrganisationView />
     </StaffWorkspaceShell>
   );
 }

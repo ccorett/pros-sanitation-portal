@@ -8,19 +8,21 @@ import {
   Package,
   Settings,
   Shield,
+  User,
   Users,
   X,
 } from "lucide-react";
-import Link from "next/link";
+import { ProtectedPortalLink } from "@/components/auth/ProtectedPortalLink";
 import { COMPANY } from "@/lib/constants";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { sidebarNavItems } from "@/lib/mock-data";
 
 const navIcons: Record<string, typeof LayoutDashboard> = {
   Dashboard: LayoutDashboard,
-  Jobs: Briefcase,
+  "Job Management": Briefcase,
   "Equipment & Supplies": Package,
   "Human Resources": Users,
+  "My Profile": User,
   Admin: Shield,
   Settings: Settings,
 };
@@ -85,7 +87,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           {sidebarNavItems.map((item) => {
             const Icon = navIcons[item.label] ?? LayoutDashboard;
             return (
-              <Link
+              <ProtectedPortalLink
                 key={item.label}
                 href={item.href}
                 onClick={onClose}
@@ -99,7 +101,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               >
                 <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
                 {item.label}
-              </Link>
+              </ProtectedPortalLink>
             );
           })}
         </nav>

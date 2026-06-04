@@ -11,10 +11,10 @@ type VacationRequestsSectionProps = {
 };
 
 function supervisorStatusClass(status: string): string {
-  if (status === "Aware") {
+  if (status === "Agree" || status === "Aware") {
     return "border-[#6cc801]/35 bg-[#6cc801]/15 text-[#6cc801]";
   }
-  if (status === "Unaware") {
+  if (status === "Disagree" || status === "Unaware") {
     return "border-[#ff4d4f]/35 bg-[#ff4d4f]/15 text-[#ff4d4f]";
   }
   return "border-[#f5c542]/35 bg-[#f5c542]/15 text-[#f5c542]";
@@ -45,7 +45,9 @@ export function VacationRequestsSection({
   const loadRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/hr/vacation-requests");
+      const response = await fetch("/api/hr/vacation-requests", {
+        cache: "no-store",
+      });
       if (!response.ok) {
         throw new Error("Unable to load vacation requests.");
       }

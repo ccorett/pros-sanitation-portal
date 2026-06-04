@@ -13,6 +13,7 @@ export type AdminAccountAction =
   | "view"
   | "approve"
   | "changeAccessLevel"
+  | "editWorkProfile"
   | "disable"
   | "remove"
   | "viewHistory";
@@ -107,6 +108,10 @@ export function canPerformAccountAction(
   }
 
   if (action === "changeAccessLevel") {
+    return targetStatus !== AccountStatus.REMOVED;
+  }
+
+  if (action === "editWorkProfile") {
     return targetStatus !== AccountStatus.REMOVED;
   }
 

@@ -1,4 +1,4 @@
-import { AUTH_EMPLOYEE_LOGIN_PATH } from "@/lib/auth-routes";
+import { buildEmployeeLoginUrl } from "@/lib/portal-auth-redirect";
 import { AUTH_COOKIE_PREFIX } from "@/lib/auth-config";
 import {
   DEV_APP_ORIGIN,
@@ -62,8 +62,9 @@ export function middleware(request: NextRequest) {
   });
 
   if (!sessionCookie) {
+    const returnTo = `${request.nextUrl.pathname}${request.nextUrl.search}`;
     return NextResponse.redirect(
-      new URL(AUTH_EMPLOYEE_LOGIN_PATH, DEV_APP_ORIGIN),
+      new URL(buildEmployeeLoginUrl(returnTo), DEV_APP_ORIGIN),
     );
   }
 

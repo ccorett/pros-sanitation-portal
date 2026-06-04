@@ -1,8 +1,8 @@
 "use client";
 
-import { COMPANY } from "@/lib/constants";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { authClient } from "@/lib/auth-client";
+import { redirectToPortalHome, signOutPortalSession } from "@/lib/auth-session";
+import { COMPANY } from "@/lib/constants";
 
 type PendingVerificationScreenProps = {
   firstName: string;
@@ -12,8 +12,8 @@ export function PendingVerificationScreen({
   firstName,
 }: PendingVerificationScreenProps) {
   async function handleSignOut() {
-    await authClient.signOut();
-    window.location.assign("/");
+    await signOutPortalSession();
+    redirectToPortalHome();
   }
 
   return (

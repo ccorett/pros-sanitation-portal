@@ -9,6 +9,7 @@ import {
 import { canAccessAdminModule } from "@/lib/access-levels";
 import { isManagerOrAbove } from "@/lib/operational-access";
 import { prisma } from "@/lib/prisma";
+import { getSupervisorVisibleEmployeeIds } from "@/lib/supervisor-team-scope";
 import { resolveSupervisorEmailForSubmit } from "@/lib/vacation-workflow";
 
 export type VacationRequestDto = {
@@ -40,8 +41,8 @@ export type VacationRequestDto = {
 
 export const SUPERVISOR_STATUS_LABELS: Record<VacationSupervisorStatus, string> = {
   PENDING: "Pending",
-  AWARE: "Aware",
-  UNAWARE: "Unaware",
+  AWARE: "Agree",
+  UNAWARE: "Disagree",
 };
 
 export const MANAGER_STATUS_LABELS: Record<VacationManagerStatus, string> = {
@@ -121,38 +122,6 @@ async function resolveSupervisorForEmployee(employee: Employee) {
   };
 }
 
-async function getVisibleEmployeeIdsForSupervisor(
-  supervisor: Employee,
-): Promise<string[]> {
-  if (supervisor.accessLevel !== AccessLevel.SUPERVISOR) {
-    return [];
-  }
-
-  if (supervisor.operationalGroup === OperationalGroup.BIN_SERVICE_SUPERVISOR) {
-    const technicians = await prisma.employee.findMany({
-      where: { operationalGroup: OperationalGroup.BIN_TECHNICIAN },
-      select: { id: true },
-    });
-    return technicians.map((row) => row.id);
-  }
-
-  if (
-    supervisor.operationalGroup === OperationalGroup.GENERAL &&
-    supervisor.locationAssignment
-  ) {
-    const teamMembers = await prisma.employee.findMany({
-      where: {
-        locationAssignment: supervisor.locationAssignment,
-        operationalGroup: { not: OperationalGroup.BIN_TECHNICIAN },
-      },
-      select: { id: true },
-    });
-    return teamMembers.map((row) => row.id);
-  }
-
-  return [];
-}
-
 export async function listVacationRequestsForActor(
   actor: Employee,
 ): Promise<VacationRequestDto[]> {
@@ -164,7 +133,7 @@ export async function listVacationRequestsForActor(
   ) {
     where = {};
   } else if (actor.accessLevel === AccessLevel.SUPERVISOR) {
-    const employeeIds = await getVisibleEmployeeIdsForSupervisor(actor);
+    const employeeIds = await getSupervisorVisibleEmployeeIds(actor);
     where = { employeeId: { in: employeeIds } };
   } else {
     where = { employeeId: actor.id };
@@ -204,7 +173,11 @@ export async function canSupervisorActOnRequest(
   }
 
   if (supervisor.operationalGroup === OperationalGroup.BIN_SERVICE_SUPERVISOR) {
-    return employee.operationalGroup === OperationalGroup.BIN_TECHNICIAN;
+    return (
+      employee.operationalGroup === OperationalGroup.BIN_TECHNICIAN &&
+      Boolean(supervisor.locationAssignment) &&
+      supervisor.locationAssignment === employee.locationAssignment
+    );
   }
 
   if (supervisor.operationalGroup === OperationalGroup.GENERAL) {

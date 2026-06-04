@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { authClient } from "@/lib/auth-client";
+import { redirectToPortalHome, signOutPortalSession } from "@/lib/auth-session";
 import { Button } from "@/components/ui/Button";
 
 export function SignOutButton() {
@@ -10,8 +10,8 @@ export function SignOutButton() {
   const handleSignOut = async () => {
     setLoading(true);
     try {
-      await authClient.signOut();
-      window.location.assign("/");
+      await signOutPortalSession();
+      redirectToPortalHome();
     } finally {
       setLoading(false);
     }

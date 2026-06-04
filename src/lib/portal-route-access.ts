@@ -1,6 +1,7 @@
 import { AccessLevel, OperationalGroup } from "@prisma/client";
 import { canAccessGeneralJobs } from "@/lib/job-assignment-access";
 import { resolveEmployeeJobAssignments } from "@/lib/job-assignment-service";
+import { canAccessAdminModule } from "@/lib/access-levels";
 import {
   canAccessBinManagement,
   canAccessEquipmentSupplies,
@@ -15,6 +16,7 @@ export type PortalFeature =
   | "binManagement"
   | "humanResources"
   | "supervisorTeamRequests"
+  | "hrOrganisation"
   | "myProfile"
   | "equipmentSupplies"
   | "admin"
@@ -39,6 +41,19 @@ const FEATURE_ACCESS: Record<
   supervisorTeamRequests: (ctx) =>
     ctx.accessLevel === AccessLevel.SUPERVISOR &&
     ctx.operationalGroup !== OperationalGroup.BIN_TECHNICIAN,
+  hrOrganisation: (ctx) => {
+    if (
+      ctx.accessLevel === AccessLevel.TEAM_MEMBER ||
+      ctx.accessLevel === AccessLevel.PENDING_VERIFICATION
+    ) {
+      return false;
+    }
+    return (
+      isManagerOrAbove(ctx.accessLevel) ||
+      canAccessAdminModule(ctx.accessLevel) ||
+      ctx.accessLevel === AccessLevel.SUPERVISOR
+    );
+  },
   myProfile: (ctx) =>
     ctx.accessLevel !== AccessLevel.PENDING_VERIFICATION,
   equipmentSupplies: (ctx) => canAccessEquipmentSupplies(ctx),
@@ -50,7 +65,7 @@ const FEATURE_ACCESS: Record<
 
 const NAV_CATALOG: PortalNavItem[] = [
   { label: "Dashboard", href: "/staff-dashboard", feature: "dashboard" },
-  { label: "Jobs", href: "/jobs", feature: "jobs" },
+  { label: "Job Management", href: "/jobs", feature: "jobs" },
   { label: "Bin Management", href: "/jobs/bin-management", feature: "binManagement" },
   {
     label: "Equipment & Supplies",
@@ -77,6 +92,7 @@ const PATH_RULES: { prefix: string; feature: PortalFeature }[] = [
   { prefix: "/admin", feature: "admin" },
   { prefix: "/jobs/bin-management", feature: "binManagement" },
   { prefix: "/hr/supervisor-reviews", feature: "supervisorTeamRequests" },
+  { prefix: "/hr/organisation", feature: "hrOrganisation" },
   { prefix: "/equipment-supplies", feature: "equipmentSupplies" },
   { prefix: "/my-profile", feature: "myProfile" },
   { prefix: "/human-resources", feature: "humanResources" },

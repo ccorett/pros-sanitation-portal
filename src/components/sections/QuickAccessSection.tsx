@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowUpRight } from "lucide-react";
-import Link from "next/link";
+import { ProtectedPortalLink } from "@/components/auth/ProtectedPortalLink";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { quickAccessItems } from "@/lib/mock-data";
 
@@ -27,7 +27,7 @@ export function QuickAccessSection() {
           {quickAccessItems.map((item) => {
             const Icon = item.icon;
             return (
-              <Link
+              <ProtectedPortalLink
                 key={item.id}
                 href={item.href}
                 id={item.id}
@@ -48,7 +48,7 @@ export function QuickAccessSection() {
                     {item.description}
                   </p>
                 </GlassCard>
-              </Link>
+              </ProtectedPortalLink>
             );
           })}
         </div>

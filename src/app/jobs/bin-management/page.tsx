@@ -14,7 +14,7 @@ export default async function BinManagementPage() {
 
   return (
     <StaffWorkspaceShell
-      sectionLabel="Job Management"
+      sectionLabel="Bin Management"
       title="Bin Management"
       subtitle={
         allowSetupLinks
@@ -28,11 +28,11 @@ export default async function BinManagementPage() {
     >
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Link
-          href="/jobs"
+          href="/staff-dashboard"
           className="inline-flex items-center gap-2 text-sm font-medium text-[#00c6ff] transition-colors hover:text-[#6cc801]"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Back to Job Management
+          Back to Dashboard
         </Link>
         <Link
           href="/jobs/bin-management/today"

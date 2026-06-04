@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { createEmployeeWithAllocatedId } from "@/lib/employee-id";
 import {
   isEmployeeDepartment,
+  isEmployeeJobTitle,
   isEmployeeLocationAssignment,
   isEmployeePosition,
 } from "@/lib/employee-signup-options";
@@ -53,8 +54,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!body.jobTitle?.trim()) {
-    return NextResponse.json({ error: "Job title is required." }, { status: 400 });
+  if (!body.jobTitle?.trim() || !isEmployeeJobTitle(body.jobTitle.trim())) {
+    return NextResponse.json(
+      { error: "Select a valid job title." },
+      { status: 400 },
+    );
   }
 
   if (!body.position?.trim() || !isEmployeePosition(body.position.trim())) {

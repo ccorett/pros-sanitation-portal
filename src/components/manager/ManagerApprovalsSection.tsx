@@ -90,7 +90,7 @@ export function ManagerApprovalsSection() {
       ) : requests.length === 0 ? (
         <p className="text-sm text-[#ebfbff]/60">
           No requests are waiting for manager approval. After a supervisor marks
-          Aware or Unaware, requests appear here.
+          Agree or Disagree, requests appear here.
         </p>
       ) : (
         <div className="glass-card portal-table-scroll rounded-2xl border border-[#ebfbff]/10">
