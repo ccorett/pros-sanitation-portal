@@ -1,5 +1,6 @@
 import { AccessLevel, OperationalGroup, type Employee } from "@prisma/client";
 import type { VacationRequest } from "@/lib/hr-mock-data";
+import { canSupervisorReviewEmployeeVacation } from "@/lib/supervisor-team-scope";
 
 export type VacationWorkflowStatus =
   | "Pending Supervisor Review"
@@ -53,41 +54,24 @@ export function resolveSupervisorEmailForSubmit(employee: {
 export function canSupervisorReviewRequest(
   supervisor: Pick<
     Employee,
-    "accessLevel" | "operationalGroup" | "locationAssignment" | "companyEmail"
+    "accessLevel" | "operationalGroup" | "locationAssignment"
   >,
   request: Pick<
     VacationWorkflowRequest,
     | "employeeOperationalGroup"
     | "locationAssignment"
-    | "supervisorEmail"
     | "workflowStatus"
   >,
 ): boolean {
-  if (supervisor.accessLevel !== AccessLevel.SUPERVISOR) {
-    return false;
-  }
-
   if (request.workflowStatus !== "Pending Supervisor Review") {
     return false;
   }
 
-  if (supervisor.companyEmail !== request.supervisorEmail) {
-    return false;
-  }
-
-  if (supervisor.operationalGroup === OperationalGroup.BIN_SERVICE_SUPERVISOR) {
-    return request.employeeOperationalGroup === OperationalGroup.BIN_TECHNICIAN;
-  }
-
-  if (supervisor.operationalGroup === OperationalGroup.GENERAL) {
-    return (
-      request.employeeOperationalGroup !== OperationalGroup.BIN_TECHNICIAN &&
-      Boolean(supervisor.locationAssignment) &&
-      supervisor.locationAssignment === request.locationAssignment
-    );
-  }
-
-  return false;
+  return canSupervisorReviewEmployeeVacation(supervisor, {
+    accessLevel: AccessLevel.TEAM_MEMBER,
+    operationalGroup: request.employeeOperationalGroup,
+    locationAssignment: request.locationAssignment,
+  });
 }
 
 export function workflowStatusClass(

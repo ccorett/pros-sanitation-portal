@@ -144,39 +144,50 @@ export function SupervisorVacationReviewSection() {
                     </span>
                   </td>
                   <td className="px-4 py-4 sm:px-6">
-                    <label className="mb-3 block">
-                      <span className="text-xs text-[#ebfbff]/50">Supervisor Notes</span>
-                      <textarea
-                        value={notesById[request.id] ?? ""}
-                        onChange={(event) =>
-                          setNotesById((current) => ({
-                            ...current,
-                            [request.id]: event.target.value,
-                          }))
-                        }
-                        rows={2}
-                        placeholder="Optional"
-                        className="mt-1 w-full min-w-[200px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-3 py-2 text-sm text-[#ebfbff] focus:border-[#00c6ff]/50 focus:outline-none"
-                      />
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="login"
-                        disabled={actingId === request.id}
-                        onClick={() => void handleAwareness(request.id, "AWARE")}
-                      >
-                        Agree
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        disabled={actingId === request.id}
-                        onClick={() => void handleAwareness(request.id, "UNAWARE")}
-                      >
-                        Disagree
-                      </Button>
-                    </div>
+                    {request.supervisorCanAct === false ? (
+                      <p className="text-sm font-medium text-[#ebfbff]/50">
+                        {request.supervisorActBlockedLabel ??
+                          "Not assigned to your team"}
+                      </p>
+                    ) : (
+                      <>
+                        <label className="mb-3 block">
+                          <span className="text-xs text-[#ebfbff]/50">
+                            Supervisor Notes
+                          </span>
+                          <textarea
+                            value={notesById[request.id] ?? ""}
+                            onChange={(event) =>
+                              setNotesById((current) => ({
+                                ...current,
+                                [request.id]: event.target.value,
+                              }))
+                            }
+                            rows={2}
+                            placeholder="Optional"
+                            className="mt-1 w-full min-w-[200px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-3 py-2 text-sm text-[#ebfbff] focus:border-[#00c6ff]/50 focus:outline-none"
+                          />
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="login"
+                            disabled={actingId === request.id}
+                            onClick={() => void handleAwareness(request.id, "AWARE")}
+                          >
+                            Agree
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={actingId === request.id}
+                            onClick={() => void handleAwareness(request.id, "UNAWARE")}
+                          >
+                            Disagree
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -1,7 +1,6 @@
 import type { Employee, VacationRequest } from "@prisma/client";
 import {
   AccessLevel,
-  OperationalGroup,
   VacationFinalStatus,
   VacationManagerStatus,
   VacationSupervisorStatus,
@@ -9,7 +8,10 @@ import {
 import { canAccessAdminModule } from "@/lib/access-levels";
 import { isManagerOrAbove } from "@/lib/operational-access";
 import { prisma } from "@/lib/prisma";
-import { getSupervisorVisibleEmployeeIds } from "@/lib/supervisor-team-scope";
+import {
+  canSupervisorReviewEmployeeVacation,
+  getSupervisorVisibleEmployeeIds,
+} from "@/lib/supervisor-team-scope";
 import { resolveSupervisorEmailForSubmit } from "@/lib/vacation-workflow";
 
 export type VacationRequestDto = {
@@ -37,6 +39,9 @@ export type VacationRequestDto = {
   finalStatusLabel: string;
   createdAt: string;
   updatedAt: string;
+  /** Set when the list actor is a supervisor — drives Agree/Disagree UI. */
+  supervisorCanAct?: boolean;
+  supervisorActBlockedLabel?: string | null;
 };
 
 export const SUPERVISOR_STATUS_LABELS: Record<VacationSupervisorStatus, string> = {
@@ -144,51 +149,61 @@ export async function listVacationRequestsForActor(
     orderBy: { createdAt: "desc" },
   });
 
-  return rows.map(serializeVacationRequest);
+  const serialized = rows.map(serializeVacationRequest);
+
+  if (actor.accessLevel !== AccessLevel.SUPERVISOR) {
+    return serialized;
+  }
+
+  const employeeIds = [...new Set(rows.map((row) => row.employeeId))];
+  const employees = await prisma.employee.findMany({
+    where: { id: { in: employeeIds } },
+    select: {
+      id: true,
+      accessLevel: true,
+      operationalGroup: true,
+      locationAssignment: true,
+    },
+  });
+  const employeeById = new Map(employees.map((row) => [row.id, row]));
+
+  return serialized.map((request) => {
+    const employee = employeeById.get(request.employeeId);
+    const canAct =
+      request.finalStatus === VacationFinalStatus.PENDING_SUPERVISOR_REVIEW &&
+      employee !== undefined &&
+      canSupervisorReviewEmployeeVacation(actor, employee);
+
+    return {
+      ...request,
+      supervisorCanAct: canAct,
+      supervisorActBlockedLabel: canAct ? null : "Not assigned to your team",
+    };
+  });
 }
 
 export async function canSupervisorActOnRequest(
   supervisor: Employee,
   request: VacationRequest,
 ): Promise<boolean> {
-  if (supervisor.accessLevel !== AccessLevel.SUPERVISOR) {
-    return false;
-  }
-
   if (request.finalStatus !== VacationFinalStatus.PENDING_SUPERVISOR_REVIEW) {
-    return false;
-  }
-
-  if (!request.supervisorId || request.supervisorId !== supervisor.id) {
     return false;
   }
 
   const employee = await prisma.employee.findUnique({
     where: { id: request.employeeId },
-    select: { operationalGroup: true, locationAssignment: true },
+    select: {
+      accessLevel: true,
+      operationalGroup: true,
+      locationAssignment: true,
+    },
   });
 
   if (!employee) {
     return false;
   }
 
-  if (supervisor.operationalGroup === OperationalGroup.BIN_SERVICE_SUPERVISOR) {
-    return (
-      employee.operationalGroup === OperationalGroup.BIN_TECHNICIAN &&
-      Boolean(supervisor.locationAssignment) &&
-      supervisor.locationAssignment === employee.locationAssignment
-    );
-  }
-
-  if (supervisor.operationalGroup === OperationalGroup.GENERAL) {
-    return (
-      employee.operationalGroup !== OperationalGroup.BIN_TECHNICIAN &&
-      Boolean(supervisor.locationAssignment) &&
-      supervisor.locationAssignment === request.locationAssignment
-    );
-  }
-
-  return false;
+  return canSupervisorReviewEmployeeVacation(supervisor, employee);
 }
 
 export type CreateVacationRequestInput = {
