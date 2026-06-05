@@ -22,7 +22,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     accessLevel?: AccessLevel;
     notes?: string;
     jobTitle?: string;
-    position?: string;
     department?: string;
     locationAssignment?: string;
   };
@@ -49,7 +48,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         body.action === "updateWorkProfile"
           ? {
               jobTitle: body.jobTitle?.trim() ?? "",
-              position: body.position?.trim() ?? "",
               department: body.department?.trim() ?? "",
               locationAssignment: body.locationAssignment?.trim() ?? "",
             }

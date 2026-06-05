@@ -1,6 +1,9 @@
 import type { Employee } from "@prisma/client";
 import { AccessLevel, AccountStatus } from "@prisma/client";
-import { canAccessAdminModule } from "@/lib/access-levels";
+import {
+  canAccessAdminModule,
+  derivePositionFromAccessLevel,
+} from "@/lib/access-levels";
 import { EMPLOYEE_LOCATION_ASSIGNMENTS } from "@/lib/employee-signup-options";
 import { isManagerOrAbove } from "@/lib/operational-access";
 import { prisma } from "@/lib/prisma";
@@ -37,7 +40,7 @@ function toOrganisationRow(employee: {
   companyEmail: string;
   jobTitle: string;
   department: string;
-  position: string | null;
+  accessLevel: AccessLevel;
 }): OrganisationEmployeeRow {
   return {
     id: employee.id,
@@ -45,7 +48,7 @@ function toOrganisationRow(employee: {
     email: employee.companyEmail,
     jobTitle: employee.jobTitle,
     department: employee.department,
-    position: employee.position ?? "—",
+    position: derivePositionFromAccessLevel(employee.accessLevel),
   };
 }
 
@@ -126,7 +129,6 @@ export async function getHrOrganisationForActor(
       companyEmail: true,
       jobTitle: true,
       department: true,
-      position: true,
       accessLevel: true,
       locationAssignment: true,
     },

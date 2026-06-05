@@ -15,7 +15,6 @@ import {
   EMPLOYEE_DEPARTMENTS,
   EMPLOYEE_JOB_TITLES,
   EMPLOYEE_LOCATION_ASSIGNMENTS,
-  EMPLOYEE_POSITIONS,
 } from "@/lib/employee-signup-options";
 import { AccessLevel, AccountStatus } from "@prisma/client";
 import { useCallback, useEffect, useState } from "react";
@@ -57,7 +56,6 @@ export function AdminAccountsSection() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [editTarget, setEditTarget] = useState<AdminAccountRow | null>(null);
   const [editJobTitle, setEditJobTitle] = useState("");
-  const [editPosition, setEditPosition] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
   const [editLocationAssignment, setEditLocationAssignment] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -89,7 +87,6 @@ export function AdminAccountsSection() {
     options?: {
       accessLevel?: AccessLevel;
       jobTitle?: string;
-      position?: string;
       department?: string;
       locationAssignment?: string;
     },
@@ -106,7 +103,6 @@ export function AdminAccountsSection() {
           action,
           accessLevel: options?.accessLevel,
           jobTitle: options?.jobTitle,
-          position: options?.position,
           department: options?.department,
           locationAssignment: options?.locationAssignment,
         }),
@@ -134,13 +130,6 @@ export function AdminAccountsSection() {
         account.jobTitle as (typeof EMPLOYEE_JOB_TITLES)[number],
       )
         ? account.jobTitle
-        : "",
-    );
-    setEditPosition(
-      EMPLOYEE_POSITIONS.includes(
-        account.position as (typeof EMPLOYEE_POSITIONS)[number],
-      )
-        ? account.position
         : "",
     );
     setEditDepartment(
@@ -406,6 +395,13 @@ export function AdminAccountsSection() {
                 ))}
               </select>
             </label>
+            <p className="text-sm text-[#ebfbff]/70">
+              Position:{" "}
+              <span className="font-semibold text-[#ebfbff]">
+                {formatAccessLevelLabel(selectedLevel)}
+              </span>
+              <span className="text-[#ebfbff]/50"> (set automatically)</span>
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -453,6 +449,13 @@ export function AdminAccountsSection() {
                 ))}
               </select>
             </label>
+            <p className="text-sm text-[#ebfbff]/70">
+              Position:{" "}
+              <span className="font-semibold text-[#ebfbff]">
+                {formatAccessLevelLabel(selectedLevel)}
+              </span>
+              <span className="text-[#ebfbff]/50"> (set automatically)</span>
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -503,21 +506,18 @@ export function AdminAccountsSection() {
                 ))}
               </select>
             </label>
-            <label className="block">
+            <div className="block">
               <span className="text-sm text-[#ebfbff]/70">Position</span>
-              <select
-                value={editPosition}
-                onChange={(event) => setEditPosition(event.target.value)}
-                className="mt-2 w-full min-h-[48px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-[#ebfbff]"
+              <p
+                className="mt-2 min-h-[48px] rounded-xl border border-[#ebfbff]/10 bg-[#0c151d]/40 px-4 py-3 text-[#ebfbff]/80"
+                aria-readonly="true"
               >
-                <option value="">Select position</option>
-                {EMPLOYEE_POSITIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
+                {editTarget.accessLevelLabel}
+                <span className="ml-2 text-sm text-[#ebfbff]/50">
+                  (from access level)
+                </span>
+              </p>
+            </div>
             <label className="block">
               <span className="text-sm text-[#ebfbff]/70">Department</span>
               <select
@@ -561,18 +561,12 @@ export function AdminAccountsSection() {
               <button
                 type="button"
                 onClick={() => {
-                  if (
-                    !editJobTitle ||
-                    !editPosition ||
-                    !editDepartment ||
-                    !editLocationAssignment
-                  ) {
+                  if (!editJobTitle || !editDepartment || !editLocationAssignment) {
                     setError("Complete all work profile fields.");
                     return;
                   }
                   void runAction(editTarget, "updateWorkProfile", {
                     jobTitle: editJobTitle,
-                    position: editPosition,
                     department: editDepartment,
                     locationAssignment: editLocationAssignment,
                   });

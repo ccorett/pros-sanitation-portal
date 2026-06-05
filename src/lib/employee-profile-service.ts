@@ -1,4 +1,5 @@
 import type { Employee } from "@prisma/client";
+import { derivePositionFromAccessLevel } from "@/lib/access-levels";
 import { prisma } from "@/lib/prisma";
 
 const MAX_PROFILE_PICTURE_URL_LENGTH = 500_000;
@@ -33,7 +34,7 @@ export function serializeEmployeeProfile(employee: Employee): EmployeeProfileDto
     emergencyContactPhone: employee.emergencyContactPhone,
     profilePictureUrl: employee.profilePictureUrl,
     jobTitle: employee.jobTitle,
-    position: employee.position,
+    position: derivePositionFromAccessLevel(employee.accessLevel),
     department: employee.department,
     locationAssignment: employee.locationAssignment,
     employmentStatus: employee.employmentStatus,

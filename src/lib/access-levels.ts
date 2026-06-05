@@ -20,6 +20,11 @@ export function formatAccessLevelLabel(level: AccessLevel | string): string {
   return ACCESS_LEVEL_LABELS[level as AccessLevel] ?? String(level);
 }
 
+/** Position display/sync value — always matches access level (source of truth). */
+export function derivePositionFromAccessLevel(level: AccessLevel): string {
+  return formatAccessLevelLabel(level);
+}
+
 export function formatAccountStatusLabel(status: AccountStatus | string): string {
   return ACCOUNT_STATUS_LABELS[status as AccountStatus] ?? String(status);
 }

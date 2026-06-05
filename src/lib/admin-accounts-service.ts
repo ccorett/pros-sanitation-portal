@@ -3,12 +3,15 @@ import {
   canPerformAccountAction,
   defaultApprovalAccessLevel,
 } from "@/lib/admin-account-permissions";
-import { formatAccessLevelLabel, formatAccountStatusLabel } from "@/lib/access-levels";
+import {
+  derivePositionFromAccessLevel,
+  formatAccessLevelLabel,
+  formatAccountStatusLabel,
+} from "@/lib/access-levels";
 import {
   isEmployeeDepartment,
   isEmployeeJobTitle,
   isEmployeeLocationAssignment,
-  isEmployeePosition,
 } from "@/lib/employee-signup-options";
 import { prisma } from "@/lib/prisma";
 import {
@@ -96,7 +99,7 @@ export async function listAdminAccounts(): Promise<AdminAccountRow[]> {
       locationAssignment: employee.locationAssignment ?? "—",
       department: employee.department,
       jobTitle: employee.jobTitle,
-      position: employee.position ?? "—",
+      position: derivePositionFromAccessLevel(employee.accessLevel),
       lastLoginAt: toIso(lastLogin),
       lastEditedAt: toIso(employee.lastEditedAt),
       editedBy: employee.editedBy,
@@ -168,6 +171,9 @@ async function touchEmployeeAudit(
     where: { id: employeeId },
     data: {
       ...data,
+      ...(data.accessLevel !== undefined
+        ? { position: derivePositionFromAccessLevel(data.accessLevel) }
+        : {}),
       lastEditedAt: new Date(),
       editedBy,
     },
@@ -183,7 +189,6 @@ export async function updateEmployeeLastLogin(userId: string) {
 
 export type EmployeeWorkProfileInput = {
   jobTitle: string;
-  position: string;
   department: string;
   locationAssignment: string;
 };
@@ -203,9 +208,6 @@ export type AccountMutationInput = {
 function validateWorkProfileInput(input: EmployeeWorkProfileInput): void {
   if (!isEmployeeJobTitle(input.jobTitle)) {
     throw new Error("Select a valid job title.");
-  }
-  if (!isEmployeePosition(input.position)) {
-    throw new Error("Select a valid position.");
   }
   if (!isEmployeeDepartment(input.department)) {
     throw new Error("Select a valid department.");
@@ -323,7 +325,7 @@ export async function mutateAdminAccount(
       where: { id: target.id },
       data: {
         jobTitle: input.workProfile.jobTitle,
-        position: input.workProfile.position,
+        position: derivePositionFromAccessLevel(target.accessLevel),
         department: input.workProfile.department,
         locationAssignment: input.workProfile.locationAssignment,
         lastEditedAt: new Date(),
