@@ -11,7 +11,7 @@ export default async function ManagerApprovalsPage() {
   return (
     <StaffWorkspaceShell
       sectionLabel="Manager"
-      title="Final Leave Approvals"
+      title="Manager Approval"
       subtitle="Approve or reject vacation requests after supervisor review."
       layoutWidth="wide"
       employeeId={employee.id}

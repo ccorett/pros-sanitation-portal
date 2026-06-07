@@ -109,7 +109,7 @@ const NAV_CATALOG: PortalNavItem[] = [
   },
   { label: "Human Resources", href: "/hr", feature: "humanResources" },
   {
-    label: "Final Leave Approvals",
+    label: "Manager Approval",
     href: "/manager/approvals",
     feature: "managerApprovals",
   },
