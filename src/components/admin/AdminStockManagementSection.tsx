@@ -2,19 +2,41 @@
 
 import { AdminPurchasingSection } from "@/components/admin/AdminPurchasingSection";
 import { AdminStockSection } from "@/components/admin/AdminStockSection";
+import { InventoryExportSection } from "@/components/admin/InventoryExportSection";
+import { InventoryImportSection } from "@/components/admin/InventoryImportSection";
 import { useCallback, useEffect, useState } from "react";
 
-type StockTab = "inventory" | "purchasing";
+type StockTab = "inventory" | "purchasing" | "import" | "export";
+
+type AdminStockManagementSectionProps = {
+  canEditStock: boolean;
+  canImportExport: boolean;
+};
 
 function tabFromHash(hash: string): StockTab {
-  return hash === "#purchasing-list" ? "purchasing" : "inventory";
+  if (hash === "#purchasing-list") return "purchasing";
+  if (hash === "#import-inventory") return "import";
+  if (hash === "#download-inventory") return "export";
+  return "inventory";
 }
 
 function hashFromTab(tab: StockTab): string {
-  return tab === "purchasing" ? "#purchasing-list" : "#inventory-list";
+  switch (tab) {
+    case "purchasing":
+      return "#purchasing-list";
+    case "import":
+      return "#import-inventory";
+    case "export":
+      return "#download-inventory";
+    default:
+      return "#inventory-list";
+  }
 }
 
-export function AdminStockManagementSection() {
+export function AdminStockManagementSection({
+  canEditStock,
+  canImportExport,
+}: AdminStockManagementSectionProps) {
   const [activeTab, setActiveTab] = useState<StockTab>("inventory");
 
   const syncTabFromLocation = useCallback(() => {
@@ -35,41 +57,56 @@ export function AdminStockManagementSection() {
     }
   }
 
+  const tabs: Array<{ id: StockTab; label: string; visible: boolean }> = [
+    { id: "inventory", label: "Inventory List", visible: true },
+    { id: "purchasing", label: "Purchasing List", visible: canEditStock },
+    { id: "import", label: "Import Inventory", visible: canImportExport },
+    { id: "export", label: "Download Inventory", visible: canImportExport },
+  ];
+
   return (
     <div className="space-y-6">
       <nav
         aria-label="Stock management sections"
         className="flex flex-wrap gap-2 rounded-2xl border border-[#ebfbff]/10 bg-[#0c151d]/60 p-2"
       >
-        <button
-          type="button"
-          onClick={() => selectTab("inventory")}
-          className={`min-h-[44px] rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
-            activeTab === "inventory"
-              ? "bg-[#00c6ff]/15 text-[#00c6ff]"
-              : "text-[#ebfbff]/65 hover:text-[#ebfbff]"
-          }`}
-        >
-          Inventory List
-        </button>
-        <button
-          type="button"
-          onClick={() => selectTab("purchasing")}
-          className={`min-h-[44px] rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
-            activeTab === "purchasing"
-              ? "bg-[#00c6ff]/15 text-[#00c6ff]"
-              : "text-[#ebfbff]/65 hover:text-[#ebfbff]"
-          }`}
-        >
-          Purchasing List
-        </button>
+        {tabs
+          .filter((tab) => tab.visible)
+          .map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => selectTab(tab.id)}
+              className={`min-h-[44px] rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
+                activeTab === tab.id
+                  ? "bg-[#00c6ff]/15 text-[#00c6ff]"
+                  : "text-[#ebfbff]/65 hover:text-[#ebfbff]"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
       </nav>
 
-      <div id={activeTab === "inventory" ? "inventory-list" : "purchasing-list"}>
+      <div
+        id={
+          activeTab === "inventory"
+            ? "inventory-list"
+            : activeTab === "purchasing"
+              ? "purchasing-list"
+              : activeTab === "import"
+                ? "import-inventory"
+                : "download-inventory"
+        }
+      >
         {activeTab === "inventory" ? (
-          <AdminStockSection />
-        ) : (
+          <AdminStockSection canEditStock={canEditStock} />
+        ) : activeTab === "purchasing" ? (
           <AdminPurchasingSection />
+        ) : activeTab === "import" ? (
+          <InventoryImportSection />
+        ) : (
+          <InventoryExportSection />
         )}
       </div>
     </div>

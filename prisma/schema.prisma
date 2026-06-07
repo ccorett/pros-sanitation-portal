@@ -626,6 +626,22 @@ model InventoryItem {
   @@map("inventory_items")
 }
 
+model InventoryImportLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  fileName      String
+  importedById  String?  @db.Uuid
+  importedBy    String
+  importedAt    DateTime @default(now())
+  totalRows     Int
+  createdCount  Int
+  updatedCount  Int
+  skippedCount  Int
+  errorCount    Int
+
+  @@index([importedAt])
+  @@map("inventory_import_logs")
+}
+
 model StockEditHistory {
   id                   String   @id @default(cuid())
   inventoryItemId      String

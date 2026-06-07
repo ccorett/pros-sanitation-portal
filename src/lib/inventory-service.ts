@@ -174,14 +174,87 @@ export async function listActiveInventoryItems(): Promise<InventoryItemDto[]> {
   return items.map(serializeInventoryItem);
 }
 
+export type CreateInventoryItemInput = {
+  itemName: string;
+  category: InventoryCategory;
+  availableQuantity: number;
+  unit: string;
+  reorderLevel?: number;
+  storageArea: string;
+  supplier?: string | null;
+  editedBy: string;
+  notes?: string | null;
+};
+
 export type UpdateInventoryItemInput = {
+  itemName?: string;
+  category?: InventoryCategory;
   availableQuantity?: number;
+  unit?: string;
   reorderLevel?: number;
   storageArea?: string;
   supplier?: string | null;
   isActive?: boolean;
   editedBy: string;
+  notes?: string | null;
 };
+
+const DEFAULT_NEW_ITEM_REORDER_LEVEL = 5;
+
+export async function createInventoryItem(
+  input: CreateInventoryItemInput,
+): Promise<InventoryItemDto> {
+  const itemName = input.itemName.trim();
+  const storageArea = input.storageArea.trim();
+  const unit = input.unit.trim();
+  const reorderLevel = input.reorderLevel ?? DEFAULT_NEW_ITEM_REORDER_LEVEL;
+
+  if (!itemName || !storageArea || !unit) {
+    throw new Error("Item name, unit, and storage area are required.");
+  }
+
+  if (input.availableQuantity < 0 || reorderLevel < 0) {
+    throw new Error("Quantities cannot be negative.");
+  }
+
+  const editedAt = new Date();
+  const created = await prisma.$transaction(async (tx) => {
+    const item = await tx.inventoryItem.create({
+      data: {
+        itemName,
+        category: input.category,
+        availableQuantity: input.availableQuantity,
+        unit,
+        reorderLevel,
+        storageArea,
+        supplier: input.supplier?.trim() || null,
+        lastEditedAt: editedAt,
+        lastEditedBy: input.editedBy,
+      },
+    });
+
+    await tx.stockEditHistory.create({
+      data: {
+        inventoryItemId: item.id,
+        previousQuantity: 0,
+        newQuantity: input.availableQuantity,
+        previousReorderLevel: reorderLevel,
+        newReorderLevel: reorderLevel,
+        previousStorageArea: storageArea,
+        newStorageArea: storageArea,
+        previousSupplier: input.supplier?.trim() || null,
+        newSupplier: input.supplier?.trim() || null,
+        editedBy: input.editedBy,
+        editedAt,
+        notes: input.notes ?? "Inventory item created",
+      },
+    });
+
+    return item;
+  });
+
+  return serializeInventoryItem(created);
+}
 
 export async function updateInventoryItem(
   id: string,
@@ -193,8 +266,11 @@ export async function updateInventoryItem(
     throw new Error("Inventory item not found.");
   }
 
+  const nextItemName = input.itemName?.trim() ?? existing.itemName;
+  const nextCategory = input.category ?? existing.category;
   const nextAvailableQuantity =
     input.availableQuantity ?? existing.availableQuantity;
+  const nextUnit = input.unit?.trim() ?? existing.unit;
   const nextReorderLevel = input.reorderLevel ?? existing.reorderLevel;
   const nextStorageArea = input.storageArea ?? existing.storageArea;
   const nextSupplier =
@@ -207,7 +283,10 @@ export async function updateInventoryItem(
   }
 
   const hasFieldChange =
+    nextItemName !== existing.itemName ||
+    nextCategory !== existing.category ||
     nextAvailableQuantity !== existing.availableQuantity ||
+    nextUnit !== existing.unit ||
     nextReorderLevel !== existing.reorderLevel ||
     nextStorageArea !== existing.storageArea ||
     nextSupplier !== existing.supplier ||
@@ -222,6 +301,13 @@ export async function updateInventoryItem(
     input.isActive === false && existing.isActive
       ? "Item disabled"
       : null;
+  const categoryNote =
+    nextCategory !== existing.category
+      ? `Category: ${formatInventoryCategoryLabel(existing.category)} → ${formatInventoryCategoryLabel(nextCategory)}`
+      : null;
+  const historyNotes =
+    input.notes ??
+    ([disableNote, categoryNote].filter(Boolean).join(" · ") || null);
 
   const updated = await prisma.$transaction(async (tx) => {
     await tx.stockEditHistory.create({
@@ -237,14 +323,17 @@ export async function updateInventoryItem(
         newSupplier: nextSupplier,
         editedBy: input.editedBy,
         editedAt,
-        notes: disableNote,
+        notes: historyNotes,
       },
     });
 
     return tx.inventoryItem.update({
       where: { id },
       data: {
+        itemName: nextItemName,
+        category: nextCategory,
         availableQuantity: nextAvailableQuantity,
+        unit: nextUnit,
         reorderLevel: nextReorderLevel,
         storageArea: nextStorageArea,
         supplier: nextSupplier,

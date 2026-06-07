@@ -30,6 +30,7 @@ export type PortalFeature =
   | "admin"
   | "managerApprovals"
   | "payslipAdministration"
+  | "stockManagement"
   | "teamCheckIn";
 
 export type PortalNavItem = {
@@ -92,6 +93,7 @@ const FEATURE_ACCESS: Record<
     ctx.accessLevel === AccessLevel.SUPER_ADMIN,
   managerApprovals: (ctx) => isManagerOrAbove(ctx.accessLevel),
   payslipAdministration: (ctx) => isManagerOrAbove(ctx.accessLevel),
+  stockManagement: (ctx) => isManagerOrAbove(ctx.accessLevel),
   teamCheckIn: (ctx) =>
     ctx.accessLevel === AccessLevel.SUPERVISOR || isManagerOrAbove(ctx.accessLevel),
 };
@@ -117,6 +119,7 @@ const NAV_CATALOG: PortalNavItem[] = [
 
 const PATH_RULES: { prefix: string; feature: PortalFeature }[] = [
   { prefix: "/manager", feature: "managerApprovals" },
+  { prefix: "/admin/stock-management", feature: "stockManagement" },
   { prefix: "/admin", feature: "admin" },
   { prefix: "/jobs/bin-management", feature: "binManagement" },
   { prefix: "/jobs/team-check-in", feature: "teamCheckIn" },
