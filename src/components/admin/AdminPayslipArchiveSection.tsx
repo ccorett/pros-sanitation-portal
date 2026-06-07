@@ -7,7 +7,7 @@ import {
   formatPayslipMoney,
   type PayslipArchiveDto,
 } from "@/lib/payslip-archive-service";
-import { RefreshCw } from "lucide-react";
+import { Upload } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -20,7 +20,6 @@ export function AdminPayslipArchiveSection() {
   const [fileName, setFileName] = useState("");
   const [fileUrl, setFileUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [syncing, setSyncing] = useState(false);
 
   const loadPayslips = useCallback(async () => {
     setLoading(true);
@@ -43,34 +42,6 @@ export function AdminPayslipArchiveSection() {
   useEffect(() => {
     void loadPayslips();
   }, [loadPayslips]);
-
-  async function handleSync() {
-    setMessage(null);
-    setSyncing(true);
-    try {
-      const response = await fetch("/api/hr/payslip-sync", { method: "POST" });
-      const data = (await response.json()) as {
-        error?: string;
-        recordsImported?: number;
-        recordsUpdated?: number;
-        employeesNotMatched?: string[];
-        recordsArchived?: number;
-      };
-      if (!response.ok) {
-        throw new Error(data.error ?? "Unable to sync payslips.");
-      }
-      setMessage(
-        `Sync complete: ${data.recordsImported ?? 0} imported, ${data.recordsUpdated ?? 0} updated, ${data.recordsArchived ?? 0} archived.`,
-      );
-      await loadPayslips();
-    } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Unable to sync payslips.",
-      );
-    } finally {
-      setSyncing(false);
-    }
-  }
 
   async function handleCreate(event: React.FormEvent) {
     event.preventDefault();
@@ -130,19 +101,16 @@ export function AdminPayslipArchiveSection() {
         <div>
           <h2 className="text-lg font-bold text-[#ebfbff]">Payslip Archive</h2>
           <p className="text-sm text-[#ebfbff]/55">
-            Sync payroll from Google Sheets or manually attach legacy PDF records.
+            View all payslip records including archived periods, or attach legacy PDF records.
           </p>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          className="min-h-[48px]"
-          disabled={syncing}
-          onClick={() => void handleSync()}
+        <Link
+          href="/hr/payslip-administration/import"
+          className="inline-flex min-h-[48px] items-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] hover:bg-[#00c6ff]/20"
         >
-          <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
-          {syncing ? "Syncing…" : "Sync Payslips"}
-        </Button>
+          <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
+          Import Payslips
+        </Link>
       </div>
 
       <form onSubmit={handleCreate} className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">

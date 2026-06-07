@@ -47,7 +47,7 @@ export const hrModules: HrModule[] = [
   },
   {
     title: "Payslips",
-    description: "View and download your available payslip PDFs.",
+    description: "View recent payslips and your 12-month payslip history.",
     href: "/hr/payslips",
     icon: Receipt,
   },

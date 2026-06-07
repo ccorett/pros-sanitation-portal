@@ -7,7 +7,7 @@ import Link from "next/link";
 
 export default async function HrPayslipsPage() {
   const { employee } = await requireStaffAccess({ pathname: "/hr" });
-  const canSyncPayslips = isManagerOrAbove(employee.accessLevel);
+  const canManagePayslips = isManagerOrAbove(employee.accessLevel);
 
   return (
     <StaffWorkspaceShell
@@ -31,7 +31,7 @@ export default async function HrPayslipsPage() {
 
       <PayslipsSection
         viewerEmployeeId={employee.id}
-        canSyncPayslips={canSyncPayslips}
+        canManagePayslips={canManagePayslips}
       />
     </StaffWorkspaceShell>
   );

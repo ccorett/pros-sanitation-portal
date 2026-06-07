@@ -875,3 +875,18 @@ model Payslip {
   @@index([importedAt])
   @@map("employee_payslips")
 }
+
+model PayslipImportLog {
+  id                 String   @id @default(uuid()) @db.Uuid
+  importedById       String?  @db.Uuid
+  importedByName     String
+  importedAt         DateTime @default(now())
+  fileName           String
+  recordsImported    Int
+  recordsUpdated     Int
+  recordsSkipped     Int
+  unmatchedEmployees Json     @default("[]")
+
+  @@index([importedAt])
+  @@map("payslip_import_logs")
+}
