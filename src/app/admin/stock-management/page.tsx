@@ -1,4 +1,4 @@
-import { AdminStockSection } from "@/components/admin/AdminStockSection";
+import { AdminStockManagementSection } from "@/components/admin/AdminStockManagementSection";
 import { AdminBackLink } from "@/components/admin/AdminBackLink";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
 import { requireStaffAccess } from "@/lib/require-staff-access";
@@ -10,15 +10,15 @@ export default async function AdminStockManagementPage() {
     <StaffWorkspaceShell
       sectionLabel="Admin"
       title="Stock Management"
-      subtitle="Edits sync with Equipment & Supplies for all staff."
-          employeeId={employee.id}
-          accessLevel={employee.accessLevel}
+      subtitle="Inventory list and purchasing list. Edits sync with Equipment & Supplies for all staff."
+      employeeId={employee.id}
+      accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}
     >
       <div className="space-y-6">
         <AdminBackLink />
-        <AdminStockSection />
+        <AdminStockManagementSection />
       </div>
     </StaffWorkspaceShell>
   );

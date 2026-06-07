@@ -1,5 +1,8 @@
+import { CleaningJobAssignedToField } from "@/components/jobs/CleaningJobAssignedToField";
+import { CleaningJobAttendanceLogHistory } from "@/components/jobs/CleaningJobAttendanceLogHistory";
 import { CleaningJobDetailActions } from "@/components/jobs/CleaningJobDetailActions";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
+import { listAttendanceLogsForCleaningLocation } from "@/lib/attendance-log-service";
 import {
   cleaningJobPriorityBadgeClass,
   cleaningJobPriorityLabel,
@@ -7,12 +10,11 @@ import {
   cleaningJobStatusLabel,
   formatCleaningJobDate,
 } from "@/lib/cleaning-jobs-display";
-import { CleaningJobServiceLogHistory } from "@/components/jobs/CleaningJobServiceLogHistory";
 import {
   canActorAccessCleaningJob,
   canActorActOnCleaningJob,
+  canEditCleaningJobAssignment,
   getCleaningJobById,
-  listJobServiceLogsForJob,
 } from "@/lib/cleaning-jobs-service";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import { ArrowLeft } from "lucide-react";
@@ -60,8 +62,10 @@ export default async function CleaningJobPage({ params }: CleaningJobPageProps) 
     );
   }
 
-  const logs = await listJobServiceLogsForJob(job.id);
+  const attendanceLogs = await listAttendanceLogsForCleaningLocation(job.clientLocation);
   const canPerformActions = canActorActOnCleaningJob(employee, job);
+  const canEditAssignment = canEditCleaningJobAssignment(accessContext);
+  const assignedByName = `${employee.firstName} ${employee.lastName}`.trim();
 
   return (
     <StaffWorkspaceShell
@@ -108,9 +112,13 @@ export default async function CleaningJobPage({ params }: CleaningJobPageProps) 
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-[#ebfbff]/45">Assigned To</dt>
-            <dd className="mt-1 text-sm text-[#ebfbff]">
-              {job.assignedEmployeeName ?? "Unassigned"}
-            </dd>
+            <CleaningJobAssignedToField
+              jobId={job.id}
+              assignedEmployeeId={job.assignedEmployeeId}
+              assignedEmployeeName={job.assignedEmployeeName}
+              assignedByName={assignedByName}
+              canEdit={canEditAssignment}
+            />
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-[#ebfbff]/45">Assigned By</dt>
@@ -137,7 +145,7 @@ export default async function CleaningJobPage({ params }: CleaningJobPageProps) 
         <CleaningJobDetailActions job={job} canPerformActions={canPerformActions} />
       </div>
 
-      <CleaningJobServiceLogHistory logs={logs} />
+      <CleaningJobAttendanceLogHistory logs={attendanceLogs} />
     </StaffWorkspaceShell>
   );
 }

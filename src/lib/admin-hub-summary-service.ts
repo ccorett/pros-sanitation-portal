@@ -13,6 +13,7 @@ import {
   getLatestInventoryActivityLabel,
   listPurchasingListItems,
 } from "@/lib/inventory-service";
+import { countActivePolicies } from "@/lib/policy-service";
 import { formatEditTimestamp } from "@/lib/admin-format";
 import { prisma } from "@/lib/prisma";
 
@@ -34,6 +35,7 @@ export type AdminHubSummaryCounts = {
   pendingAccountVerifications: number;
   binAttentionItems: number;
   purchasingListItems: number;
+  activePolicies: number;
 };
 
 export type AdminHubSummary = {
@@ -59,6 +61,7 @@ export async function getAdminHubSummaryCounts(
     pendingAccountVerifications,
     binSites,
     purchasingListItems,
+    activePolicies,
   ] = await Promise.all([
     prisma.equipmentRequest.count({
       where: { status: EquipmentRequestStatus.PENDING },
@@ -78,6 +81,7 @@ export async function getAdminHubSummaryCounts(
     countPendingVerificationAccounts(),
     listBinFieldSitesForActor(actor),
     listPurchasingListItems(),
+    countActivePolicies(),
   ]);
 
   return {
@@ -89,6 +93,7 @@ export async function getAdminHubSummaryCounts(
     pendingAccountVerifications,
     binAttentionItems: filterAttentionSites(binSites).length,
     purchasingListItems: purchasingListItems.length,
+    activePolicies,
   };
 }
 
@@ -120,6 +125,7 @@ export async function buildAdminHubCards(
     lastInventoryActivity,
     latestBinLog,
     latestHrActivity,
+    latestPolicy,
   ] = await Promise.all([
     prisma.accessHistory.findFirst({
       orderBy: { changedAt: "desc" },
@@ -135,6 +141,10 @@ export async function buildAdminHubCards(
       select: { completedAt: true },
     }),
     prisma.jobLetterRequest.findFirst({
+      orderBy: { updatedAt: "desc" },
+      select: { updatedAt: true },
+    }),
+    prisma.policy.findFirst({
       orderBy: { updatedAt: "desc" },
       select: { updatedAt: true },
     }),
@@ -181,18 +191,22 @@ export async function buildAdminHubCards(
     {
       id: "stock",
       title: "Stock Management",
-      description: "Edit inventory quantities, reorder levels, and storage areas.",
+      description:
+        "Inventory list and purchasing list for low-stock items from Equipment & Supplies.",
       href: "/admin/stock-management",
-      count: counts.lowStockItems,
+      count: counts.lowStockItems + counts.purchasingListItems,
       lastEditedLabel: inventoryLastEdited,
     },
     {
-      id: "purchasing",
-      title: "Purchasing List",
-      description: "Items at or below reorder level from Equipment & Supplies.",
-      href: "/admin/purchasing-list",
-      count: counts.purchasingListItems,
-      lastEditedLabel: inventoryLastEdited,
+      id: "policies",
+      title: "Policy Management",
+      description:
+        "Add, edit, and archive company policies. Staff see active policies only.",
+      href: "/admin/policies",
+      count: counts.activePolicies,
+      lastEditedLabel: latestPolicy
+        ? formatEditTimestamp(latestPolicy.updatedAt.toISOString())
+        : null,
     },
     {
       id: "bin-services",

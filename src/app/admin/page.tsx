@@ -9,7 +9,7 @@ export default async function AdminPage() {
     <StaffWorkspaceShell
       sectionLabel="Admin"
       title="Admin Control Hub"
-      subtitle="Counts load from Neon. Open a section to review pending equipment, HR, stock, bin, and account items."
+      subtitle="Counts load from Neon. Open a section to review approvals, accounts, stock, policies, bin services, and HR."
       employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}

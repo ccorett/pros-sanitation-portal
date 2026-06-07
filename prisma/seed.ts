@@ -87,12 +87,17 @@ async function main() {
 
   await prisma.policy.upsert({
     where: { id: "00000000-0000-4000-8000-000000000020" },
-    update: {},
+    update: {
+      category: "Safety",
+      status: "ACTIVE",
+    },
     create: {
       id: "00000000-0000-4000-8000-000000000020",
       title: "Field PPE & Site Safety Standard",
       body: "All field staff must wear hi-vis vest, safety boots, and gloves on active client sites. Report incidents within 2 hours to your supervisor.",
+      category: "Safety",
       version: "1.2",
+      status: "ACTIVE",
       effectiveDate: new Date("2026-01-15"),
     },
   });

@@ -1,6 +1,9 @@
 import { createPolicy, listPoliciesForAdmin } from "@/lib/policy-service";
 import { requireAdminApiActor } from "@/lib/require-admin-api";
+import type { PolicyStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+
+const VALID_STATUSES: PolicyStatus[] = ["ACTIVE", "DRAFT", "ARCHIVED"];
 
 export async function GET() {
   const authResult = await requireAdminApiActor();
@@ -21,13 +24,14 @@ export async function POST(request: NextRequest) {
   const body = (await request.json()) as {
     title?: string;
     body?: string;
-    version?: string;
+    category?: string;
+    status?: PolicyStatus;
     effectiveDate?: string;
   };
 
-  if (!body.title?.trim() || !body.body?.trim() || !body.version?.trim()) {
+  if (!body.title?.trim() || !body.body?.trim() || !body.category?.trim()) {
     return NextResponse.json(
-      { error: "title, body, and version are required." },
+      { error: "title, body, and category are required." },
       { status: 400 },
     );
   }
@@ -39,11 +43,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const status = body.status ?? "ACTIVE";
+  if (!VALID_STATUSES.includes(status)) {
+    return NextResponse.json(
+      { error: "status must be Active, Draft, or Archived." },
+      { status: 400 },
+    );
+  }
+
   try {
     const policy = await createPolicy({
       title: body.title,
       body: body.body,
-      version: body.version,
+      category: body.category,
+      status,
       effectiveDate: body.effectiveDate,
     });
     return NextResponse.json({ policy }, { status: 201 });

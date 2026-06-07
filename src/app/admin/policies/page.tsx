@@ -9,8 +9,8 @@ export default async function AdminPoliciesPage() {
   return (
     <StaffWorkspaceShell
       sectionLabel="Admin"
-      title="Policies"
-      subtitle="Publish and maintain company policies stored in Neon."
+      title="Policy Management"
+      subtitle="Add, edit, and archive company policies stored in Neon."
       employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}

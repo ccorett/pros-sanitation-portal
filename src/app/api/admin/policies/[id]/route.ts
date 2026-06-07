@@ -1,10 +1,13 @@
-import { deletePolicy, updatePolicy } from "@/lib/policy-service";
+import { archivePolicy, updatePolicy } from "@/lib/policy-service";
 import { requireAdminApiActor } from "@/lib/require-admin-api";
+import type { PolicyStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
+
+const VALID_STATUSES: PolicyStatus[] = ["ACTIVE", "DRAFT", "ARCHIVED"];
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
   const authResult = await requireAdminApiActor();
@@ -16,9 +19,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const body = (await request.json()) as {
     title?: string;
     body?: string;
-    version?: string;
+    category?: string;
+    status?: PolicyStatus;
     effectiveDate?: string;
   };
+
+  if (body.status && !VALID_STATUSES.includes(body.status)) {
+    return NextResponse.json(
+      { error: "status must be Active, Draft, or Archived." },
+      { status: 400 },
+    );
+  }
 
   try {
     const policy = await updatePolicy(id, body);
@@ -39,8 +50,8 @@ export async function DELETE(_request: Request, context: RouteContext) {
   const { id } = await context.params;
 
   try {
-    await deletePolicy(id);
-    return NextResponse.json({ ok: true });
+    const policy = await archivePolicy(id);
+    return NextResponse.json({ policy });
   } catch {
     return NextResponse.json({ error: "Policy not found." }, { status: 404 });
   }

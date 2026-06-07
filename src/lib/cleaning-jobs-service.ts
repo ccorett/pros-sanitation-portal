@@ -4,12 +4,14 @@ import {
   CleaningJobStatus,
   JobActionType,
   JobPriority,
+  OperationalGroup,
 } from "@prisma/client";
 import {
   isBinOperationalRole,
   isManagerOrAbove,
   type EmployeeAccessContext,
 } from "@/lib/operational-access";
+import { ACTIVE_EMPLOYEE_FILTER } from "@/lib/account-retention";
 import { resolveAssignedCleaningLocationIds } from "@/lib/job-assignment-service";
 import { prisma } from "@/lib/prisma";
 
@@ -492,4 +494,42 @@ export function canActorUpdateCleaningJob(
   }
 
   return job.assignedEmployeeId === actor.id;
+}
+
+export function canEditCleaningJobAssignment(ctx: EmployeeAccessContext): boolean {
+  return isManagerOrAbove(ctx.accessLevel);
+}
+
+export type CleaningJobAssigneeDto = {
+  id: string;
+  employeePublicId: string;
+  fullName: string;
+};
+
+export async function listCleaningJobAssignees(
+  locationName: string,
+): Promise<CleaningJobAssigneeDto[]> {
+  const rows = await prisma.employee.findMany({
+    where: {
+      ...ACTIVE_EMPLOYEE_FILTER,
+      locationAssignment: locationName.trim(),
+      operationalGroup: { not: OperationalGroup.BIN_TECHNICIAN },
+      accessLevel: {
+        in: [AccessLevel.TEAM_MEMBER, AccessLevel.SUPERVISOR],
+      },
+    },
+    select: {
+      id: true,
+      employeeId: true,
+      firstName: true,
+      lastName: true,
+    },
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    employeePublicId: row.employeeId,
+    fullName: `${row.firstName} ${row.lastName}`.trim(),
+  }));
 }

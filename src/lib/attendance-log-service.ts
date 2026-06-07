@@ -44,6 +44,8 @@ export type SubmitAttendanceEntry = {
   checkInTime?: string;
 };
 
+export const ATTENDANCE_LOCATION_HISTORY_MONTH_COUNT = 3;
+
 const STATUS_LABELS: Record<AttendanceStatus, string> = {
   PRESENT: "Present",
   ABSENT: "Absent",
@@ -51,6 +53,25 @@ const STATUS_LABELS: Record<AttendanceStatus, string> = {
   SICK: "Sick",
   VACATION: "Vacation",
 };
+
+export type CleaningLocationAttendanceLogDto = {
+  id: string;
+  attendanceDate: string;
+  employeeName: string;
+  statusLabel: string;
+  checkInTime: string | null;
+  supervisorName: string;
+  notes: string | null;
+};
+
+function attendanceHistoryWindowStart(
+  reference = new Date(),
+  monthCount = ATTENDANCE_LOCATION_HISTORY_MONTH_COUNT,
+): Date {
+  return new Date(
+    Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth() - (monthCount - 1), 1),
+  );
+}
 
 function employeeDisplayName(employee: Pick<Employee, "firstName" | "lastName">): string {
   return `${employee.firstName} ${employee.lastName}`.trim();
@@ -254,6 +275,39 @@ function serializeAttendanceLog(
     createdAt: row.createdAt.toISOString(),
     canEdit: canEditAttendanceLog(actor, row),
   };
+}
+
+export async function listAttendanceLogsForCleaningLocation(
+  location: string,
+): Promise<CleaningLocationAttendanceLogDto[]> {
+  const trimmedLocation = location.trim();
+  if (!trimmedLocation) {
+    return [];
+  }
+
+  const windowStart = attendanceHistoryWindowStart();
+
+  const rows = await prisma.attendanceLog.findMany({
+    where: {
+      location: trimmedLocation,
+      attendanceDate: { gte: windowStart },
+    },
+    include: {
+      supervisor: { select: { firstName: true, lastName: true } },
+      employee: { select: { firstName: true, lastName: true } },
+    },
+    orderBy: [{ attendanceDate: "desc" }, { createdAt: "desc" }],
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    attendanceDate: formatAttendanceDate(row.attendanceDate),
+    employeeName: employeeDisplayName(row.employee),
+    statusLabel: STATUS_LABELS[row.status],
+    checkInTime: row.checkInTime?.toISOString() ?? null,
+    supervisorName: employeeDisplayName(row.supervisor),
+    notes: row.notes,
+  }));
 }
 
 export async function listAttendanceLogsForActor(

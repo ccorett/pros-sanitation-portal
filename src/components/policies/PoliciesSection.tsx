@@ -78,7 +78,7 @@ export function PoliciesSection() {
               <div>
                 <h2 className="text-lg font-bold text-[#ebfbff]">{policy.title}</h2>
                 <p className="mt-1 text-xs text-[#ebfbff]/45">
-                  Version {policy.version} · Effective{" "}
+                  {policy.category} · Version {policy.version} · Effective{" "}
                   {formatDisplayDate(policy.effectiveDate)}
                 </p>
               </div>
