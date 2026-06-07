@@ -8,10 +8,20 @@ function statusClass(status: string): string {
   if (status === "Pending" || status.includes("Pending")) {
     return "border-[#f5c542]/35 bg-[#f5c542]/15 text-[#f5c542]";
   }
-  if (status === "Approved" || status === "Agree" || status === "Aware") {
+  if (
+    status === "Approved" ||
+    status === "Agree" ||
+    status === "Aware" ||
+    status === "Recommend Approval"
+  ) {
     return "border-[#6cc801]/35 bg-[#6cc801]/15 text-[#6cc801]";
   }
-  if (status === "Rejected" || status === "Disagree" || status === "Unaware") {
+  if (
+    status === "Rejected" ||
+    status === "Disagree" ||
+    status === "Unaware" ||
+    status === "Recommend Rejection"
+  ) {
     return "border-[#ff4d4f]/35 bg-[#ff4d4f]/15 text-[#ff4d4f]";
   }
   if (status.includes("Cannot Access") || status.includes("Issue")) {
@@ -70,8 +80,7 @@ export function ApprovalInboxSection() {
   if (items.length === 0) {
     return (
       <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
-        No items need review right now. New requests from Neon-backed modules will
-        appear here.
+        No items need review right now. New requests will appear here.
       </div>
     );
   }

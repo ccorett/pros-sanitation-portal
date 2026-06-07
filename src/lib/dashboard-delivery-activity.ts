@@ -101,11 +101,11 @@ export async function getDashboardDeliveryActivity(
       ]);
 
     return [
-      { key: "openDeliveryRequests", label: "Open Delivery Requests", count: openDeliveryRequests },
-      { key: "deliveriesInProgress", label: "Deliveries In Progress", count: deliveriesInProgress },
+      { key: "openDeliveryRequests", label: "Delivery Requests", count: openDeliveryRequests },
+      { key: "deliveriesInProgress", label: "Active Deliveries", count: deliveriesInProgress },
       {
         key: "completedDeliveriesToday",
-        label: "Completed Deliveries Today",
+        label: "Deliveries Completed Today",
         count: completedDeliveriesToday,
       },
     ];
@@ -123,13 +123,13 @@ export async function getDashboardDeliveryActivity(
     ]);
 
     return [
-      { key: "openDeliveryRequests", label: "Open Delivery Requests", count: openDeliveryRequests },
+      { key: "openDeliveryRequests", label: "Delivery Requests", count: openDeliveryRequests },
       {
         key: "deliveriesAwaitingAssignment",
         label: "Deliveries Awaiting Assignment",
         count: deliveriesAwaitingAssignment,
       },
-      { key: "deliveriesInProgress", label: "Deliveries In Progress", count: deliveriesInProgress },
+      { key: "deliveriesInProgress", label: "Active Deliveries", count: deliveriesInProgress },
     ];
   }
 
@@ -142,10 +142,10 @@ export async function getDashboardDeliveryActivity(
     return [
       {
         key: "assignedDeliveryRequests",
-        label: "Assigned Delivery Requests",
+        label: "Assigned Deliveries",
         count: assignedDeliveryRequests,
       },
-      { key: "deliveriesInProgress", label: "Deliveries In Progress", count: deliveriesInProgress },
+      { key: "deliveriesInProgress", label: "Active Deliveries", count: deliveriesInProgress },
     ];
   }
 

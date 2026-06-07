@@ -179,7 +179,7 @@ export function DeliverySection() {
           href="/jobs"
           className="inline-flex min-h-[44px] items-center rounded-xl border border-[#ebfbff]/20 bg-[#ebfbff]/5 px-4 py-2 text-sm font-semibold text-[#ebfbff]"
         >
-          ← Job Management
+          ← Work Locations
         </Link>
         {canCreate ? (
           <button

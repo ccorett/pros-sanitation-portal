@@ -16,7 +16,7 @@ export default async function EmployeeChangePinPage() {
   return (
     <AuthPageShell
       title="Change PIN"
-      subtitle="Update your 4-digit portal PIN."
+      subtitle="Update your 4-digit company PIN."
       badge="Account security"
     >
       <ChangePinForm />

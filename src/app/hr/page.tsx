@@ -15,7 +15,7 @@ export default async function HrPage() {
     <StaffWorkspaceShell
       sectionLabel="Human Resources"
       title="Human Resources"
-      subtitle="Employment information, time off, payslips, and letter requests."
+      subtitle="Manage leave requests, payslips and employment documents."
       employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
@@ -26,17 +26,17 @@ export default async function HrPage() {
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#6cc801]/15 text-[#6cc801]">
             <Building2 className="h-5 w-5" aria-hidden="true" />
           </div>
-          <p className="mt-4 text-lg font-bold text-[#ebfbff]">Organisation View</p>
+          <p className="mt-4 text-lg font-bold text-[#ebfbff]">Team Structure</p>
           <p className="mt-2 text-sm text-[#ebfbff]/65">
             {isManagerOrAbove(employee.accessLevel)
-              ? "See every location with assigned supervisors and team members."
-              : "See supervisors and team members for your assigned location."}
+              ? "See every location with assigned supervisors and employees."
+              : "See supervisors and employees for your assigned location."}
           </p>
           <Link
             href="/hr/organisation"
             className="mt-4 inline-flex min-h-[44px] items-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-4 py-2 text-sm font-semibold text-[#6cc801] hover:bg-[#6cc801]/20"
           >
-            Open Organisation View
+            View Team Structure
           </Link>
         </div>
       ) : null}
@@ -48,7 +48,7 @@ export default async function HrPage() {
           </div>
           <p className="mt-4 text-lg font-bold text-[#ebfbff]">Payslip Administration</p>
           <p className="mt-2 text-sm text-[#ebfbff]/65">
-            Upload monthly payroll CSV files, preview matches, and import payslips into Neon.
+            Upload monthly payroll CSV files, preview matches, and import payslips.
           </p>
           <Link
             href="/hr/payslip-administration"
@@ -64,7 +64,7 @@ export default async function HrPage() {
           <p className="text-lg font-bold text-[#ebfbff]">Supervisor Review Queue</p>
           <p className="mt-2 text-sm text-[#ebfbff]/65">
             Vacation requests for your location or bin technicians are waiting for
-            Agree or Disagree review before manager approval.
+            supervisor review before final manager approval.
           </p>
           <Link
             href="/hr/supervisor-reviews"

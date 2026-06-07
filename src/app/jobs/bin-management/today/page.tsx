@@ -12,7 +12,7 @@ export default async function BinJobsTodayPage() {
   return (
     <StaffWorkspaceShell
       sectionLabel="Bin Management"
-      title="Today's Bin Jobs"
+      title="Bin Service Visits Today"
       subtitle="Due and overdue bin locations only. Complete service to reset last service date to today."
           employeeId={employee.id}
           accessLevel={employee.accessLevel}

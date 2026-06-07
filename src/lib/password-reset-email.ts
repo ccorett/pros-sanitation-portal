@@ -14,9 +14,9 @@ export async function sendPasswordResetEmail({
     process.env.PASSWORD_RESET_EMAIL_FROM ??
     `${COMPANY.shortName} Portal <noreply@prossanitation.com>`;
 
-  const subject = `Reset your ${COMPANY.shortName} portal PIN`;
+  const subject = `Reset your ${COMPANY.shortName} company PIN`;
   const text = [
-    `You requested a PIN reset for the ${COMPANY.name} operations portal.`,
+    `You requested a PIN reset for your ${COMPANY.name} employee account.`,
     "",
     "Reset your PIN using this link (expires in 1 hour):",
     url,

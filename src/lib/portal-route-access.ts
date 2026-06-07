@@ -100,7 +100,7 @@ const FEATURE_ACCESS: Record<
 
 const NAV_CATALOG: PortalNavItem[] = [
   { label: "Dashboard", href: "/staff-dashboard", feature: "dashboard" },
-  { label: "Job Management", href: "/jobs", feature: "jobs" },
+  { label: "Work Locations", href: "/jobs", feature: "jobs" },
   { label: "Bin Management", href: "/jobs/bin-management", feature: "binManagement" },
   {
     label: "Equipment & Supplies",
@@ -109,7 +109,7 @@ const NAV_CATALOG: PortalNavItem[] = [
   },
   { label: "Human Resources", href: "/hr", feature: "humanResources" },
   {
-    label: "Manager Approvals",
+    label: "Final Leave Approvals",
     href: "/manager/approvals",
     feature: "managerApprovals",
   },

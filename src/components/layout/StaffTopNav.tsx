@@ -12,7 +12,7 @@ export function StaffTopNav({ accessContext }: StaffTopNavProps) {
 
   return (
     <div className="flex min-w-0 flex-1 basis-full items-center justify-end gap-2 sm:gap-3 md:min-w-[12rem] md:basis-auto">
-      <nav className="staff-nav-scroll min-w-0 flex-1" aria-label="Staff portal">
+      <nav className="staff-nav-scroll min-w-0 flex-1" aria-label="Staff navigation">
         {items.map((item) => (
           <Link
             key={item.href}

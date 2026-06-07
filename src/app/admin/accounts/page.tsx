@@ -9,8 +9,8 @@ export default async function AdminAccountsPage() {
   return (
     <StaffWorkspaceShell
       sectionLabel="Admin"
-      title="Account Access"
-      subtitle="Approve pending accounts, assign access levels, and manage employee portal status."
+      title="Employee Accounts"
+      subtitle="Approve new accounts, assign roles, and manage employee account status."
       layoutWidth="wide"
       employeeId={employee.id}
       accessLevel={employee.accessLevel}

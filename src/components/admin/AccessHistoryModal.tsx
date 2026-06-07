@@ -23,7 +23,7 @@ export function AccessHistoryModal({
           Account History · {employeeName}
         </h3>
         <p className="mt-1 text-sm text-[#ebfbff]/55">
-          Access level, responsibility, and account status changes.
+          Role, responsibility, and account status changes.
         </p>
 
         <div className="mt-4 flex-1 overflow-y-auto">

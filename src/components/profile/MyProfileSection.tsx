@@ -9,6 +9,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const MAX_PROFILE_IMAGE_BYTES = 2 * 1024 * 1024;
 
 function formatStatusLabel(value: string): string {
+  if (value === "PENDING_VERIFICATION") {
+    return "Awaiting Activation";
+  }
+
   return value
     .toLowerCase()
     .split("_")
@@ -150,7 +154,7 @@ export function MyProfileSection() {
   if (loading) {
     return (
       <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
-        Loading profile from Neon…
+        Loading profile…
       </div>
     );
   }
@@ -278,15 +282,15 @@ export function MyProfileSection() {
 
       <section className="glass-card rounded-2xl">
         <h2 className="border-b border-[#ebfbff]/10 px-5 py-4 text-lg font-bold text-[#ebfbff] sm:px-6">
-          Work Profile
+          Employment Profile
         </h2>
         <div className="divide-y divide-[#ebfbff]/10">
           <ReadOnlyField
-            label="Primary Location"
+            label="Primary Work Location"
             value={profile.primaryLocationAssignment ?? "—"}
           />
           <ReadOnlyField
-            label="Additional Locations"
+            label="Additional Work Locations"
             value={
               profile.additionalLocationAssignments.length > 0
                 ? profile.additionalLocationAssignments.join(", ")
@@ -295,7 +299,7 @@ export function MyProfileSection() {
           />
           <ReadOnlyField label="Department" value={profile.department} />
           <ReadOnlyField label="Job Title" value={profile.jobTitle} />
-          <ReadOnlyField label="Access Level" value={profile.accessLevelLabel} />
+          <ReadOnlyField label="Role" value={profile.accessLevelLabel} />
           <ReadOnlyField
             label="Responsibilities"
             value={profile.responsibilitiesLabel}

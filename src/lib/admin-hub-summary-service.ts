@@ -166,9 +166,9 @@ export async function buildAdminHubCards(
     },
     {
       id: "accounts",
-      title: "Account Access",
+      title: "Employee Accounts",
       description:
-        "Approve pending accounts, assign access levels, and manage portal account status.",
+        "Approve new accounts, assign roles, and manage employee account status.",
       href: "/admin/accounts",
       count: counts.pendingAccountVerifications,
       lastEditedLabel: (() => {
@@ -192,7 +192,7 @@ export async function buildAdminHubCards(
       id: "stock",
       title: "Stock Management",
       description:
-        "Inventory list and purchasing list for low-stock items from Equipment & Supplies.",
+        "Inventory list and reorder list for low-stock items from Equipment & Supplies.",
       href: "/admin/stock-management",
       count: counts.lowStockItems + counts.purchasingListItems,
       lastEditedLabel: inventoryLastEdited,

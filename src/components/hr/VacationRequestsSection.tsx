@@ -11,10 +11,18 @@ type VacationRequestsSectionProps = {
 };
 
 function supervisorStatusClass(status: string): string {
-  if (status === "Agree" || status === "Aware") {
+  if (
+    status === "Agree" ||
+    status === "Aware" ||
+    status === "Recommend Approval"
+  ) {
     return "border-[#6cc801]/35 bg-[#6cc801]/15 text-[#6cc801]";
   }
-  if (status === "Disagree" || status === "Unaware") {
+  if (
+    status === "Disagree" ||
+    status === "Unaware" ||
+    status === "Recommend Rejection"
+  ) {
     return "border-[#ff4d4f]/35 bg-[#ff4d4f]/15 text-[#ff4d4f]";
   }
   return "border-[#f5c542]/35 bg-[#f5c542]/15 text-[#f5c542]";

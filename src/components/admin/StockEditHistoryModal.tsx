@@ -67,7 +67,7 @@ export function StockEditHistoryModal({
       <div className="glass-card flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl p-5 sm:p-6">
         <h3 className="text-lg font-bold text-[#ebfbff]">Edit History · {itemName}</h3>
         <p className="mt-1 text-sm text-[#ebfbff]/55">
-          Stock changes recorded in Neon for this inventory item.
+          Stock changes recorded for this inventory item.
         </p>
 
         <div className="mt-4 flex-1 overflow-y-auto">

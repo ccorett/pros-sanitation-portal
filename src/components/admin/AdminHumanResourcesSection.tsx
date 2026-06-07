@@ -160,7 +160,7 @@ export function AdminHumanResourcesSection() {
         <div>
           <h2 className="text-xl font-bold text-[#ebfbff]">Vacation Requests</h2>
           <p className="mt-1 text-sm text-[#ebfbff]/55">
-            Live vacation requests from Neon (supervisor → manager workflow).
+            Live vacation requests (supervisor → manager workflow).
           </p>
         </div>
 

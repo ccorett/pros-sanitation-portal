@@ -37,8 +37,8 @@ export default async function EmployeeSignupPage({
 
   const subtitle =
     policy.mode === "invite"
-      ? "Complete your employee profile and invite code to join the operations portal."
-      : "Complete your employee profile to join the operations portal.";
+      ? "Complete your employee profile and invite code to create your account."
+      : "Complete your employee profile to create your account.";
 
   return (
     <AuthPageShell

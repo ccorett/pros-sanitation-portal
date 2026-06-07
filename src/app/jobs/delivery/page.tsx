@@ -7,9 +7,9 @@ export default async function DeliveryPage() {
 
   return (
     <StaffWorkspaceShell
-      sectionLabel="Job Management"
-      title="Delivery"
-      subtitle="Delivery requests and fulfilment tracking for drivers and coordinators."
+      sectionLabel="Work Locations"
+      title="Deliveries"
+      subtitle="View delivery requests and track delivery status for drivers and coordinators."
       employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}

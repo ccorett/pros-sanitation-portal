@@ -179,7 +179,7 @@ export function PayslipImportSection() {
         <h2 className="text-lg font-bold text-[#ebfbff]">Upload Payslip CSV</h2>
         <p className="mt-2 text-sm text-[#ebfbff]/55">
           Export your monthly payroll spreadsheet as CSV, upload it here, preview the
-          results, then confirm to save payslips into Neon.
+          results, then confirm to save payslips.
         </p>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">

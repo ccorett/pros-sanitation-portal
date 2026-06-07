@@ -24,11 +24,11 @@ export default async function JobsPage() {
 
   return (
     <StaffWorkspaceShell
-      sectionLabel="Job Management"
-      title="Job Management"
+      sectionLabel="Work Locations"
+      title="Work Locations"
       subtitle={
         jobs.length > 0
-          ? "Assigned cleaning service jobs from Neon."
+          ? "View your assigned work locations and service schedules."
           : "No cleaning jobs are assigned to your account."
       }
       employeeId={employee.id}
@@ -51,7 +51,7 @@ export default async function JobsPage() {
               href="/jobs/delivery"
               className="inline-flex min-h-[48px] items-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-5 py-3 text-sm font-semibold text-[#ebfbff]"
             >
-              Delivery
+              Deliveries
             </Link>
           ) : null}
         </div>

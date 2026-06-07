@@ -1,7 +1,7 @@
 import { AccessLevel, AccountStatus } from "@prisma/client";
 
 export const ACCESS_LEVEL_LABELS: Record<AccessLevel, string> = {
-  PENDING_VERIFICATION: "Pending Verification",
+  PENDING_VERIFICATION: "Awaiting Activation",
   TEAM_MEMBER: "Team Member",
   SUPERVISOR: "Supervisor",
   MANAGER: "Manager",

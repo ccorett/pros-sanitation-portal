@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Operations Portal | Pro's Sanitation Limited",
+  title: "Employee Portal | Pro's Sanitation Limited",
   description:
-    "Internal employee operations portal for job management, staff, equipment, and daily sanitation operations.",
+    "Employee portal for work locations, leave, payslips, equipment, deliveries, and daily sanitation operations.",
   robots: { index: false, follow: false },
 };
 

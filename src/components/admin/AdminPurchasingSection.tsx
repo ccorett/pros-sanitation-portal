@@ -28,13 +28,13 @@ export function AdminPurchasingSection() {
     try {
       const response = await fetch("/api/inventory/purchasing-list");
       if (!response.ok) {
-        throw new Error("Unable to load purchasing list.");
+        throw new Error("Unable to load reorder list.");
       }
       const data = (await response.json()) as { items: InventoryItemDto[] };
       setItems(data.items);
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Unable to load purchasing list.",
+        error instanceof Error ? error.message : "Unable to load reorder list.",
       );
     } finally {
       setLoading(false);
@@ -62,14 +62,14 @@ export function AdminPurchasingSection() {
 
       const data = (await response.json()) as { error?: string };
       if (!response.ok) {
-        throw new Error(data.error ?? "Unable to update purchasing list.");
+        throw new Error(data.error ?? "Unable to update reorder list.");
       }
 
       setMessage(successMessage);
       await loadItems();
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Unable to update purchasing list.",
+        error instanceof Error ? error.message : "Unable to update reorder list.",
       );
     } finally {
       setActingId(null);
@@ -84,7 +84,7 @@ export function AdminPurchasingSection() {
     void patchPurchasingAction(
       itemId,
       "EXCLUDE_FROM_LIST",
-      "Item removed from purchasing list.",
+      "Item removed from reorder list.",
     );
   }
 
@@ -96,7 +96,6 @@ export function AdminPurchasingSection() {
         </p>
         <button
           type="button"
-          onClick={() => setMessage("Export list placeholder — coming soon.")}
           className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-5 py-3 text-sm font-semibold text-[#ebfbff]"
         >
           Export List
@@ -111,11 +110,11 @@ export function AdminPurchasingSection() {
 
       {loading ? (
         <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
-          Loading purchasing list…
+          Loading reorder list…
         </div>
       ) : items.length === 0 ? (
         <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
-          No items currently need purchasing.
+          No items currently need reordering.
         </div>
       ) : (
         <div className="glass-card portal-table-scroll rounded-2xl">
@@ -193,8 +192,8 @@ export function AdminPurchasingSection() {
       )}
 
       <p className="text-xs text-[#ebfbff]/45">
-        Generated {formatAdminDate(new Date().toISOString().slice(0, 10))} from Neon
-        inventory stock levels.
+        Generated {formatAdminDate(new Date().toISOString().slice(0, 10))} from
+        reorder list.
       </p>
 
       {historyTarget ? (

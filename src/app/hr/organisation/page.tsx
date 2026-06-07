@@ -17,13 +17,13 @@ export default async function HrOrganisationPage() {
   }
 
   const subtitle = isManagerOrAbove(employee.accessLevel)
-    ? "All locations with supervisors and team members assigned in Neon."
-    : `Organisation for ${employee.locationAssignment ?? "your location"}.`;
+    ? "All locations with supervisors and employees assigned."
+    : `Team structure for ${employee.locationAssignment ?? "your location"}.`;
 
   return (
     <StaffWorkspaceShell
       sectionLabel="Human Resources"
-      title="Organisation View"
+      title="Team Structure"
       layoutWidth="wide"
       subtitle={subtitle}
       employeeId={employee.id}

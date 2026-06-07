@@ -46,8 +46,8 @@ export type VacationRequestDto = {
 
 export const SUPERVISOR_STATUS_LABELS: Record<VacationSupervisorStatus, string> = {
   PENDING: "Pending",
-  AWARE: "Agree",
-  UNAWARE: "Disagree",
+  AWARE: "Recommend Approval",
+  UNAWARE: "Recommend Rejection",
 };
 
 export const MANAGER_STATUS_LABELS: Record<VacationManagerStatus, string> = {

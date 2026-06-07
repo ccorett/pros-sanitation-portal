@@ -42,7 +42,7 @@ function LocationCard({ location }: { location: OrganisationLocationGroup }) {
       <div className="mt-4 flex-1 space-y-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-[#00c6ff]">
-            Supervisor(s)
+            Supervisors
           </p>
           <NameList
             people={location.supervisors}
@@ -52,11 +52,11 @@ function LocationCard({ location }: { location: OrganisationLocationGroup }) {
 
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-[#6cc801]">
-            Team Members
+            Employees
           </p>
           <NameList
             people={location.teamMembers}
-            emptyLabel="No team members assigned."
+            emptyLabel="No employees assigned."
           />
         </div>
       </div>
@@ -78,14 +78,14 @@ export function HrOrganisationView() {
         error?: string;
       };
       if (!response.ok) {
-        throw new Error(payload.error ?? "Unable to load organisation view.");
+        throw new Error(payload.error ?? "Unable to load team structure.");
       }
       setData(payload);
     } catch (cause) {
       setError(
         cause instanceof Error
           ? cause.message
-          : "Unable to load organisation view.",
+          : "Unable to load team structure.",
       );
     } finally {
       setLoading(false);
@@ -99,7 +99,7 @@ export function HrOrganisationView() {
   if (loading) {
     return (
       <div className="glass-card rounded-2xl p-8 text-sm text-[#ebfbff]/55">
-        Loading organisation view from Neon…
+        Loading team structure…
       </div>
     );
   }
@@ -107,7 +107,7 @@ export function HrOrganisationView() {
   if (error || !data) {
     return (
       <div className="glass-card rounded-2xl p-8 text-sm text-[#ff4d4f]">
-        {error ?? "Unable to load organisation view."}
+        {error ?? "Unable to load team structure."}
       </div>
     );
   }
@@ -116,7 +116,7 @@ export function HrOrganisationView() {
     <div className="space-y-6">
       <p className="text-sm text-[#ebfbff]/60">
         {data.scope === "all-locations"
-          ? "All locations — managers, supervisors, and team members from Neon."
+          ? "All locations — managers, supervisors, and employees."
           : "Your assigned location only."}
       </p>
 

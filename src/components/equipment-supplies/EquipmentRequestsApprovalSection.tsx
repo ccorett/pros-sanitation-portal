@@ -133,7 +133,7 @@ export function EquipmentRequestsApprovalSection() {
       <div>
         <h2 className="text-xl font-bold text-[#ebfbff]">Equipment & Supplies Requests</h2>
         <p className="mt-1 text-sm text-[#ebfbff]/55">
-          Review stock requests submitted from Equipment & Supplies.
+          Review supply requests submitted from Equipment & Supplies.
         </p>
       </div>
 
@@ -190,7 +190,7 @@ export function EquipmentRequestsApprovalSection() {
                   className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
                 >
                   <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
-                    Stock Request
+                    Supply Request
                   </td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">{request.itemName}</td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">
@@ -269,7 +269,7 @@ export function EquipmentRequestsApprovalSection() {
       {selected ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0c151d]/80 p-4 backdrop-blur-sm sm:items-center">
           <div className="glass-card w-full max-w-lg space-y-4 rounded-2xl p-5 sm:p-6">
-            <h3 className="text-lg font-bold text-[#ebfbff]">Stock Request · {selected.itemName}</h3>
+            <h3 className="text-lg font-bold text-[#ebfbff]">Supply Request · {selected.itemName}</h3>
             <div className="space-y-2 text-sm text-[#ebfbff]/70">
               <p>
                 <span className="text-[#ebfbff]/45">Requested by:</span>{" "}

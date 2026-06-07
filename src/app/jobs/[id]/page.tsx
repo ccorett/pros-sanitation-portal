@@ -39,7 +39,7 @@ export default async function CleaningJobPage({ params }: CleaningJobPageProps) 
   if (!allowed) {
     return (
       <StaffWorkspaceShell
-        sectionLabel="Job Management"
+        sectionLabel="Work Locations"
         title="Access Restricted"
         subtitle="You do not have access to this job location."
         employeeId={employee.id}
@@ -70,7 +70,7 @@ export default async function CleaningJobPage({ params }: CleaningJobPageProps) 
 
   return (
     <StaffWorkspaceShell
-      sectionLabel="Job Management"
+      sectionLabel="Work Locations"
       title={job.title}
       subtitle={`${job.clientLocation} · ${cleaningJobStatusLabel(job.status)}`}
       employeeId={employee.id}

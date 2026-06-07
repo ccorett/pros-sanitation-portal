@@ -18,8 +18,8 @@ export default async function SupervisorReviewsPage() {
   return (
     <StaffWorkspaceShell
       sectionLabel="Human Resources"
-      title="Team Vacation Reviews"
-      subtitle="Review vacation requests for your assigned location or bin technicians. Mark Agree or Disagree — manager approval follows."
+      title="Leave Requests Awaiting Review"
+      subtitle="Review vacation requests for your assigned location or bin technicians. Recommend approval or rejection — final manager approval follows."
       employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}

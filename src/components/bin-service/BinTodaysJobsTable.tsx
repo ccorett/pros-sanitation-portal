@@ -130,7 +130,7 @@ export function BinTodaysJobsTable() {
       return;
     }
     setActiveJobId(null);
-    setMessage("Service completed. Last and next service dates updated in Neon.");
+    setMessage("Service completed. Last and next service dates updated.");
     await refresh();
     router.refresh();
   }

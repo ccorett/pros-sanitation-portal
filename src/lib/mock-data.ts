@@ -19,7 +19,7 @@ export const quickAccessItems: QuickAccessItem[] = [
   },
   {
     id: "jobs",
-    title: "Job Management",
+    title: "Work Locations",
     description:
       "Assign routes, update job status, and track commercial & residential sanitation schedules.",
     icon: Briefcase,
@@ -51,7 +51,7 @@ export const quickAccessItems: QuickAccessItem[] = [
   {
     id: "admin",
     title: "Admin",
-    description: "Control hub for approvals, accounts, inventory, and bin operations.",
+    description: "Approvals, employee accounts, stock, and bin service management.",
     icon: Shield,
     href: "/admin",
   },
@@ -59,7 +59,7 @@ export const quickAccessItems: QuickAccessItem[] = [
 
 export const sidebarNavItems = [
   { label: "Dashboard", href: "/staff-dashboard", active: false },
-  { label: "Job Management", href: "/jobs", active: false },
+  { label: "Work Locations", href: "/jobs", active: false },
   { label: "Equipment & Supplies", href: "/equipment-supplies", active: false },
   { label: "Human Resources", href: "/hr", active: false },
   { label: "My Profile", href: "/my-profile", active: false },

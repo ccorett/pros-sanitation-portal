@@ -39,8 +39,7 @@ export default async function PayslipAdministrationPage() {
           <h2 className="mt-4 text-lg font-bold text-[#ebfbff]">Import Payslips</h2>
           <p className="mt-2 text-sm text-[#ebfbff]/65">
             Export your payroll spreadsheet as CSV, upload it through the platform,
-            preview matched and unmatched employees, then confirm to save payslips
-            into Neon.
+            preview matched and unmatched employees, then confirm to save payslips.
           </p>
           <Link
             href="/hr/payslip-administration/import"

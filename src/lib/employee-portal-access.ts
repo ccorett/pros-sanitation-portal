@@ -27,9 +27,9 @@ export const EMPLOYEE_ACCESS_MESSAGES: Record<EmployeePortalAccessCode, string> 
   {
     "no-profile": "Employee profile not found. Contact admin.",
     "account-inactive":
-      "Your portal account is not active. Contact an administrator.",
+      "Your account is not active. Contact an administrator.",
     "pending-verification":
-      "Your account is pending verification. You will be notified once approved.",
+      "Your account is awaiting activation. You will be notified once approved.",
   };
 
 export async function getEmployeePortalAccess(

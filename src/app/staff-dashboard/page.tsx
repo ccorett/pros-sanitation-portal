@@ -51,7 +51,7 @@ function DashboardModuleCard({
       <h2 className="mt-4 text-lg font-bold text-[#ebfbff]">{card.title}</h2>
       <p className="mt-2 text-sm text-[#ebfbff]/55">{card.description}</p>
       <p className="mt-4 text-xs font-medium text-[#6cc801]">
-        {card.href ? "Open module" : "Coming soon"}
+        {card.href ? "Open" : "Coming soon"}
       </p>
     </>
   );
@@ -74,15 +74,15 @@ function DashboardModuleCard({
 
 const dashboardCards: DashboardCard[] = [
   {
-    title: "Job Management",
-    description: "Assigned non-bin client locations and service jobs.",
+    title: "Work Locations",
+    description: "View your assigned work locations and service schedules.",
     icon: Briefcase,
     href: "/jobs",
     feature: "jobs" as const,
   },
   {
-    title: "Delivery",
-    description: "Delivery requests, driver assignments, and fulfilment tracking.",
+    title: "Deliveries",
+    description: "View delivery requests and track delivery status.",
     icon: Truck,
     href: "/jobs/delivery",
     feature: "delivery" as const,
@@ -110,7 +110,7 @@ const dashboardCards: DashboardCard[] = [
     feature: "equipmentSupplies" as const,
   },
   {
-    title: "Policies",
+    title: "Company Policies",
     description: "Company procedures, PPE requirements, and compliance guides.",
     icon: FileText,
     href: "/policies",
@@ -170,12 +170,12 @@ export default async function StaffDashboardPage() {
         className={`relative z-10 mx-auto w-full min-w-0 px-4 py-8 sm:px-6 lg:px-8 ${WORKSPACE_SHELL_MAX_WIDTH.standard}`}
       >
         <div className="glass-card mb-4 rounded-2xl p-6 sm:p-8">
-          <p className="text-sm font-medium text-[#00c6ff]">Welcome Card</p>
+          <p className="text-sm font-medium text-[#00c6ff]">Welcome</p>
           <h1 className="mt-2 text-2xl font-bold text-[#ebfbff] sm:text-3xl">
             Welcome back, {displayName}
           </h1>
           <p className="mt-3 max-w-2xl text-sm text-[#ebfbff]/60 sm:text-base">
-            Your dashboard shows only the modules available for your access level.
+            View your assigned work, requests, documents and team information.
           </p>
         </div>
 

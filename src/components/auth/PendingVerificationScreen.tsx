@@ -38,14 +38,14 @@ export function PendingVerificationScreen({
         <div className="glass-card rounded-2xl p-6 sm:p-8">
           <p className="text-sm font-medium text-[#00c6ff]">Welcome, {firstName}</p>
           <h1 className="mt-2 text-2xl font-bold text-[#ebfbff]">
-            Account Pending Verification
+            Account Awaiting Activation
           </h1>
           <p className="mt-4 text-sm leading-relaxed text-[#ebfbff]/65">
-            Thank you for registering with the {COMPANY.shortName} operations portal.
+            Thank you for registering with {COMPANY.shortName}.
             Your account has been received and is awaiting administrator approval.
           </p>
           <p className="mt-4 text-sm leading-relaxed text-[#ebfbff]/55">
-            You will gain access to staff modules once your access level is verified.
+            You will gain access to your assigned work areas once your account is activated.
             If you need urgent access, contact your supervisor or HR administrator.
           </p>
 

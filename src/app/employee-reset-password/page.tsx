@@ -6,7 +6,7 @@ export default function EmployeeResetPasswordPage() {
   return (
     <AuthPageShell
       title="Choose a New PIN"
-      subtitle="Set a new 4-digit PIN for your employee portal account."
+      subtitle="Set a new 4-digit company PIN for your employee account."
       badge="PIN recovery"
     >
       <Suspense

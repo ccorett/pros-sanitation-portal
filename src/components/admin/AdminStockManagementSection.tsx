@@ -59,7 +59,7 @@ export function AdminStockManagementSection({
 
   const tabs: Array<{ id: StockTab; label: string; visible: boolean }> = [
     { id: "inventory", label: "Inventory List", visible: true },
-    { id: "purchasing", label: "Purchasing List", visible: canEditStock },
+    { id: "purchasing", label: "Reorder List", visible: canEditStock },
     { id: "import", label: "Import Inventory", visible: canImportExport },
     { id: "export", label: "Download Inventory", visible: canImportExport },
   ];

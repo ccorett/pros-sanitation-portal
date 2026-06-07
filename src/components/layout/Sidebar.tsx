@@ -19,7 +19,7 @@ import { sidebarNavItems } from "@/lib/mock-data";
 
 const navIcons: Record<string, typeof LayoutDashboard> = {
   Dashboard: LayoutDashboard,
-  "Job Management": Briefcase,
+  "Work Locations": Briefcase,
   "Equipment & Supplies": Package,
   "Human Resources": Users,
   "My Profile": User,

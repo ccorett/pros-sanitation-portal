@@ -40,7 +40,7 @@ export function InventoryExportSection() {
     <div className="glass-card rounded-2xl p-5 sm:p-6">
       <h2 className="text-lg font-bold text-[#ebfbff]">Download Inventory</h2>
       <p className="mt-2 text-sm text-[#ebfbff]/55">
-        Export the current Neon inventory as CSV. The file includes item name,
+        Export the current inventory as CSV. The file includes item name,
         category, quantity, unit, calculated stock status, storage area, supplier,
         and last updated timestamp.
       </p>

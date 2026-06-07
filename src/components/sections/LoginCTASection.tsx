@@ -79,7 +79,7 @@ export function LoginCTASection() {
             {COMPANY.name}
           </p>
           <p className="mt-4 text-base text-[#ebfbff]/70 sm:text-lg">
-            Welcome back. Access your operational workspace.
+            Welcome back. Sign in to continue work.
           </p>
         </motion.div>
 

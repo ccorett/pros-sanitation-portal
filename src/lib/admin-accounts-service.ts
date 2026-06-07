@@ -100,7 +100,7 @@ export type AccountAuditHistoryRow = {
 export type AccessHistoryRow = AccountAuditHistoryRow;
 
 const AUDIT_ACTION_LABELS: Record<AccountAuditAction, string> = {
-  [AccountAuditAction.ACCESS_LEVEL_CHANGED]: "Access level changed",
+  [AccountAuditAction.ACCESS_LEVEL_CHANGED]: "Role changed",
   [AccountAuditAction.RESPONSIBILITIES_CHANGED]: "Responsibilities changed",
   [AccountAuditAction.ACCOUNT_DISABLED]: "Account disabled",
   [AccountAuditAction.ACCOUNT_REMOVED]: "Account deleted",

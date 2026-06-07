@@ -73,7 +73,7 @@ export function SupervisorVacationReviewSection() {
       }
 
       setMessage(
-        `Marked ${action === "AWARE" ? "Agree" : "Disagree"}. Request sent to manager for final approval.`,
+        `Marked ${action === "AWARE" ? "Recommend Approval" : "Recommend Rejection"}. Request sent to manager for final approval.`,
       );
       await loadRequests();
     } catch (error) {
@@ -99,7 +99,7 @@ export function SupervisorVacationReviewSection() {
         </p>
       ) : requests.length === 0 ? (
         <p className="glass-card rounded-2xl p-6 text-sm text-[#ebfbff]/60">
-          No vacation requests are waiting for your Agree/Disagree review.
+          No vacation requests are waiting for your review.
         </p>
       ) : (
         <div className="glass-card portal-table-scroll rounded-2xl">
@@ -175,7 +175,7 @@ export function SupervisorVacationReviewSection() {
                             disabled={actingId === request.id}
                             onClick={() => void handleAwareness(request.id, "AWARE")}
                           >
-                            Agree
+                            Recommend Approval
                           </Button>
                           <Button
                             type="button"
@@ -183,7 +183,7 @@ export function SupervisorVacationReviewSection() {
                             disabled={actingId === request.id}
                             onClick={() => void handleAwareness(request.id, "UNAWARE")}
                           >
-                            Disagree
+                            Recommend Rejection
                           </Button>
                         </div>
                       </>

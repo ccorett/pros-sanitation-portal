@@ -54,13 +54,13 @@ const SUMMARY_CARDS: {
 }[] = [
   { key: "totalEmployees", label: "Total Employees" },
   { key: "activeAccounts", label: "Active Accounts" },
-  { key: "pendingVerification", label: "Pending Verification" },
+  { key: "pendingVerification", label: "Awaiting Activation" },
   { key: "operations", label: "Operations" },
   { key: "sanitationBins", label: "Sanitation / Bins" },
   { key: "supervisors", label: "Supervisors" },
   { key: "managers", label: "Managers" },
   { key: "admins", label: "Admins" },
-  { key: "disabledRemoved", label: "Disabled / Removed" },
+  { key: "disabledRemoved", label: "Inactive Accounts" },
 ];
 
 export function AdminAccountsSection() {
@@ -396,7 +396,7 @@ export function AdminAccountsSection() {
                 />
               </label>
               <FilterSelect
-                label="Access level"
+                label="Role"
                 value={filterAccessLevel}
                 onChange={setFilterAccessLevel}
                 options={Object.values(AccessLevel).map((level) => ({
@@ -473,10 +473,10 @@ export function AdminAccountsSection() {
                 <th className="px-2 py-3 font-semibold sm:px-3">Email</th>
                 <th className="px-2 py-3 font-semibold sm:px-3">Job Title</th>
                 <th className="px-2 py-3 font-semibold sm:px-3">Position</th>
-                <th className="px-2 py-3 font-semibold sm:px-3">Access Level</th>
+                <th className="px-2 py-3 font-semibold sm:px-3">Role</th>
                 <th className="px-2 py-3 font-semibold sm:px-3">Responsibilities</th>
                 <th className="px-2 py-3 font-semibold sm:px-3">Account Status</th>
-                <th className="px-2 py-3 font-semibold sm:px-3">Location Assignment</th>
+                <th className="px-2 py-3 font-semibold sm:px-3">Work Locations</th>
                 <th className="px-2 py-3 font-semibold sm:px-3">Department</th>
                 <th className="px-2 py-3 font-semibold sm:px-3">Last Login</th>
                 <th className="px-2 py-3 font-semibold sm:px-3">Last Edited</th>
@@ -566,7 +566,7 @@ export function AdminAccountsSection() {
                         />
                       ) : null}
                       <ActionButton
-                        label="Edit Work Profile"
+                        label="Edit Employment Profile"
                         onClick={() => openWorkProfileEditor(account)}
                         disabled={!canAct(account, "editWorkProfile")}
                       />
@@ -633,7 +633,7 @@ export function AdminAccountsSection() {
                 <dd>{viewTarget.email}</dd>
               </div>
               <div>
-                <dt className="text-[#ebfbff]/45">Access Level</dt>
+                <dt className="text-[#ebfbff]/45">Role</dt>
                 <dd>{viewTarget.accessLevelLabel}</dd>
               </div>
               <div>
@@ -687,10 +687,10 @@ export function AdminAccountsSection() {
               Approve Account · {approveTarget.employeeName}
             </h3>
             <p className="text-sm text-[#ebfbff]/60">
-              Assign an access level and activate this employee portal account.
+              Assign a role and activate this employee account.
             </p>
             <label className="block">
-              <span className="text-sm text-[#ebfbff]/70">Access level</span>
+              <span className="text-sm text-[#ebfbff]/70">Role</span>
               <select
                 value={selectedLevel}
                 onChange={(event) =>
@@ -741,10 +741,10 @@ export function AdminAccountsSection() {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0c151d]/80 p-4 backdrop-blur-sm sm:items-center">
           <div className="glass-card w-full max-w-lg space-y-4 rounded-2xl p-5 sm:p-6">
             <h3 className="text-lg font-bold text-[#ebfbff]">
-              Change Access Level · {levelTarget.employeeName}
+              Change Role · {levelTarget.employeeName}
             </h3>
             <label className="block">
-              <span className="text-sm text-[#ebfbff]/70">New access level</span>
+              <span className="text-sm text-[#ebfbff]/70">New role</span>
               <select
                 value={selectedLevel}
                 onChange={(event) =>
@@ -795,11 +795,11 @@ export function AdminAccountsSection() {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0c151d]/80 p-4 backdrop-blur-sm sm:items-center">
           <div className="glass-card w-full max-w-lg space-y-4 rounded-2xl p-5 sm:p-6">
             <h3 className="text-lg font-bold text-[#ebfbff]">
-              Edit Work Profile · {editTarget.employeeName}
+              Edit Employment Profile · {editTarget.employeeName}
             </h3>
             <p className="text-sm text-[#ebfbff]/60">
-              Admin and Super Admin only. Changes save to Neon and update the
-              employee profile immediately.
+              Admin and Super Admin only. Changes update the employee profile
+              immediately.
             </p>
             <label className="block">
               <span className="text-sm text-[#ebfbff]/70">Job Title</span>
@@ -824,7 +824,7 @@ export function AdminAccountsSection() {
               >
                 {editTarget.accessLevelLabel}
                 <span className="ml-2 text-sm text-[#ebfbff]/50">
-                  (from access level)
+                  (from role)
                 </span>
               </p>
             </div>
@@ -893,7 +893,7 @@ export function AdminAccountsSection() {
                 type="button"
                 onClick={() => {
                   if (!editJobTitle || !editDepartment || !editLocationAssignment) {
-                    setError("Complete all work profile fields.");
+                    setError("Complete all employment profile fields.");
                     return;
                   }
                   void runAction(editTarget, "updateWorkProfile", {
@@ -922,8 +922,8 @@ export function AdminAccountsSection() {
               Responsibilities · {responsibilityTarget.employeeName}
             </h3>
             <p className="text-sm text-[#ebfbff]/60">
-              Responsibilities control module visibility. Access level still
-              controls platform authority.
+              Responsibilities control which work areas an employee can access.
+              Role still controls overall authority.
             </p>
             <div className="space-y-2">
               {ALL_EMPLOYEE_RESPONSIBILITIES.map((responsibility) => (
@@ -979,7 +979,7 @@ export function AdminAccountsSection() {
               Delete Account · {deleteTarget.employeeName}
             </h3>
             <p className="text-sm text-[#ff4d4f]/80">
-              This soft-deletes the account immediately. The profile stays in Neon
+              This soft-deletes the account immediately. The profile is retained
               for 90 days, then auto-purges. HR, payslip, audit, and approval
               history are retained. Enter your Super Admin PIN to confirm.
             </p>

@@ -18,7 +18,7 @@ export default async function TeamCheckInPage() {
 
   return (
     <StaffWorkspaceShell
-      sectionLabel="Job Management"
+      sectionLabel="Work Locations"
       title="Team Check-In"
       subtitle="Record location-based attendance and review the attendance log."
       employeeId={employee.id}
@@ -32,7 +32,7 @@ export default async function TeamCheckInPage() {
           className="inline-flex items-center gap-2 text-sm font-medium text-[#00c6ff] transition-colors hover:text-[#6cc801]"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Back to Job Management
+          Back to Work Locations
         </Link>
       </div>
 

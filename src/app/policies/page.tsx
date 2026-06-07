@@ -7,9 +7,9 @@ export default async function PoliciesPage() {
 
   return (
     <StaffWorkspaceShell
-      sectionLabel="Policies"
+      sectionLabel="Company Policies"
       title="Company Policies"
-      subtitle="Review and acknowledge required policies."
+      subtitle="Review and confirm required policies."
       employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}

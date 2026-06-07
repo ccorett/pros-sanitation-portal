@@ -244,7 +244,7 @@ export function InventorySection() {
 
       {loading ? (
         <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
-          Loading inventory from database…
+          Loading inventory…
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">

@@ -42,13 +42,13 @@ export function PoliciesSection() {
       });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) {
-        throw new Error(data.error ?? "Unable to acknowledge policy.");
+        throw new Error(data.error ?? "Unable to confirm policy.");
       }
-      setMessage("Policy acknowledged.");
+      setMessage("Policy confirmed.");
       await loadPolicies();
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Unable to acknowledge policy.",
+        error instanceof Error ? error.message : "Unable to confirm policy.",
       );
     } finally {
       setActingId(null);
@@ -89,7 +89,7 @@ export function PoliciesSection() {
                     : "border-[#f5c542]/35 bg-[#f5c542]/15 text-[#f5c542]"
                 }`}
               >
-                {policy.acknowledged ? "Acknowledged" : "Pending"}
+                {policy.acknowledged ? "Confirmed" : "Pending"}
               </span>
             </div>
             <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-[#ebfbff]/75">
@@ -97,7 +97,7 @@ export function PoliciesSection() {
             </p>
             {policy.acknowledged && policy.acknowledgedAt ? (
               <p className="mt-4 text-xs text-[#ebfbff]/45">
-                Acknowledged {formatDisplayDate(policy.acknowledgedAt)}
+                Confirmed {formatDisplayDate(policy.acknowledgedAt)}
               </p>
             ) : (
               <Button
@@ -106,7 +106,7 @@ export function PoliciesSection() {
                 disabled={actingId === policy.id}
                 onClick={() => void acknowledge(policy.id)}
               >
-                {actingId === policy.id ? "Saving…" : "Acknowledge Policy"}
+                {actingId === policy.id ? "Saving…" : "Confirm Policy"}
               </Button>
             )}
           </article>

@@ -36,7 +36,7 @@ export function AdminBinRouteLocationsTable() {
         <h3 className="text-lg font-bold text-[#ebfbff]">Bin Route Service Activity</h3>
         <p className="mt-1 text-sm text-[#ebfbff]/55">
           View and update service fields and notes for all route locations. Changes
-          are saved to Neon and visible across devices.
+          are saved and visible across devices.
         </p>
       </div>
 

@@ -9,7 +9,7 @@ export default async function EquipmentSuppliesPage() {
     <StaffWorkspaceShell
       sectionLabel="Equipment & Supplies"
       title="Equipment & Supplies"
-      subtitle="Search inventory, check availability, and request equipment, supplies, and consumables."
+      subtitle="View available stock and submit supply requests."
           employeeId={employee.id}
           accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}

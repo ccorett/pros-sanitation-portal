@@ -71,7 +71,7 @@ function RecentPayslipCard({ payslip }: { payslip: PayslipArchiveDto }) {
         href={`/hr/payslips/${payslip.id}`}
         className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] transition-colors hover:bg-[#00c6ff]/20"
       >
-        View full payslip detail
+        View Payslip
       </Link>
     </div>
   );
@@ -209,7 +209,7 @@ export function PayslipsSection({
 
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
         <div className="glass-card rounded-2xl p-5 sm:p-6">
-          <h2 className="text-lg font-bold text-[#ebfbff]">Recent Payslip</h2>
+          <h2 className="text-lg font-bold text-[#ebfbff]">Latest Payslip</h2>
           <p className="mt-1 text-sm text-[#ebfbff]/55">
             Your most recent pay period on file.
           </p>
@@ -217,7 +217,7 @@ export function PayslipsSection({
           {archiveLoading ? (
             <p className="mt-6 text-sm text-[#ebfbff]/55">Loading payslips…</p>
           ) : !recentPayslip ? (
-            <p className="mt-6 text-sm text-[#ebfbff]/55">No payslips on file yet.</p>
+            <p className="mt-6 text-sm text-[#ebfbff]/55">No payslips available yet.</p>
           ) : (
             <div className="mt-6">
               <RecentPayslipCard payslip={recentPayslip} />
@@ -227,7 +227,7 @@ export function PayslipsSection({
 
         <div className="space-y-4">
           <div>
-            <h2 className="text-lg font-bold text-[#ebfbff]">Payslip History</h2>
+            <h2 className="text-lg font-bold text-[#ebfbff]">Payslip Records</h2>
             <p className="mt-1 text-sm text-[#ebfbff]/55">
               Last 12 months, newest first.
             </p>
@@ -239,7 +239,7 @@ export function PayslipsSection({
             </div>
           ) : historyPayslips.length === 0 ? (
             <div className="glass-card rounded-2xl p-6 text-sm text-[#ebfbff]/55">
-              No payslips on file yet.
+              No payslips available yet.
             </div>
           ) : (
             <PayslipHistoryTable

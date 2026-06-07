@@ -182,7 +182,7 @@ export function AdminStockSection({ canEditStock }: AdminStockSectionProps) {
                   colSpan={11}
                   className="px-4 py-8 text-center text-[#ebfbff]/55 sm:px-6"
                 >
-                  Loading inventory from database…
+                  Loading inventory…
                 </td>
               </tr>
             ) : items.length === 0 ? (

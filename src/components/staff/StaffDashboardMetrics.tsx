@@ -26,17 +26,17 @@ const METRIC_LINKS: Array<{
   label: string;
   href: string;
 }> = [
-  { key: "assignedCleaningJobs", label: "Assigned Cleaning Jobs", href: "/jobs" },
+  { key: "assignedCleaningJobs", label: "Assigned Locations", href: "/jobs" },
   { key: "pendingVacationRequests", label: "Open Vacation Requests", href: "/hr/vacation" },
   {
     key: "pendingEquipmentRequests",
-    label: "Pending Equipment Requests",
+    label: "Equipment Requests Awaiting Approval",
     href: "/equipment-supplies",
   },
-  { key: "todaysBinJobs", label: "Today's Bin Jobs", href: "/jobs/bin-management/today" },
-  { key: "unacknowledgedPolicies", label: "Policies to Acknowledge", href: "/policies" },
-  { key: "pendingPayslipRequests", label: "Pending Payslip Requests", href: "/hr/payslips" },
-  { key: "availablePayslips", label: "Payslips on File", href: "/hr/payslips" },
+  { key: "todaysBinJobs", label: "Bin Service Visits Today", href: "/jobs/bin-management/today" },
+  { key: "unacknowledgedPolicies", label: "Policies Requiring Review", href: "/policies" },
+  { key: "pendingPayslipRequests", label: "Payslip Requests", href: "/hr/payslips" },
+  { key: "availablePayslips", label: "Available Payslips", href: "/hr/payslips" },
 ];
 
 const ATTENTION_METRICS = new Set<keyof DashboardSummaryMetrics>([
@@ -127,7 +127,7 @@ export function StaffDashboardMetrics() {
   if (loading) {
     return (
       <div className="glass-card rounded-2xl p-4 text-sm text-[#ebfbff]/55">
-        Loading dashboard metrics from Neon…
+        Loading your activity…
       </div>
     );
   }
@@ -157,9 +157,9 @@ export function StaffDashboardMetrics() {
 
   return (
     <section className="glass-card rounded-2xl p-4 sm:p-5">
-      <h2 className="text-base font-bold text-[#ebfbff]">Your Activity</h2>
+      <h2 className="text-base font-bold text-[#ebfbff]">My Activity</h2>
       <p className="mt-0.5 text-xs text-[#ebfbff]/50">
-        Your account counts unless you have manager or admin access.
+        Counts for your assigned work and requests.
       </p>
       <ul className="mt-3 divide-y divide-[#ebfbff]/10">
         {activityRows.map((item) => {

@@ -17,7 +17,7 @@ export default async function AdminStockManagementPage() {
     <StaffWorkspaceShell
       sectionLabel="Admin"
       title="Stock Management"
-      subtitle="Inventory list and purchasing list. Edits sync with Equipment & Supplies for all staff."
+      subtitle="Inventory list and reorder list. Edits sync with Equipment & Supplies for all staff."
       employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}

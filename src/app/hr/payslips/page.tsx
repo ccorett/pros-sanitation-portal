@@ -13,7 +13,7 @@ export default async function HrPayslipsPage() {
     <StaffWorkspaceShell
       sectionLabel="Human Resources"
       title="Payslips"
-      subtitle="Request payslip copies, review synced pay periods, and view payslip history."
+      subtitle="Request payslip copies, review synced pay periods, and view payslip records."
       employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}

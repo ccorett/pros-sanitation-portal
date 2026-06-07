@@ -10,7 +10,7 @@ export default async function AdminApprovalsPage() {
     <StaffWorkspaceShell
       sectionLabel="Admin"
       title="Approval Inbox"
-      subtitle="Live requests from equipment, HR, and bin service modules in Neon. Open a record to review in its module."
+      subtitle="Review live requests from equipment, HR, and bin services. Open a record to review in its section."
       layoutWidth="wide"
       employeeId={employee.id}
       accessLevel={employee.accessLevel}
