@@ -155,8 +155,8 @@ export function EquipmentRequestsApprovalSection() {
         </p>
       ) : null}
 
-      <div className="glass-card portal-table-scroll rounded-2xl">
-        <table className="min-w-[1400px] w-full text-left text-sm">
+      <div className="glass-card portal-table-scroll w-full rounded-2xl">
+        <table className="w-full min-w-[1100px] text-left text-sm">
           <thead>
             <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
               <th className="px-4 py-4 font-semibold sm:px-6">Request Type</th>

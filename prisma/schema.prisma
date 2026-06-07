@@ -110,6 +110,28 @@ enum OperationalGroup {
   @@map("OperationalGroup")
 }
 
+enum EmployeeResponsibility {
+  GENERAL_OPERATIONS
+  BIN_TECHNICIAN
+  BIN_SERVICE_SUPERVISOR
+  DRIVER
+  DELIVERY_COORDINATOR
+  STOCK_ACCESS
+  HR_REVIEW
+  ADMIN_SUPPORT
+
+  @@map("EmployeeResponsibility")
+}
+
+enum AccountAuditAction {
+  ACCESS_LEVEL_CHANGED
+  RESPONSIBILITIES_CHANGED
+  ACCOUNT_DISABLED
+  ACCOUNT_REMOVED
+
+  @@map("AccountAuditAction")
+}
+
 enum ClientLocationStatus {
   ACTIVE
   INACTIVE
@@ -173,6 +195,8 @@ model Employee {
 
   user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessHistories        AccessHistory[]
+  accountAuditLogs       AccountAuditLog[]
+  responsibilityEntries  EmployeeResponsibilityEntry[]
   assignedJobs           Job[]
   assignedBinSetups      BinServiceSetup[]       @relation("BinSetupTechnician")
   assignedBinJobs        BinServiceJob[]         @relation("BinJobTechnician")
@@ -182,6 +206,7 @@ model Employee {
   jobAssignments         JobAssignment[]
   jobServiceLogs         JobServiceLog[]
   payslips               Payslip[]
+  assignedDeliveryRequests DeliveryRequest[] @relation("DeliveryDriver")
 
   @@map("employees")
 }
@@ -200,6 +225,36 @@ model AccessHistory {
   @@index([employeeId])
   @@index([changedAt])
   @@map("access_history")
+}
+
+model EmployeeResponsibilityEntry {
+  id             String                 @id @default(uuid()) @db.Uuid
+  employeeId     String                 @db.Uuid
+  responsibility EmployeeResponsibility
+  createdAt      DateTime               @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, responsibility])
+  @@index([employeeId])
+  @@map("employee_responsibilities")
+}
+
+model AccountAuditLog {
+  id            String             @id @default(uuid()) @db.Uuid
+  employeeId    String             @db.Uuid
+  action        AccountAuditAction
+  previousValue String?
+  newValue      String?
+  changedBy     String
+  changedAt     DateTime           @default(now())
+  notes         String?
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([changedAt])
+  @@map("account_audit_logs")
 }
 
 model ClientLocation {
@@ -583,13 +638,93 @@ model EquipmentRequest {
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
 
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  inventoryItem  InventoryItem   @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  deliveryRequest DeliveryRequest?
 
   @@index([inventoryItemId])
   @@index([requestedById])
   @@index([status])
   @@index([createdAt])
   @@map("equipment_requests")
+}
+
+enum DeliveryPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum DeliveryRequestStatus {
+  PENDING
+  ASSIGNED
+  IN_TRANSIT
+  FULFILLED
+  CANCELLED
+  CANNOT_FULFIL
+}
+
+model DeliveryRequest {
+  id                        String                @id @default(cuid())
+  requestNumber             String                @unique
+  status                    DeliveryRequestStatus @default(PENDING)
+  priority                  DeliveryPriority      @default(NORMAL)
+  requestedById             String                @db.Uuid
+  requestedByName           String
+  requestedByEmail          String
+  requestingLocation        String
+  responsibleSupervisorId   String?               @db.Uuid
+  responsibleSupervisorName String?
+  assignedDriverId          String?               @db.Uuid
+  assignedDriverName        String?
+  requestedDate             DateTime
+  notes                     String?
+  equipmentRequestId        String?               @unique
+  createdById               String                @db.Uuid
+  createdByName             String
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+
+  assignedDriver   Employee?               @relation("DeliveryDriver", fields: [assignedDriverId], references: [id], onDelete: SetNull)
+  equipmentRequest EquipmentRequest?       @relation(fields: [equipmentRequestId], references: [id], onDelete: SetNull)
+  items            DeliveryRequestItem[]
+  statusHistory    DeliveryStatusHistory[]
+
+  @@index([status])
+  @@index([assignedDriverId])
+  @@index([requestedDate])
+  @@index([createdAt])
+  @@map("delivery_requests")
+}
+
+model DeliveryRequestItem {
+  id                String @id @default(cuid())
+  deliveryRequestId String
+  itemName          String
+  quantity          Int
+  inventoryItemId   String?
+
+  deliveryRequest DeliveryRequest @relation(fields: [deliveryRequestId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryRequestId])
+  @@map("delivery_request_items")
+}
+
+model DeliveryStatusHistory {
+  id                String                 @id @default(cuid())
+  deliveryRequestId String
+  previousStatus    DeliveryRequestStatus?
+  newStatus         DeliveryRequestStatus
+  changedById       String                 @db.Uuid
+  changedByName     String
+  notes             String?
+  changedAt         DateTime               @default(now())
+
+  deliveryRequest DeliveryRequest @relation(fields: [deliveryRequestId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryRequestId])
+  @@index([changedAt])
+  @@map("delivery_status_history")
 }
 
 enum VacationSupervisorStatus {

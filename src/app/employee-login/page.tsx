@@ -8,7 +8,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 type EmployeeLoginPageProps = {
-  searchParams: Promise<{ access?: string; returnTo?: string }>;
+  searchParams: Promise<{ access?: string; returnTo?: string; reason?: string }>;
 };
 
 export default async function EmployeeLoginPage({
@@ -18,7 +18,7 @@ export default async function EmployeeLoginPage({
   const session = await auth.api.getSession({
     headers: requestHeaders,
   });
-  const { access: accessCode, returnTo } = await searchParams;
+  const { access: accessCode, returnTo, reason } = await searchParams;
 
   if (session) {
     const portalAccess = await getEmployeePortalAccess(session.user.id);
@@ -38,6 +38,7 @@ export default async function EmployeeLoginPage({
       <EmployeeLoginForm
         accessCode={accessCode ?? null}
         returnTo={returnTo ?? null}
+        sessionReason={reason ?? null}
       />
       <p className="mt-6 text-center text-xs text-[#ebfbff]/40">
         {COMPANY.name} — Authorized employees only. Unauthorized access is

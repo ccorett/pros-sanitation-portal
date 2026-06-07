@@ -25,8 +25,18 @@ export type OrganisationLocationGroup = {
 
 export type HrOrganisationView = {
   scope: "all-locations" | "single-location";
+  managers: OrganisationEmployeeRow[];
   locations: OrganisationLocationGroup[];
 };
+
+const ORGANISATION_CARD_ORDER = [
+  "Pennysavers Mall",
+  "Bin Management Route",
+  "Janitorial",
+  "Office/Admin",
+  "Floating/Unassigned",
+  "Unassigned",
+] as const;
 
 function normalizeLocation(value: string | null | undefined): string {
   const trimmed = value?.trim();
@@ -105,6 +115,37 @@ function sortLocationNames(names: string[]): string[] {
   });
 }
 
+function emptyLocationGroup(locationName: string): OrganisationLocationGroup {
+  return {
+    locationName,
+    supervisors: [],
+    teamMembers: [],
+  };
+}
+
+function orderOrganisationLocations(
+  locations: OrganisationLocationGroup[],
+  includeEmptyPreferredCards: boolean,
+): OrganisationLocationGroup[] {
+  const byName = new Map(
+    locations.map((location) => [location.locationName, location]),
+  );
+  const ordered: OrganisationLocationGroup[] = [];
+
+  if (includeEmptyPreferredCards) {
+    for (const locationName of ORGANISATION_CARD_ORDER) {
+      ordered.push(byName.get(locationName) ?? emptyLocationGroup(locationName));
+      byName.delete(locationName);
+    }
+  }
+
+  const remaining = sortLocationNames([...byName.keys()]).map(
+    (locationName) => byName.get(locationName) ?? emptyLocationGroup(locationName),
+  );
+
+  return [...ordered, ...remaining];
+}
+
 export async function getHrOrganisationForActor(
   actor: Employee,
 ): Promise<HrOrganisationView> {
@@ -150,30 +191,41 @@ export async function getHrOrganisationForActor(
     locationSet.add(actorLocation);
   }
 
-  const locations: OrganisationLocationGroup[] = sortLocationNames(
-    [...locationSet],
-  ).map((locationName) => {
-    const atLocation = employees.filter(
-      (employee) => normalizeLocation(employee.locationAssignment) === locationName,
-    );
+  const managers = employees
+    .filter(
+      (employee) =>
+        isManagerOrAbove(employee.accessLevel) ||
+        canAccessAdminModule(employee.accessLevel),
+    )
+    .map(toOrganisationRow);
 
-    const supervisors = atLocation
-      .filter((employee) => employee.accessLevel === AccessLevel.SUPERVISOR)
-      .map(toOrganisationRow);
+  const locations: OrganisationLocationGroup[] = orderOrganisationLocations(
+    sortLocationNames([...locationSet]).map((locationName) => {
+      const atLocation = employees.filter(
+        (employee) =>
+          normalizeLocation(employee.locationAssignment) === locationName,
+      );
 
-    const teamMembers = atLocation
-      .filter((employee) => employee.accessLevel === AccessLevel.TEAM_MEMBER)
-      .map(toOrganisationRow);
+      const supervisors = atLocation
+        .filter((employee) => employee.accessLevel === AccessLevel.SUPERVISOR)
+        .map(toOrganisationRow);
 
-    return {
-      locationName,
-      supervisors,
-      teamMembers,
-    };
-  });
+      const teamMembers = atLocation
+        .filter((employee) => employee.accessLevel === AccessLevel.TEAM_MEMBER)
+        .map(toOrganisationRow);
+
+      return {
+        locationName,
+        supervisors,
+        teamMembers,
+      };
+    }),
+    viewAll,
+  );
 
   return {
     scope: viewAll ? "all-locations" : "single-location",
+    managers,
     locations,
   };
 }

@@ -24,6 +24,7 @@ export default async function HrOrganisationPage() {
     <StaffWorkspaceShell
       sectionLabel="Human Resources"
       title="Organisation View"
+      layoutWidth="wide"
       subtitle={subtitle}
       employeeId={employee.id}
       accessLevel={employee.accessLevel}

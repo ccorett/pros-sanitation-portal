@@ -116,11 +116,16 @@ export async function buildAdminHubCards(
 ): Promise<AdminHubCard[]> {
   const [
     latestAccessHistory,
+    latestAccountAudit,
     lastInventoryActivity,
     latestBinLog,
     latestHrActivity,
   ] = await Promise.all([
     prisma.accessHistory.findFirst({
+      orderBy: { changedAt: "desc" },
+      select: { changedAt: true },
+    }),
+    prisma.accountAuditLog.findFirst({
       orderBy: { changedAt: "desc" },
       select: { changedAt: true },
     }),
@@ -156,9 +161,22 @@ export async function buildAdminHubCards(
         "Approve pending accounts, assign access levels, and manage portal account status.",
       href: "/admin/accounts",
       count: counts.pendingAccountVerifications,
-      lastEditedLabel: latestAccessHistory
-        ? formatEditTimestamp(latestAccessHistory.changedAt.toISOString())
-        : null,
+      lastEditedLabel: (() => {
+        const candidates = [
+          latestAccessHistory?.changedAt,
+          latestAccountAudit?.changedAt,
+        ].filter((value): value is Date => value instanceof Date);
+
+        if (candidates.length === 0) {
+          return null;
+        }
+
+        const latest = candidates.sort(
+          (left, right) => right.getTime() - left.getTime(),
+        )[0];
+
+        return formatEditTimestamp(latest.toISOString());
+      })(),
     },
     {
       id: "stock",

@@ -14,12 +14,21 @@ export type AdminAccountAction =
   | "approve"
   | "changeAccessLevel"
   | "editWorkProfile"
+  | "changeResponsibilities"
   | "disable"
-  | "remove"
+  | "deleteAccount"
   | "viewHistory";
 
 export function isAdminOrSuperAdmin(level: AccessLevel): boolean {
   return level === AccessLevel.ADMIN || level === AccessLevel.SUPER_ADMIN;
+}
+
+export function isSuperAdminLevel(level: AccessLevel): boolean {
+  return level === AccessLevel.SUPER_ADMIN;
+}
+
+export function isSuperAdminProtectedTarget(targetLevel: AccessLevel): boolean {
+  return targetLevel === AccessLevel.SUPER_ADMIN;
 }
 
 export function isProtectedFromAdminEditor(targetLevel: AccessLevel): boolean {
@@ -30,6 +39,10 @@ export function canAdminManageTarget(
   actorLevel: AccessLevel,
   targetLevel: AccessLevel,
 ): boolean {
+  if (isSuperAdminProtectedTarget(targetLevel)) {
+    return actorLevel === AccessLevel.SUPER_ADMIN;
+  }
+
   if (actorLevel === AccessLevel.SUPER_ADMIN) {
     return true;
   }
@@ -52,7 +65,6 @@ export function getAssignableAccessLevels(actorLevel: AccessLevel): AccessLevel[
       AccessLevel.SUPERVISOR,
       AccessLevel.MANAGER,
       AccessLevel.ADMIN,
-      AccessLevel.SUPER_ADMIN,
     ];
   }
 
@@ -71,6 +83,10 @@ export function canAssignAccessLevel(
   actorLevel: AccessLevel,
   newLevel: AccessLevel,
 ): boolean {
+  if (newLevel === AccessLevel.SUPER_ADMIN) {
+    return false;
+  }
+
   if (actorLevel === AccessLevel.SUPER_ADMIN) {
     return newLevel !== AccessLevel.PENDING_VERIFICATION;
   }
@@ -93,7 +109,18 @@ export function canPerformAccountAction(
   }
 
   if (action === "view" || action === "viewHistory") {
-    return canAdminManageTarget(actorLevel, targetLevel) || actorLevel === AccessLevel.SUPER_ADMIN;
+    return (
+      canAdminManageTarget(actorLevel, targetLevel) ||
+      actorLevel === AccessLevel.SUPER_ADMIN
+    );
+  }
+
+  if (isSuperAdminProtectedTarget(targetLevel)) {
+    if (action === "editWorkProfile") {
+      return actorLevel === AccessLevel.SUPER_ADMIN;
+    }
+
+    return false;
   }
 
   if (!canAdminManageTarget(actorLevel, targetLevel)) {
@@ -111,7 +138,7 @@ export function canPerformAccountAction(
     return targetStatus !== AccountStatus.REMOVED;
   }
 
-  if (action === "editWorkProfile") {
+  if (action === "editWorkProfile" || action === "changeResponsibilities") {
     return targetStatus !== AccountStatus.REMOVED;
   }
 
@@ -119,8 +146,11 @@ export function canPerformAccountAction(
     return targetStatus === AccountStatus.ACTIVE || targetStatus === AccountStatus.PENDING;
   }
 
-  if (action === "remove") {
-    return targetStatus !== AccountStatus.REMOVED;
+  if (action === "deleteAccount") {
+    return (
+      actorLevel === AccessLevel.SUPER_ADMIN &&
+      targetStatus !== AccountStatus.REMOVED
+    );
   }
 
   return false;

@@ -1,6 +1,7 @@
 import {
   AccessLevel,
   AccountStatus,
+  EmployeeResponsibility,
   EmploymentStatus,
   OperationalGroup,
   PrismaClient,
@@ -20,6 +21,8 @@ type TestAccountSeed = {
   operationalGroup?: OperationalGroup;
   locationAssignment?: string;
   supervisorName?: string;
+  department?: string;
+  responsibilities?: EmployeeResponsibility[];
 };
 
 const TEST_ACCOUNTS: TestAccountSeed[] = [
@@ -116,6 +119,40 @@ const TEST_ACCOUNTS: TestAccountSeed[] = [
     operationalGroup: OperationalGroup.BIN_SERVICE_SUPERVISOR,
     locationAssignment: "Bin Management Route",
   },
+  {
+    email: "kurt.allong@prossanitation.com",
+    pin: "4927",
+    firstName: "Kurt",
+    lastName: "Allong",
+    employeeId: "PS-EMP-DEL-001",
+    accessLevel: AccessLevel.TEAM_MEMBER,
+    accountStatus: AccountStatus.ACTIVE,
+    jobTitle: "Driver",
+    department: "Operations",
+    locationAssignment: "Office/Admin",
+    supervisorName: "Operations Manager",
+    responsibilities: [
+      EmployeeResponsibility.DRIVER,
+      EmployeeResponsibility.STOCK_ACCESS,
+    ],
+  },
+  {
+    email: "delivery.coordinator@prossanitation.com",
+    pin: "4931",
+    firstName: "Delivery",
+    lastName: "Coordinator",
+    employeeId: "PS-EMP-DEL-002",
+    accessLevel: AccessLevel.SUPERVISOR,
+    accountStatus: AccountStatus.ACTIVE,
+    jobTitle: "Delivery Coordinator",
+    department: "Operations",
+    locationAssignment: "Office/Admin",
+    responsibilities: [
+      EmployeeResponsibility.GENERAL_OPERATIONS,
+      EmployeeResponsibility.DELIVERY_COORDINATOR,
+      EmployeeResponsibility.STOCK_ACCESS,
+    ],
+  },
 ];
 
 async function upsertCredentialUser(
@@ -189,14 +226,28 @@ async function upsertCredentialUser(
     }
   }
 
-  await prisma.employee.upsert({
+  const responsibilities =
+    account.responsibilities ??
+    (operationalGroup === OperationalGroup.BIN_SERVICE_SUPERVISOR
+      ? [
+          EmployeeResponsibility.GENERAL_OPERATIONS,
+          EmployeeResponsibility.BIN_SERVICE_SUPERVISOR,
+        ]
+      : operationalGroup === OperationalGroup.BIN_TECHNICIAN
+        ? [
+            EmployeeResponsibility.GENERAL_OPERATIONS,
+            EmployeeResponsibility.BIN_TECHNICIAN,
+          ]
+        : [EmployeeResponsibility.GENERAL_OPERATIONS]);
+
+  const employee = await prisma.employee.upsert({
     where: { userId: user.id },
     update: {
       firstName: account.firstName,
       lastName: account.lastName,
       companyEmail: email,
       jobTitle: account.jobTitle,
-      department: "Operations",
+      department: account.department ?? "Operations",
       accessLevel: account.accessLevel,
       operationalGroup,
       accountStatus: account.accountStatus,
@@ -210,7 +261,7 @@ async function upsertCredentialUser(
       firstName: account.firstName,
       lastName: account.lastName,
       companyEmail: email,
-      department: "Operations",
+      department: account.department ?? "Operations",
       jobTitle: account.jobTitle,
       accessLevel: account.accessLevel,
       operationalGroup,
@@ -219,6 +270,17 @@ async function upsertCredentialUser(
       locationAssignment: account.locationAssignment ?? null,
       supervisorName: account.supervisorName ?? null,
     },
+  });
+
+  await prisma.employeeResponsibilityEntry.deleteMany({
+    where: { employeeId: employee.id },
+  });
+
+  await prisma.employeeResponsibilityEntry.createMany({
+    data: responsibilities.map((responsibility) => ({
+      employeeId: employee.id,
+      responsibility,
+    })),
   });
 
   return email;

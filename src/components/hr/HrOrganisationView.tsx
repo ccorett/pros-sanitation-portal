@@ -3,29 +3,64 @@
 import type {
   HrOrganisationView,
   OrganisationEmployeeRow,
+  OrganisationLocationGroup,
 } from "@/lib/hr-organisation-service";
 import { useCallback, useEffect, useState } from "react";
 
-function EmployeeLine({ employee }: { employee: OrganisationEmployeeRow }) {
+function NameList({
+  people,
+  emptyLabel,
+}: {
+  people: OrganisationEmployeeRow[];
+  emptyLabel: string;
+}) {
+  if (people.length === 0) {
+    return <p className="mt-2 text-sm text-[#ebfbff]/50">{emptyLabel}</p>;
+  }
+
   return (
-    <li className="rounded-xl border border-[#ebfbff]/10 bg-[#0c151d]/40 px-4 py-3">
-      <p className="font-medium text-[#ebfbff]">{employee.name}</p>
-      <p className="mt-1 text-xs text-[#ebfbff]/50">{employee.email}</p>
-      <dl className="mt-2 grid gap-1 text-xs text-[#ebfbff]/65 sm:grid-cols-3">
+    <ul className="mt-2 space-y-1.5">
+      {people.map((person) => (
+        <li
+          key={person.id}
+          className="text-sm font-medium text-[#ebfbff]/85 before:mr-2 before:text-[#00c6ff] before:content-['•']"
+        >
+          {person.name}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function LocationCard({ location }: { location: OrganisationLocationGroup }) {
+  return (
+    <article className="glass-card flex h-full flex-col rounded-2xl p-5 sm:p-6">
+      <h3 className="text-base font-bold text-[#ebfbff] sm:text-lg">
+        {location.locationName}
+      </h3>
+
+      <div className="mt-4 flex-1 space-y-4">
         <div>
-          <dt className="text-[#ebfbff]/40">Job title</dt>
-          <dd>{employee.jobTitle}</dd>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#00c6ff]">
+            Supervisor(s)
+          </p>
+          <NameList
+            people={location.supervisors}
+            emptyLabel="No supervisors assigned."
+          />
         </div>
+
         <div>
-          <dt className="text-[#ebfbff]/40">Department</dt>
-          <dd>{employee.department}</dd>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#6cc801]">
+            Team Members
+          </p>
+          <NameList
+            people={location.teamMembers}
+            emptyLabel="No team members assigned."
+          />
         </div>
-        <div>
-          <dt className="text-[#ebfbff]/40">Position</dt>
-          <dd>{employee.position}</dd>
-        </div>
-      </dl>
-    </li>
+      </div>
+    </article>
   );
 }
 
@@ -81,56 +116,25 @@ export function HrOrganisationView() {
     <div className="space-y-6">
       <p className="text-sm text-[#ebfbff]/60">
         {data.scope === "all-locations"
-          ? "All locations — supervisors and team members from Neon."
+          ? "All locations — managers, supervisors, and team members from Neon."
           : "Your assigned location only."}
       </p>
 
-      {data.locations.map((location) => (
-        <section
-          key={location.locationName}
-          className="glass-card rounded-2xl p-5 sm:p-6"
-        >
-          <h2 className="text-lg font-bold text-[#ebfbff]">
-            {location.locationName}
-          </h2>
-
-          <div className="mt-5 space-y-4">
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-[#00c6ff]">
-                Supervisors
-              </h3>
-              {location.supervisors.length === 0 ? (
-                <p className="mt-2 text-sm text-[#ebfbff]/50">
-                  No supervisors assigned to this location.
-                </p>
-              ) : (
-                <ul className="mt-3 space-y-2">
-                  {location.supervisors.map((supervisor) => (
-                    <EmployeeLine key={supervisor.id} employee={supervisor} />
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className="border-l-2 border-[#6cc801]/40 pl-4 sm:pl-6">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-[#6cc801]">
-                Team Members
-              </h3>
-              {location.teamMembers.length === 0 ? (
-                <p className="mt-2 text-sm text-[#ebfbff]/50">
-                  No team members assigned to this location.
-                </p>
-              ) : (
-                <ul className="mt-3 space-y-2">
-                  {location.teamMembers.map((member) => (
-                    <EmployeeLine key={member.id} employee={member} />
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+      {data.scope === "all-locations" ? (
+        <section className="glass-card rounded-2xl p-5 sm:p-6">
+          <h2 className="text-lg font-bold text-[#ebfbff]">Managers</h2>
+          <NameList
+            people={data.managers}
+            emptyLabel="No managers listed."
+          />
         </section>
-      ))}
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {data.locations.map((location) => (
+          <LocationCard key={location.locationName} location={location} />
+        ))}
+      </div>
     </div>
   );
 }

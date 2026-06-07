@@ -8,16 +8,22 @@ import {
 import { formatAccessLevelLabel } from "@/lib/access-levels";
 import { formatEditTimestamp } from "@/lib/admin-format";
 import type {
-  AccessHistoryRow,
+  AccountAuditHistoryRow,
   AdminAccountRow,
+  AdminAccountsSummary,
 } from "@/lib/admin-accounts-service";
+import {
+  ALL_EMPLOYEE_RESPONSIBILITIES,
+  formatResponsibilityLabel,
+} from "@/lib/employee-responsibilities";
 import {
   EMPLOYEE_DEPARTMENTS,
   EMPLOYEE_JOB_TITLES,
   EMPLOYEE_LOCATION_ASSIGNMENTS,
 } from "@/lib/employee-signup-options";
-import { AccessLevel, AccountStatus } from "@prisma/client";
-import { useCallback, useEffect, useState } from "react";
+import { normalizePinInput } from "@/lib/pin";
+import { AccessLevel, AccountStatus, EmployeeResponsibility } from "@prisma/client";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 function statusClass(status: AccountStatus): string {
   if (status === "ACTIVE") {
@@ -36,15 +42,38 @@ function formatOptionalTimestamp(iso: string | null): string {
 
 type AccountsPayload = {
   accounts: AdminAccountRow[];
+  summary: AdminAccountsSummary;
   actor: { accessLevel: AccessLevel; name: string };
   assignableLevels: AccessLevel[];
+  isSuperAdmin: boolean;
 };
+
+const SUMMARY_CARDS: {
+  key: keyof AdminAccountsSummary;
+  label: string;
+}[] = [
+  { key: "totalEmployees", label: "Total Employees" },
+  { key: "activeAccounts", label: "Active Accounts" },
+  { key: "pendingVerification", label: "Pending Verification" },
+  { key: "operations", label: "Operations" },
+  { key: "sanitationBins", label: "Sanitation / Bins" },
+  { key: "supervisors", label: "Supervisors" },
+  { key: "managers", label: "Managers" },
+  { key: "admins", label: "Admins" },
+  { key: "disabledRemoved", label: "Disabled / Removed" },
+];
 
 export function AdminAccountsSection() {
   const [payload, setPayload] = useState<AccountsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterAccessLevel, setFilterAccessLevel] = useState<string>("");
+  const [filterDepartment, setFilterDepartment] = useState<string>("");
+  const [filterLocation, setFilterLocation] = useState<string>("");
+  const [filterResponsibility, setFilterResponsibility] = useState<string>("");
+  const [filterAccountStatus, setFilterAccountStatus] = useState<string>("");
   const [viewTarget, setViewTarget] = useState<AdminAccountRow | null>(null);
   const [approveTarget, setApproveTarget] = useState<AdminAccountRow | null>(null);
   const [levelTarget, setLevelTarget] = useState<AdminAccountRow | null>(null);
@@ -52,12 +81,19 @@ export function AdminAccountsSection() {
     AccessLevel.TEAM_MEMBER,
   );
   const [historyTarget, setHistoryTarget] = useState<AdminAccountRow | null>(null);
-  const [history, setHistory] = useState<AccessHistoryRow[]>([]);
+  const [history, setHistory] = useState<AccountAuditHistoryRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [editTarget, setEditTarget] = useState<AdminAccountRow | null>(null);
   const [editJobTitle, setEditJobTitle] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
   const [editLocationAssignment, setEditLocationAssignment] = useState("");
+  const [responsibilityTarget, setResponsibilityTarget] =
+    useState<AdminAccountRow | null>(null);
+  const [selectedResponsibilities, setSelectedResponsibilities] = useState<
+    EmployeeResponsibility[]
+  >([]);
+  const [deleteTarget, setDeleteTarget] = useState<AdminAccountRow | null>(null);
+  const [deletePin, setDeletePin] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const loadAccounts = useCallback(async () => {
@@ -83,9 +119,17 @@ export function AdminAccountsSection() {
 
   async function runAction(
     account: AdminAccountRow,
-    action: "approve" | "changeAccessLevel" | "updateWorkProfile" | "disable" | "remove",
+    action:
+      | "approve"
+      | "changeAccessLevel"
+      | "updateWorkProfile"
+      | "changeResponsibilities"
+      | "disable"
+      | "deleteAccount",
     options?: {
       accessLevel?: AccessLevel;
+      responsibilities?: EmployeeResponsibility[];
+      confirmPin?: string;
       jobTitle?: string;
       department?: string;
       locationAssignment?: string;
@@ -102,6 +146,8 @@ export function AdminAccountsSection() {
         body: JSON.stringify({
           action,
           accessLevel: options?.accessLevel,
+          responsibilities: options?.responsibilities,
+          confirmPin: options?.confirmPin,
           jobTitle: options?.jobTitle,
           department: options?.department,
           locationAssignment: options?.locationAssignment,
@@ -115,6 +161,9 @@ export function AdminAccountsSection() {
       setLevelTarget(null);
       setApproveTarget(null);
       setEditTarget(null);
+      setResponsibilityTarget(null);
+      setDeleteTarget(null);
+      setDeletePin("");
       await loadAccounts();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Action failed.");
@@ -150,6 +199,19 @@ export function AdminAccountsSection() {
     );
   }
 
+  function openResponsibilityEditor(account: AdminAccountRow) {
+    setResponsibilityTarget(account);
+    setSelectedResponsibilities([...account.responsibilities]);
+  }
+
+  function toggleResponsibility(responsibility: EmployeeResponsibility) {
+    setSelectedResponsibilities((current) =>
+      current.includes(responsibility)
+        ? current.filter((item) => item !== responsibility)
+        : [...current, responsibility],
+    );
+  }
+
   async function openHistory(account: AdminAccountRow) {
     setHistoryTarget(account);
     setHistory([]);
@@ -157,7 +219,7 @@ export function AdminAccountsSection() {
     try {
       const response = await fetch(`/api/admin/accounts/${account.id}/history`);
       const data = (await response.json()) as {
-        history?: AccessHistoryRow[];
+        history?: AccountAuditHistoryRow[];
         error?: string;
       };
       if (!response.ok) {
@@ -173,6 +235,7 @@ export function AdminAccountsSection() {
   }
 
   const actorLevel = payload?.actor.accessLevel;
+  const isSuperAdmin = payload?.isSuperAdmin ?? false;
 
   function canAct(
     account: AdminAccountRow,
@@ -191,6 +254,66 @@ export function AdminAccountsSection() {
     ? getAssignableAccessLevels(actorLevel)
     : [];
 
+  const filteredAccounts = useMemo(() => {
+    const accounts = payload?.accounts ?? [];
+    const query = searchQuery.trim().toLowerCase();
+
+    return accounts.filter((account) => {
+      if (query) {
+        const haystack = `${account.employeeName} ${account.email}`.toLowerCase();
+        if (!haystack.includes(query)) {
+          return false;
+        }
+      }
+
+      if (filterAccessLevel && account.accessLevel !== filterAccessLevel) {
+        return false;
+      }
+
+      if (filterDepartment && account.department !== filterDepartment) {
+        return false;
+      }
+
+      if (
+        filterLocation &&
+        account.locationAssignment !== filterLocation &&
+        !(filterLocation === "—" && account.locationAssignment === "—")
+      ) {
+        return false;
+      }
+
+      if (
+        filterResponsibility &&
+        !account.responsibilities.includes(
+          filterResponsibility as EmployeeResponsibility,
+        )
+      ) {
+        return false;
+      }
+
+      if (filterAccountStatus && account.accountStatus !== filterAccountStatus) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    payload?.accounts,
+    searchQuery,
+    filterAccessLevel,
+    filterDepartment,
+    filterLocation,
+    filterResponsibility,
+    filterAccountStatus,
+  ]);
+
+  const locationOptions = useMemo(() => {
+    const values = new Set(
+      (payload?.accounts ?? []).map((account) => account.locationAssignment),
+    );
+    return [...values].sort();
+  }, [payload?.accounts]);
+
   return (
     <section className="min-w-0 space-y-4">
       {message ? (
@@ -204,13 +327,94 @@ export function AdminAccountsSection() {
         </p>
       ) : null}
 
+      {payload?.summary ? (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {SUMMARY_CARDS.map((card) => (
+            <div
+              key={card.key}
+              className="glass-card rounded-2xl px-4 py-4 sm:px-5"
+            >
+              <p className="text-xs uppercase tracking-wide text-[#ebfbff]/45">
+                {card.label}
+              </p>
+              <p className="mt-2 text-2xl font-bold text-[#ebfbff]">
+                {payload.summary[card.key]}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="glass-card rounded-2xl p-4 sm:p-5">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <label className="block md:col-span-2 xl:col-span-3">
+            <span className="text-sm text-[#ebfbff]/70">Search by name or email</span>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search employees…"
+              className="mt-2 w-full min-h-[48px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-[#ebfbff]"
+            />
+          </label>
+          <FilterSelect
+            label="Access level"
+            value={filterAccessLevel}
+            onChange={setFilterAccessLevel}
+            options={Object.values(AccessLevel).map((level) => ({
+              value: level,
+              label: formatAccessLevelLabel(level),
+            }))}
+          />
+          <FilterSelect
+            label="Department"
+            value={filterDepartment}
+            onChange={setFilterDepartment}
+            options={EMPLOYEE_DEPARTMENTS.map((department) => ({
+              value: department,
+              label: department,
+            }))}
+          />
+          <FilterSelect
+            label="Location"
+            value={filterLocation}
+            onChange={setFilterLocation}
+            options={locationOptions.map((location) => ({
+              value: location,
+              label: location,
+            }))}
+          />
+          <FilterSelect
+            label="Responsibility"
+            value={filterResponsibility}
+            onChange={setFilterResponsibility}
+            options={ALL_EMPLOYEE_RESPONSIBILITIES.map((responsibility) => ({
+              value: responsibility,
+              label: formatResponsibilityLabel(responsibility),
+            }))}
+          />
+          <FilterSelect
+            label="Account status"
+            value={filterAccountStatus}
+            onChange={setFilterAccountStatus}
+            options={Object.values(AccountStatus).map((status) => ({
+              value: status,
+              label: status.charAt(0) + status.slice(1).toLowerCase(),
+            }))}
+          />
+        </div>
+        <p className="mt-3 text-xs text-[#ebfbff]/45">
+          Showing {filteredAccounts.length} of {payload?.accounts.length ?? 0} accounts
+        </p>
+      </div>
+
       {loading ? (
         <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
           Loading employee accounts…
         </div>
       ) : (
         <div className="glass-card portal-table-scroll rounded-2xl">
-          <table className="min-w-[1700px] w-full text-left text-sm">
+          <table className="min-w-[1900px] w-full text-left text-sm">
             <thead>
               <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
                 <th className="px-4 py-4 font-semibold sm:px-6">Employee Name</th>
@@ -218,6 +422,7 @@ export function AdminAccountsSection() {
                 <th className="px-4 py-4 font-semibold">Job Title</th>
                 <th className="px-4 py-4 font-semibold">Position</th>
                 <th className="px-4 py-4 font-semibold">Access Level</th>
+                <th className="px-4 py-4 font-semibold">Responsibilities</th>
                 <th className="px-4 py-4 font-semibold">Account Status</th>
                 <th className="px-4 py-4 font-semibold">Location Assignment</th>
                 <th className="px-4 py-4 font-semibold">Department</th>
@@ -228,19 +433,27 @@ export function AdminAccountsSection() {
               </tr>
             </thead>
             <tbody>
-              {(payload?.accounts ?? []).map((account) => (
+              {filteredAccounts.map((account) => (
                 <tr
                   key={account.id}
                   className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
                 >
                   <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
                     {account.employeeName}
+                    {account.isSuperAdminProtected ? (
+                      <span className="ml-2 rounded-full border border-[#f5c542]/35 bg-[#f5c542]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#f5c542]">
+                        Protected
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">{account.email}</td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">{account.jobTitle}</td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">{account.position}</td>
                   <td className="px-4 py-4 text-[#ebfbff]/70">
                     {account.accessLevelLabel}
+                  </td>
+                  <td className="px-4 py-4 text-[#ebfbff]/70">
+                    {account.responsibilitiesLabel}
                   </td>
                   <td className="px-4 py-4">
                     <span
@@ -280,21 +493,30 @@ export function AdminAccountsSection() {
                         }}
                         disabled={!canAct(account, "approve")}
                       />
-                      <ActionButton
-                        label="Change Level"
-                        onClick={() => {
-                          setLevelTarget(account);
-                          setSelectedLevel(
-                            assignableLevels[0] ?? AccessLevel.TEAM_MEMBER,
-                          );
-                        }}
-                        disabled={!canAct(account, "changeAccessLevel")}
-                      />
+                      {!account.isSuperAdminProtected ? (
+                        <ActionButton
+                          label="Change Level"
+                          onClick={() => {
+                            setLevelTarget(account);
+                            setSelectedLevel(
+                              assignableLevels[0] ?? AccessLevel.TEAM_MEMBER,
+                            );
+                          }}
+                          disabled={!canAct(account, "changeAccessLevel")}
+                        />
+                      ) : null}
                       <ActionButton
                         label="Edit Work Profile"
                         onClick={() => openWorkProfileEditor(account)}
                         disabled={!canAct(account, "editWorkProfile")}
                       />
+                      {!account.isSuperAdminProtected ? (
+                        <ActionButton
+                          label="Responsibilities"
+                          onClick={() => openResponsibilityEditor(account)}
+                          disabled={!canAct(account, "changeResponsibilities")}
+                        />
+                      ) : null}
                       <ActionButton
                         label="Disable"
                         tone="danger"
@@ -303,14 +525,20 @@ export function AdminAccountsSection() {
                           !canAct(account, "disable") || busyId === account.id
                         }
                       />
-                      <ActionButton
-                        label="Remove"
-                        tone="danger"
-                        onClick={() => runAction(account, "remove")}
-                        disabled={
-                          !canAct(account, "remove") || busyId === account.id
-                        }
-                      />
+                      {isSuperAdmin && !account.isSuperAdminProtected ? (
+                        <ActionButton
+                          label="Delete Account"
+                          tone="danger"
+                          onClick={() => {
+                            setDeleteTarget(account);
+                            setDeletePin("");
+                          }}
+                          disabled={
+                            !canAct(account, "deleteAccount") ||
+                            busyId === account.id
+                          }
+                        />
+                      ) : null}
                       <ActionButton
                         label="History"
                         onClick={() => openHistory(account)}
@@ -337,6 +565,10 @@ export function AdminAccountsSection() {
               <div>
                 <dt className="text-[#ebfbff]/45">Access Level</dt>
                 <dd>{viewTarget.accessLevelLabel}</dd>
+              </div>
+              <div>
+                <dt className="text-[#ebfbff]/45">Responsibilities</dt>
+                <dd>{viewTarget.responsibilitiesLabel}</dd>
               </div>
               <div>
                 <dt className="text-[#ebfbff]/45">Account Status</dt>
@@ -581,6 +813,119 @@ export function AdminAccountsSection() {
         </div>
       ) : null}
 
+      {responsibilityTarget ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0c151d]/80 p-4 backdrop-blur-sm sm:items-center">
+          <div className="glass-card w-full max-w-lg space-y-4 rounded-2xl p-5 sm:p-6">
+            <h3 className="text-lg font-bold text-[#ebfbff]">
+              Responsibilities · {responsibilityTarget.employeeName}
+            </h3>
+            <p className="text-sm text-[#ebfbff]/60">
+              Responsibilities control module visibility. Access level still
+              controls platform authority.
+            </p>
+            <div className="space-y-2">
+              {ALL_EMPLOYEE_RESPONSIBILITIES.map((responsibility) => (
+                <label
+                  key={responsibility}
+                  className="flex min-h-[44px] items-center gap-3 rounded-xl border border-[#ebfbff]/10 bg-[#0c151d]/40 px-4 py-2"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedResponsibilities.includes(responsibility)}
+                    onChange={() => toggleResponsibility(responsibility)}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm text-[#ebfbff]">
+                    {formatResponsibilityLabel(responsibility)}
+                  </span>
+                </label>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setResponsibilityTarget(null)}
+                className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-[#ebfbff]/20 bg-[#ebfbff]/5 px-4 py-3 text-sm font-semibold text-[#ebfbff]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedResponsibilities.length === 0) {
+                    setError("Select at least one responsibility.");
+                    return;
+                  }
+                  void runAction(responsibilityTarget, "changeResponsibilities", {
+                    responsibilities: selectedResponsibilities,
+                  });
+                }}
+                disabled={busyId === responsibilityTarget.id}
+                className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-4 py-3 text-sm font-semibold text-[#ebfbff] disabled:opacity-40"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteTarget ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0c151d]/80 p-4 backdrop-blur-sm sm:items-center">
+          <div className="glass-card w-full max-w-lg space-y-4 rounded-2xl p-5 sm:p-6">
+            <h3 className="text-lg font-bold text-[#ebfbff]">
+              Delete Account · {deleteTarget.employeeName}
+            </h3>
+            <p className="text-sm text-[#ff4d4f]/80">
+              This soft-deletes the account (status REMOVED, access disabled).
+              Audit history is retained. Enter your Super Admin PIN to confirm.
+            </p>
+            <label className="block">
+              <span className="text-sm text-[#ebfbff]/70">Super Admin PIN</span>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={deletePin}
+                onChange={(event) =>
+                  setDeletePin(normalizePinInput(event.target.value))
+                }
+                placeholder="Enter your 4-digit PIN"
+                className="mt-2 w-full min-h-[48px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-[#ebfbff]"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteTarget(null);
+                  setDeletePin("");
+                }}
+                className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-[#ebfbff]/20 bg-[#ebfbff]/5 px-4 py-3 text-sm font-semibold text-[#ebfbff]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (deletePin.length !== 4) {
+                    setError("Enter your 4-digit Super Admin PIN.");
+                    return;
+                  }
+                  void runAction(deleteTarget, "deleteAccount", {
+                    confirmPin: deletePin,
+                  });
+                }}
+                disabled={busyId === deleteTarget.id}
+                className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-4 py-3 text-sm font-semibold text-[#ebfbff] disabled:opacity-40"
+              >
+                Delete Account
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {historyTarget ? (
         <AccessHistoryModal
           employeeName={historyTarget.employeeName}
@@ -590,6 +935,36 @@ export function AdminAccountsSection() {
         />
       ) : null}
     </section>
+  );
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <label className="block">
+      <span className="text-sm text-[#ebfbff]/70">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-2 w-full min-h-[48px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-[#ebfbff]"
+      >
+        <option value="">All</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

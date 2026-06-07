@@ -78,8 +78,8 @@ export function ApprovalInboxSection() {
 
   return (
     <section className="space-y-4">
-      <div className="glass-card portal-table-scroll rounded-2xl">
-        <table className="min-w-[1100px] w-full text-left text-sm">
+      <div className="glass-card portal-table-scroll w-full rounded-2xl">
+        <table className="w-full min-w-[900px] text-left text-sm">
           <thead>
             <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
               <th className="px-4 py-4 font-semibold sm:px-6">Type</th>

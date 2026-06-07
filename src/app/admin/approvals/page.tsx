@@ -11,6 +11,7 @@ export default async function AdminApprovalsPage() {
       sectionLabel="Admin"
       title="Approval Inbox"
       subtitle="Live requests from equipment, HR, and bin service modules in Neon. Open a record to review in its module."
+      layoutWidth="wide"
       employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}

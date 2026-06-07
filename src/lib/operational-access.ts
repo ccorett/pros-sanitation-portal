@@ -1,4 +1,8 @@
-import { AccessLevel, OperationalGroup } from "@prisma/client";
+import {
+  AccessLevel,
+  EmployeeResponsibility,
+  OperationalGroup,
+} from "@prisma/client";
 import {
   EMPTY_JOB_ASSIGNMENTS,
   type EmployeeJobAssignments,
@@ -7,6 +11,7 @@ import {
 export type EmployeeAccessContext = {
   accessLevel: AccessLevel;
   operationalGroup: OperationalGroup;
+  responsibilities: EmployeeResponsibility[];
   assignments: EmployeeJobAssignments;
 };
 
@@ -20,12 +25,24 @@ export function isManagerOrAbove(accessLevel: AccessLevel): boolean {
   return MANAGER_PLUS.includes(accessLevel);
 }
 
-export function isBinOperationalRole({
-  operationalGroup,
-}: Pick<EmployeeAccessContext, "operationalGroup">): boolean {
+export function hasResponsibility(
+  ctx: Pick<EmployeeAccessContext, "responsibilities">,
+  ...responsibilities: EmployeeResponsibility[]
+): boolean {
+  return responsibilities.some((item) => ctx.responsibilities.includes(item));
+}
+
+export function isBinOperationalRole(
+  ctx: Pick<EmployeeAccessContext, "operationalGroup" | "responsibilities">,
+): boolean {
   return (
-    operationalGroup === OperationalGroup.BIN_TECHNICIAN ||
-    operationalGroup === OperationalGroup.BIN_SERVICE_SUPERVISOR
+    ctx.operationalGroup === OperationalGroup.BIN_TECHNICIAN ||
+    ctx.operationalGroup === OperationalGroup.BIN_SERVICE_SUPERVISOR ||
+    hasResponsibility(
+      ctx,
+      EmployeeResponsibility.BIN_TECHNICIAN,
+      EmployeeResponsibility.BIN_SERVICE_SUPERVISOR,
+    )
   );
 }
 
@@ -54,14 +71,16 @@ export function canPerformBinFieldUpdates(ctx: EmployeeAccessContext): boolean {
 
   if (
     ctx.accessLevel === AccessLevel.TEAM_MEMBER &&
-    ctx.operationalGroup === OperationalGroup.BIN_TECHNICIAN
+    (ctx.operationalGroup === OperationalGroup.BIN_TECHNICIAN ||
+      hasResponsibility(ctx, EmployeeResponsibility.BIN_TECHNICIAN))
   ) {
     return true;
   }
 
   if (
     ctx.accessLevel === AccessLevel.SUPERVISOR &&
-    ctx.operationalGroup === OperationalGroup.BIN_SERVICE_SUPERVISOR
+    (ctx.operationalGroup === OperationalGroup.BIN_SERVICE_SUPERVISOR ||
+      hasResponsibility(ctx, EmployeeResponsibility.BIN_SERVICE_SUPERVISOR))
   ) {
     return true;
   }
@@ -74,13 +93,46 @@ export function canAccessEquipmentSupplies(ctx: EmployeeAccessContext): boolean 
     return true;
   }
 
+  if (hasResponsibility(ctx, EmployeeResponsibility.STOCK_ACCESS)) {
+    return true;
+  }
+
   if (ctx.accessLevel !== AccessLevel.SUPERVISOR) {
     return false;
   }
 
   return (
     ctx.operationalGroup === OperationalGroup.GENERAL ||
-    ctx.operationalGroup === OperationalGroup.BIN_SERVICE_SUPERVISOR
+    ctx.operationalGroup === OperationalGroup.BIN_SERVICE_SUPERVISOR ||
+    hasResponsibility(
+      ctx,
+      EmployeeResponsibility.GENERAL_OPERATIONS,
+      EmployeeResponsibility.BIN_SERVICE_SUPERVISOR,
+      EmployeeResponsibility.DELIVERY_COORDINATOR,
+    )
+  );
+}
+
+export function canAccessDelivery(ctx: EmployeeAccessContext): boolean {
+  if (isManagerOrAbove(ctx.accessLevel)) {
+    return true;
+  }
+
+  return hasResponsibility(
+    ctx,
+    EmployeeResponsibility.DRIVER,
+    EmployeeResponsibility.DELIVERY_COORDINATOR,
+  );
+}
+
+export function canAccessJobsByResponsibility(
+  ctx: Pick<EmployeeAccessContext, "responsibilities">,
+): boolean {
+  return hasResponsibility(
+    ctx,
+    EmployeeResponsibility.GENERAL_OPERATIONS,
+    EmployeeResponsibility.DRIVER,
+    EmployeeResponsibility.DELIVERY_COORDINATOR,
   );
 }
 
@@ -118,11 +170,13 @@ export const OPERATIONAL_GROUP_LABELS: Record<OperationalGroup, string> = {
 export function createEmployeeAccessContext(input: {
   accessLevel: AccessLevel;
   operationalGroup: OperationalGroup;
+  responsibilities?: EmployeeResponsibility[];
   assignments?: EmployeeJobAssignments;
 }): EmployeeAccessContext {
   return {
     accessLevel: input.accessLevel,
     operationalGroup: input.operationalGroup,
+    responsibilities: input.responsibilities ?? [],
     assignments: input.assignments ?? EMPTY_JOB_ASSIGNMENTS,
   };
 }

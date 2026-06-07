@@ -13,6 +13,7 @@ export default async function ManagerApprovalsPage() {
       sectionLabel="Manager"
       title="Manager Approvals"
       subtitle="Approve or reject vacation requests after supervisor Agree/Disagree review."
+      layoutWidth="wide"
       employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}

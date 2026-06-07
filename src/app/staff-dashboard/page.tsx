@@ -1,6 +1,8 @@
+import { SessionInactivityGuard } from "@/components/auth/SessionInactivityGuard";
 import { StaffDashboardMetrics } from "@/components/staff/StaffDashboardMetrics";
 import { StaffTopNav } from "@/components/layout/StaffTopNav";
 import { COMPANY } from "@/lib/constants";
+import { WORKSPACE_SHELL_MAX_WIDTH } from "@/lib/workspace-layout";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import {
   canAccessPortalFeature,
@@ -67,12 +69,15 @@ export default async function StaffDashboardPage() {
 
   return (
     <main className="relative min-h-dvh">
+      <SessionInactivityGuard />
       <div
         className="pointer-events-none absolute inset-0 industrial-grid opacity-20"
         aria-hidden="true"
       />
       <header className="relative z-10 border-b border-[#ebfbff]/10 bg-[#0c151d]/70 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-3 px-4 py-3 md:min-h-16 md:flex-row md:items-center md:justify-between md:gap-4 md:py-0 md:px-6 lg:px-8">
+        <div
+          className={`mx-auto flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3 sm:px-6 lg:px-8 ${WORKSPACE_SHELL_MAX_WIDTH.standard}`}
+        >
           <div className="flex min-w-0 shrink-0 items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#ebfbff]/15 bg-gradient-to-br from-[#0c151d] to-[#259f00]/20 shadow-lg shadow-[#259f00]/10">
               <CompanyLogo
@@ -80,7 +85,7 @@ export default async function StaffDashboardPage() {
                 className="drop-shadow-[0_0_10px_rgba(37,159,0,0.35)]"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-bold text-[#ebfbff]">{COMPANY.shortName}</p>
               <p className="text-xs text-[#ebfbff]/50">Staff Dashboard</p>
             </div>
@@ -89,7 +94,9 @@ export default async function StaffDashboardPage() {
         </div>
       </header>
 
-      <div className="relative z-10 mx-auto w-full min-w-0 max-w-6xl overflow-x-hidden px-4 py-8 sm:px-6 lg:px-8">
+      <div
+        className={`relative z-10 mx-auto w-full min-w-0 px-4 py-8 sm:px-6 lg:px-8 ${WORKSPACE_SHELL_MAX_WIDTH.standard}`}
+      >
         <div className="glass-card mb-4 rounded-2xl p-6 sm:p-8">
           <p className="text-sm font-medium text-[#00c6ff]">Welcome Card</p>
           <h1 className="mt-2 text-2xl font-bold text-[#ebfbff] sm:text-3xl">

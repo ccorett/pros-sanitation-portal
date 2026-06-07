@@ -1,5 +1,6 @@
 "use client";
 
+import { SessionInactivityGuard } from "@/components/auth/SessionInactivityGuard";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { redirectToPortalHome, signOutPortalSession } from "@/lib/auth-session";
 import { COMPANY } from "@/lib/constants";
@@ -18,6 +19,7 @@ export function PendingVerificationScreen({
 
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center px-4 py-12">
+      <SessionInactivityGuard />
       <div
         className="pointer-events-none absolute inset-0 industrial-grid opacity-30"
         aria-hidden="true"

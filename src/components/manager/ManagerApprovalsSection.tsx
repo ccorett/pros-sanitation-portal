@@ -93,8 +93,8 @@ export function ManagerApprovalsSection() {
           Agree or Disagree, requests appear here.
         </p>
       ) : (
-        <div className="glass-card portal-table-scroll rounded-2xl border border-[#ebfbff]/10">
-          <table className="min-w-full text-left text-sm">
+        <div className="glass-card portal-table-scroll w-full rounded-2xl border border-[#ebfbff]/10">
+          <table className="w-full min-w-[960px] text-left text-sm">
             <thead className="bg-[#0c151d]/80 text-xs uppercase tracking-wide text-[#ebfbff]/45">
               <tr>
                 <th className="px-4 py-3">Employee</th>

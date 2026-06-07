@@ -1,6 +1,6 @@
 import { mutateAdminAccount } from "@/lib/admin-accounts-service";
 import { requireAdminApiActor } from "@/lib/require-admin-api";
-import { AccessLevel } from "@prisma/client";
+import { AccessLevel, EmployeeResponsibility } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 type RouteParams = { params: Promise<{ employeeId: string }> };
@@ -17,10 +17,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       | "approve"
       | "changeAccessLevel"
       | "updateWorkProfile"
+      | "changeResponsibilities"
       | "disable"
-      | "remove";
+      | "deleteAccount";
     accessLevel?: AccessLevel;
+    responsibilities?: EmployeeResponsibility[];
     notes?: string;
+    confirmPin?: string;
     jobTitle?: string;
     department?: string;
     locationAssignment?: string;
@@ -32,8 +35,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       "approve",
       "changeAccessLevel",
       "updateWorkProfile",
+      "changeResponsibilities",
       "disable",
-      "remove",
+      "deleteAccount",
     ].includes(body.action)
   ) {
     return NextResponse.json({ error: "Invalid action." }, { status: 400 });
@@ -43,7 +47,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const account = await mutateAdminAccount(authResult.actor, employeeId, {
       action: body.action,
       accessLevel: body.accessLevel,
+      responsibilities: body.responsibilities,
       notes: body.notes,
+      confirmPin: body.confirmPin,
       workProfile:
         body.action === "updateWorkProfile"
           ? {

@@ -9,6 +9,7 @@ import {
   authLabelClassName,
 } from "@/lib/auth-form-styles";
 import { LoginAccessAlert } from "@/components/auth/LoginAccessAlert";
+import { SessionExpiredAlert } from "@/components/auth/SessionExpiredAlert";
 import { signInEmployee } from "@/lib/employee-sign-in";
 import { normalizePinInput } from "@/lib/pin";
 import { CreateEmployeeAccountLink } from "@/components/auth/CreateEmployeeAccountLink";
@@ -17,11 +18,13 @@ import { Button } from "@/components/ui/Button";
 type EmployeeLoginFormProps = {
   accessCode?: string | null;
   returnTo?: string | null;
+  sessionReason?: string | null;
 };
 
 export function EmployeeLoginForm({
   accessCode = null,
   returnTo = null,
+  sessionReason = null,
 }: EmployeeLoginFormProps) {
   const [email, setEmail] = useState("");
   const [pin, setPin] = useState("");
@@ -50,6 +53,7 @@ export function EmployeeLoginForm({
   return (
     <div className="relative z-10 flex w-full max-w-md flex-col items-center">
       <form onSubmit={handleSubmit} className="w-full space-y-5" noValidate>
+        <SessionExpiredAlert reason={sessionReason} />
         <LoginAccessAlert accessCode={accessCode} />
         {error && (
           <p className={authErrorClassName} role="alert">

@@ -4,6 +4,7 @@ import {
   canAssignAccessLevel,
   canPerformAccountAction,
   getAssignableAccessLevels,
+  isSuperAdminProtectedTarget,
 } from "../src/lib/admin-account-permissions.ts";
 
 let failed = 0;
@@ -19,12 +20,21 @@ const admin = AccessLevel.ADMIN;
 const superAdmin = AccessLevel.SUPER_ADMIN;
 
 assert(
+  isSuperAdminProtectedTarget(superAdmin),
+  "super admin target is protected",
+);
+assert(
+  !isSuperAdminProtectedTarget(admin),
+  "admin target is not super-admin protected",
+);
+
+assert(
   !canAdminManageTarget(admin, AccessLevel.ADMIN),
   "admin cannot manage admin",
 );
 assert(
-  !canAdminManageTarget(admin, AccessLevel.SUPER_ADMIN),
-  "admin cannot manage super admin",
+  canAdminManageTarget(superAdmin, AccessLevel.SUPER_ADMIN),
+  "super admin can view/manage super admin target scope",
 );
 assert(
   canAdminManageTarget(admin, AccessLevel.MANAGER),
@@ -40,6 +50,10 @@ assert(
   "admin cannot assign super admin",
 );
 assert(
+  !canAssignAccessLevel(superAdmin, AccessLevel.SUPER_ADMIN),
+  "super admin cannot assign super admin via platform",
+);
+assert(
   !canAssignAccessLevel(admin, AccessLevel.ADMIN),
   "admin cannot assign admin",
 );
@@ -48,13 +62,17 @@ assert(
   "admin can assign team member",
 );
 assert(
-  canAssignAccessLevel(superAdmin, AccessLevel.SUPER_ADMIN),
-  "super admin can assign super admin",
+  canAssignAccessLevel(superAdmin, AccessLevel.ADMIN),
+  "super admin can assign admin",
 );
 
 assert(
   getAssignableAccessLevels(admin).length === 3,
   "admin gets three assignable levels",
+);
+assert(
+  !getAssignableAccessLevels(superAdmin).includes(AccessLevel.SUPER_ADMIN),
+  "super admin assignable levels exclude super admin",
 );
 
 assert(
@@ -69,20 +87,56 @@ assert(
 assert(
   !canPerformAccountAction(
     admin,
-    AccessLevel.ADMIN,
+    AccessLevel.SUPER_ADMIN,
     AccountStatus.ACTIVE,
-    "remove",
+    "changeAccessLevel",
   ),
-  "admin cannot remove admin",
+  "admin cannot change super admin level",
+);
+assert(
+  !canPerformAccountAction(
+    superAdmin,
+    AccessLevel.SUPER_ADMIN,
+    AccountStatus.ACTIVE,
+    "changeAccessLevel",
+  ),
+  "super admin cannot change super admin level",
+);
+assert(
+  !canPerformAccountAction(
+    superAdmin,
+    AccessLevel.SUPER_ADMIN,
+    AccountStatus.ACTIVE,
+    "disable",
+  ),
+  "super admin cannot disable super admin",
+);
+assert(
+  !canPerformAccountAction(
+    superAdmin,
+    AccessLevel.SUPER_ADMIN,
+    AccountStatus.ACTIVE,
+    "deleteAccount",
+  ),
+  "super admin cannot delete super admin",
 );
 assert(
   canPerformAccountAction(
     superAdmin,
     AccessLevel.ADMIN,
     AccountStatus.ACTIVE,
-    "remove",
+    "deleteAccount",
   ),
-  "super admin can remove admin",
+  "super admin can delete admin with PIN flow",
+);
+assert(
+  !canPerformAccountAction(
+    admin,
+    AccessLevel.TEAM_MEMBER,
+    AccountStatus.ACTIVE,
+    "deleteAccount",
+  ),
+  "admin cannot delete accounts",
 );
 
 if (failed > 0) {

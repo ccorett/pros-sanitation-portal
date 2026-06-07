@@ -11,8 +11,8 @@ export function StaffTopNav({ accessContext }: StaffTopNavProps) {
   const items = getVisibleNavItems(accessContext);
 
   return (
-    <div className="flex w-full min-w-0 flex-col items-stretch gap-2 md:flex-row md:items-center md:justify-end md:gap-3">
-      <nav className="staff-nav-scroll" aria-label="Staff portal">
+    <div className="flex min-w-0 flex-1 basis-full items-center justify-end gap-2 sm:gap-3 md:min-w-[12rem] md:basis-auto">
+      <nav className="staff-nav-scroll min-w-0 flex-1" aria-label="Staff portal">
         {items.map((item) => (
           <Link
             key={item.href}
@@ -23,7 +23,7 @@ export function StaffTopNav({ accessContext }: StaffTopNavProps) {
           </Link>
         ))}
       </nav>
-      <div className="flex shrink-0 justify-end sm:justify-start">
+      <div className="staff-nav-signout shrink-0">
         <SignOutButton />
       </div>
     </div>
