@@ -13,6 +13,11 @@ import {
 } from "@/lib/operational-access";
 import { ACTIVE_EMPLOYEE_FILTER } from "@/lib/account-retention";
 import { resolveAssignedCleaningLocationIds } from "@/lib/job-assignment-service";
+import {
+  applyRecurringCleaningScheduleToJob,
+  toDateOnlyIso,
+} from "@/lib/cleaning-jobs-schedule";
+import { formatCleaningJobAssignedBy } from "@/lib/cleaning-jobs-display";
 import { prisma } from "@/lib/prisma";
 
 export type CleaningJobDto = {
@@ -74,12 +79,8 @@ export type UpdateCleaningJobInput = {
   notes?: string | null;
 };
 
-function toDateOnlyIso(value: Date): string {
-  return value.toISOString().slice(0, 10);
-}
-
 function serializeJob(row: Job): CleaningJobDto {
-  return {
+  const base: CleaningJobDto = {
     id: row.id,
     title: row.title,
     clientLocationId: row.clientLocationId,
@@ -88,7 +89,7 @@ function serializeJob(row: Job): CleaningJobDto {
     assignedEmployeeId: row.assignedEmployeeId,
     assignedEmployeeName: row.assignedEmployeeName,
     assignedEmployeeEmail: row.assignedEmployeeEmail,
-    assignedBy: row.assignedBy,
+    assignedBy: formatCleaningJobAssignedBy(row.assignedBy),
     scheduledDate: toDateOnlyIso(row.scheduledDate),
     dueDate: toDateOnlyIso(row.dueDate),
     priority: row.priority,
@@ -98,6 +99,8 @@ function serializeJob(row: Job): CleaningJobDto {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+
+  return applyRecurringCleaningScheduleToJob(base);
 }
 
 async function getActorAssignedCleaningLocationIds(

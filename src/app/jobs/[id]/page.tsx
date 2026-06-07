@@ -8,6 +8,7 @@ import {
   cleaningJobPriorityLabel,
   cleaningJobStatusBadgeClass,
   cleaningJobStatusLabel,
+  formatCleaningJobAssignedBy,
   formatCleaningJobDate,
 } from "@/lib/cleaning-jobs-display";
 import {
@@ -122,7 +123,9 @@ export default async function CleaningJobPage({ params }: CleaningJobPageProps) 
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-[#ebfbff]/45">Assigned By</dt>
-            <dd className="mt-1 text-sm text-[#ebfbff]">{job.assignedBy}</dd>
+            <dd className="mt-1 text-sm text-[#ebfbff]">
+              {formatCleaningJobAssignedBy(job.assignedBy)}
+            </dd>
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-[#ebfbff]/45">Scheduled Date</dt>

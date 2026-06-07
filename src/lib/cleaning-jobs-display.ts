@@ -1,5 +1,9 @@
 import type { CleaningJobStatus, JobActionType, JobPriority } from "@prisma/client";
 
+export function formatCleaningJobAssignedBy(assignedBy: string): string {
+  return assignedBy.trim() === "Super Admin" ? "Admin" : assignedBy;
+}
+
 export function formatCleaningJobDate(isoDate: string): string {
   return new Date(`${isoDate}T12:00:00.000Z`).toLocaleDateString("en-US", {
     month: "short",
