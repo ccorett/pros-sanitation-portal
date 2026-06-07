@@ -1,5 +1,6 @@
 import { BinTechnicianServiceTable } from "@/components/bin-service/BinTechnicianServiceTable";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
+import { canAccessTeamCheckIn } from "@/lib/attendance-log-service";
 import { canManageBinLocationSetup } from "@/lib/operational-access";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import { ArrowLeft, Smartphone } from "lucide-react";
@@ -11,6 +12,7 @@ export default async function BinManagementPage() {
   });
 
   const allowSetupLinks = canManageBinLocationSetup(employee.accessLevel);
+  const showTeamCheckIn = canAccessTeamCheckIn(employee);
 
   return (
     <StaffWorkspaceShell
@@ -41,6 +43,14 @@ export default async function BinManagementPage() {
           <Smartphone className="h-4 w-4" aria-hidden="true" />
           Today&apos;s Bin Jobs
         </Link>
+        {showTeamCheckIn ? (
+          <Link
+            href="/jobs/team-check-in"
+            className="inline-flex min-h-[44px] items-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] transition-colors hover:bg-[#00c6ff]/20"
+          >
+            Team Check-In
+          </Link>
+        ) : null}
       </div>
 
       <BinTechnicianServiceTable readOnlySetup={!allowSetupLinks} />

@@ -1,3 +1,4 @@
+import { PayslipRecoverySection } from "@/components/hr/PayslipRecoverySection";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
 import { formatDisplayDate } from "@/lib/hr-mock-data";
 import { listPayslipImportAuditLogs } from "@/lib/payslip-import-service";
@@ -48,6 +49,8 @@ export default async function PayslipAdministrationPage() {
             Open Import Payslips
           </Link>
         </div>
+
+        <PayslipRecoverySection />
 
         <div className="space-y-4">
           <h2 className="text-lg font-bold text-[#ebfbff]">Recent Import Activity</h2>

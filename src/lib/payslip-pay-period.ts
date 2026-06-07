@@ -13,7 +13,38 @@ const MONTH_NAMES = [
   "december",
 ] as const;
 
+const MONTH_ABBREVIATIONS: Record<string, (typeof MONTH_NAMES)[number]> = {
+  jan: "january",
+  feb: "february",
+  mar: "march",
+  apr: "april",
+  may: "may",
+  jun: "june",
+  jul: "july",
+  aug: "august",
+  sep: "september",
+  sept: "september",
+  oct: "october",
+  nov: "november",
+  dec: "december",
+};
+
 export const PAYSLIP_VISIBLE_MONTH_COUNT = 12;
+
+function canonicalMonthName(monthToken: string): string | null {
+  const lowered = monthToken.trim().toLowerCase();
+  const fullMonth = MONTH_NAMES.find((month) => month === lowered);
+  if (fullMonth) {
+    return fullMonth.charAt(0).toUpperCase() + fullMonth.slice(1);
+  }
+
+  const abbreviated = MONTH_ABBREVIATIONS[lowered];
+  if (abbreviated) {
+    return abbreviated.charAt(0).toUpperCase() + abbreviated.slice(1);
+  }
+
+  return null;
+}
 
 export function normalizePayPeriod(value: string): string {
   const trimmed = value.trim().replace(/\s+/g, " ");
@@ -22,7 +53,12 @@ export function normalizePayPeriod(value: string): string {
     return trimmed;
   }
 
-  const month = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+  const month = canonicalMonthName(match[1]);
+  if (!month) {
+    const fallback = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+    return `${fallback} ${match[2]}`;
+  }
+
   return `${month} ${match[2]}`;
 }
 

@@ -217,6 +217,7 @@ export function PayslipImportSection() {
             <StatCard label="Matched Employees" value={String(preview.matchedCount)} />
             <StatCard label="Unmatched Employees" value={String(preview.unmatchedCount)} />
             <StatCard label="Duplicate Payslips" value={String(preview.duplicateCount)} />
+            <StatCard label="Uncertain Matches" value={String(preview.uncertainCount)} />
           </div>
         ) : null}
       </div>
@@ -251,6 +252,14 @@ export function PayslipImportSection() {
               emptyLabel="All rows matched employees."
             />
           </div>
+
+          {preview.uncertain.length > 0 ? (
+            <PreviewList
+              title="Uncertain Matches"
+              items={preview.uncertain}
+              emptyLabel="No uncertain matches."
+            />
+          ) : null}
 
           <div className="flex flex-wrap gap-3">
             <Button

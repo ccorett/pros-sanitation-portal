@@ -168,6 +168,14 @@ enum NoticeCategory {
   HR
 }
 
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  SICK
+  VACATION
+}
+
 model Employee {
   id                String           @id @default(uuid()) @db.Uuid
   userId            String           @unique
@@ -211,6 +219,8 @@ model Employee {
   jobServiceLogs         JobServiceLog[]
   payslips               Payslip[]
   assignedDeliveryRequests DeliveryRequest[] @relation("DeliveryDriver")
+  attendanceLogsSupervised AttendanceLog[]   @relation("AttendanceSupervisor")
+  attendanceLogs           AttendanceLog[]   @relation("AttendanceEmployee")
 
   @@map("employees")
 }
@@ -889,4 +899,26 @@ model PayslipImportLog {
 
   @@index([importedAt])
   @@map("payslip_import_logs")
+}
+
+model AttendanceLog {
+  id             String           @id @default(uuid()) @db.Uuid
+  attendanceDate DateTime         @db.Date
+  location       String
+  supervisorId   String           @db.Uuid
+  employeeId     String           @db.Uuid
+  status         AttendanceStatus
+  checkInTime    DateTime?
+  notes          String?
+  createdAt      DateTime         @default(now())
+
+  supervisor Employee @relation("AttendanceSupervisor", fields: [supervisorId], references: [id], onDelete: Restrict)
+  employee   Employee @relation("AttendanceEmployee", fields: [employeeId], references: [id], onDelete: Restrict)
+
+  @@unique([attendanceDate, employeeId, location])
+  @@index([attendanceDate])
+  @@index([location])
+  @@index([supervisorId])
+  @@index([employeeId])
+  @@map("attendance_logs")
 }

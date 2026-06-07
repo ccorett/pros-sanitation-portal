@@ -90,7 +90,6 @@ export async function listPayslipsForEmployee(
       employeeId,
       archived: false,
     },
-    orderBy: [{ importedAt: "desc" }, { uploadedAt: "desc" }],
   });
 
   const visible = rows
@@ -105,7 +104,6 @@ export async function listAllPayslipsForAdmin(): Promise<PayslipArchiveDto[]> {
     include: {
       employee: { select: { firstName: true, lastName: true } },
     },
-    orderBy: [{ importedAt: "desc" }, { uploadedAt: "desc" }],
   });
 
   return sortPayslipsNewestFirst(

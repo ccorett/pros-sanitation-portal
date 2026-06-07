@@ -1,6 +1,10 @@
 import { Prisma, type Employee } from "@prisma/client";
 import { parsePayrollCsvContent, type PayslipCsvRow } from "@/lib/payslip-csv-import";
 import {
+  employeeDisplayName,
+  matchEmployee as resolveEmployeeMatch,
+} from "@/lib/payslip-employee-matching";
+import {
   normalizePayPeriod,
   shouldArchivePayPeriod,
 } from "@/lib/payslip-pay-period";
@@ -31,6 +35,8 @@ export type PayslipImportPreviewItem = {
   employeeId?: string;
   matchedEmployeeName?: string;
   existingPayslipId?: string;
+  uncertain?: boolean;
+  uncertainReason?: string;
 };
 
 export type PayslipImportPreview = {
@@ -40,9 +46,11 @@ export type PayslipImportPreview = {
   matchedCount: number;
   unmatchedCount: number;
   duplicateCount: number;
+  uncertainCount: number;
   matched: PayslipImportPreviewItem[];
   unmatched: PayslipImportPreviewItem[];
   duplicates: PayslipImportPreviewItem[];
+  uncertain: PayslipImportPreviewItem[];
 };
 
 export type PayslipImportResult = {
@@ -139,37 +147,6 @@ function parseCsvRow(row: PayslipCsvRow, rowNumber: number): ParsedPayslipRow | 
   };
 }
 
-function normalizeEmployeeName(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function employeeDisplayName(employee: Pick<Employee, "firstName" | "lastName">): string {
-  return `${employee.firstName} ${employee.lastName}`.trim();
-}
-
-function matchEmployee(row: ParsedPayslipRow, employees: Employee[]): Employee | null {
-  if (row.email) {
-    const byEmail = employees.find(
-      (employee) => employee.companyEmail.trim().toLowerCase() === row.email,
-    );
-    if (byEmail) {
-      return byEmail;
-    }
-  }
-
-  if (row.employeeName) {
-    const targetName = normalizeEmployeeName(row.employeeName);
-    const matches = employees.filter(
-      (employee) => normalizeEmployeeName(employeeDisplayName(employee)) === targetName,
-    );
-    if (matches.length === 1) {
-      return matches[0];
-    }
-  }
-
-  return null;
-}
-
 function unmatchedLabel(row: ParsedPayslipRow): string {
   if (row.email) {
     return `${row.employeeName || "Unknown"} <${row.email}>`;
@@ -183,6 +160,8 @@ function toPreviewItem(
     employeeId?: string;
     matchedEmployeeName?: string;
     existingPayslipId?: string;
+    uncertain?: boolean;
+    uncertainReason?: string;
   },
 ): PayslipImportPreviewItem {
   return {
@@ -195,6 +174,31 @@ function toPreviewItem(
     employeeId: options?.employeeId,
     matchedEmployeeName: options?.matchedEmployeeName,
     existingPayslipId: options?.existingPayslipId,
+    uncertain: options?.uncertain,
+    uncertainReason: options?.uncertainReason,
+  };
+}
+
+function skippedPayslipDataFromRow(
+  row: ParsedPayslipRow,
+  importedAt: Date,
+): Prisma.PayslipUncheckedCreateInput {
+  return {
+    employeeId: null,
+    employeeName: row.employeeName || unmatchedLabel(row),
+    employeeEmail: row.email || null,
+    payPeriod: row.payPeriod,
+    grossPay: row.grossPay,
+    healthSurcharge: row.healthSurcharge,
+    nis: row.nis,
+    paye: row.paye,
+    companyDeductions: row.companyDeductions,
+    netPay: row.netPay,
+    grossPayDetails: row.grossPayDetails,
+    companyDeductionDetails: row.companyDeductionDetails,
+    importedAt,
+    archived: shouldArchivePayPeriod(row.payPeriod, importedAt),
+    source: "csv_upload_skipped",
   };
 }
 
@@ -269,6 +273,7 @@ async function buildImportPreview(
   const matched: PayslipImportPreviewItem[] = [];
   const unmatched: PayslipImportPreviewItem[] = [];
   const duplicates: PayslipImportPreviewItem[] = [];
+  const uncertain: PayslipImportPreviewItem[] = [];
   const payPeriodSet = new Set<string>();
 
   csvRows.forEach((csvRow, index) => {
@@ -278,13 +283,24 @@ async function buildImportPreview(
     }
 
     payPeriodSet.add(parsed.payPeriod);
-    const employee = matchEmployee(parsed, employees);
+    const match = resolveEmployeeMatch(parsed, employees);
 
-    if (!employee) {
+    if (match.uncertain) {
+      uncertain.push(
+        toPreviewItem(parsed, {
+          uncertain: true,
+          uncertainReason: match.uncertainReason,
+        }),
+      );
+      return;
+    }
+
+    if (!match.employee) {
       unmatched.push(toPreviewItem(parsed));
       return;
     }
 
+    const employee = match.employee;
     const existingPayslipId = existingByKey.get(`${employee.id}:${parsed.payPeriod}`);
     const item = toPreviewItem(parsed, {
       employeeId: employee.id,
@@ -301,13 +317,15 @@ async function buildImportPreview(
   return {
     fileName,
     payPeriods: [...payPeriodSet].sort(),
-    totalRows: matched.length + unmatched.length,
+    totalRows: matched.length + unmatched.length + uncertain.length,
     matchedCount: matched.length,
     unmatchedCount: unmatched.length,
     duplicateCount: duplicates.length,
+    uncertainCount: uncertain.length,
     matched,
     unmatched,
     duplicates,
+    uncertain,
   };
 }
 
@@ -330,6 +348,7 @@ export async function confirmPayslipCsvImport(input: {
 
   let recordsImported = 0;
   let recordsUpdated = 0;
+  let recordsSkipped = 0;
   const unmatchedEmployees: string[] = [];
 
   for (let index = 0; index < csvRows.length; index += 1) {
@@ -338,12 +357,37 @@ export async function confirmPayslipCsvImport(input: {
       continue;
     }
 
-    const employee = matchEmployee(parsed, employees);
-    if (!employee) {
-      unmatchedEmployees.push(unmatchedLabel(parsed));
+    const match = resolveEmployeeMatch(parsed, employees);
+    if (match.uncertain) {
+      recordsSkipped += 1;
+      unmatchedEmployees.push(
+        `${unmatchedLabel(parsed)} (${match.uncertainReason ?? "Uncertain match"})`,
+      );
       continue;
     }
 
+    if (!match.employee) {
+      recordsSkipped += 1;
+      unmatchedEmployees.push(unmatchedLabel(parsed));
+
+      const existingSkipped = await prisma.payslip.findFirst({
+        where: {
+          employeeId: null,
+          employeeName: parsed.employeeName || unmatchedLabel(parsed),
+          payPeriod: parsed.payPeriod,
+        },
+      });
+
+      if (!existingSkipped) {
+        await prisma.payslip.create({
+          data: skippedPayslipDataFromRow(parsed, importedAt),
+        });
+      }
+
+      continue;
+    }
+
+    const employee = match.employee;
     const data = payslipDataFromRow(parsed, employee, importedAt);
     const existing = await prisma.payslip.findFirst({
       where: {
@@ -374,7 +418,7 @@ export async function confirmPayslipCsvImport(input: {
       fileName: input.fileName,
       recordsImported,
       recordsUpdated,
-      recordsSkipped: uniqueUnmatched.length,
+      recordsSkipped,
       unmatchedEmployees: uniqueUnmatched,
     },
   });
@@ -382,7 +426,7 @@ export async function confirmPayslipCsvImport(input: {
   return {
     recordsImported,
     recordsUpdated,
-    recordsSkipped: uniqueUnmatched.length,
+    recordsSkipped,
     unmatchedEmployees: uniqueUnmatched,
     archived,
     auditLogId: auditLog.id,

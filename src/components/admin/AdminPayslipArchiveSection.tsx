@@ -179,9 +179,9 @@ export function AdminPayslipArchiveSection() {
         </div>
       ) : (
         <div className="glass-card overflow-hidden rounded-2xl">
-          <div className="overflow-x-auto">
+          <div className="max-h-[320px] overflow-x-auto overflow-y-auto sm:max-h-[500px] lg:max-h-[560px]">
             <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-[#ebfbff]/10 bg-[#0c151d]/50">
+              <thead className="sticky top-0 z-10 border-b border-[#ebfbff]/10 bg-[#0c151d]">
                 <tr>
                   <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Employee</th>
                   <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Pay Period</th>
