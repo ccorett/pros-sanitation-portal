@@ -64,7 +64,7 @@ export function middleware(request: NextRequest) {
   if (!sessionCookie) {
     const returnTo = `${request.nextUrl.pathname}${request.nextUrl.search}`;
     return NextResponse.redirect(
-      new URL(buildEmployeeLoginUrl(returnTo), DEV_APP_ORIGIN),
+      new URL(buildEmployeeLoginUrl(returnTo), request.nextUrl.origin),
     );
   }
 
