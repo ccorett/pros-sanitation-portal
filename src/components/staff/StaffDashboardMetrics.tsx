@@ -1,10 +1,25 @@
 "use client";
 
+import type { DashboardDeliveryActivityItem } from "@/lib/dashboard-delivery-activity";
 import type { DashboardSummaryMetrics } from "@/lib/dashboard-summary-service";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 type MetricTone = "normal" | "attention" | "urgent";
+
+type ActivityRow =
+  | {
+      kind: "metric";
+      key: keyof DashboardSummaryMetrics;
+      label: string;
+      href: string;
+    }
+  | {
+      kind: "delivery";
+      key: DashboardDeliveryActivityItem["key"];
+      label: string;
+      href: string;
+    };
 
 const METRIC_LINKS: Array<{
   key: keyof DashboardSummaryMetrics;
@@ -32,10 +47,14 @@ const ATTENTION_METRICS = new Set<keyof DashboardSummaryMetrics>([
   "todaysBinJobs",
 ]);
 
-function metricTone(
-  key: keyof DashboardSummaryMetrics,
-  count: number,
-): MetricTone {
+const ATTENTION_DELIVERY_METRICS = new Set<DashboardDeliveryActivityItem["key"]>([
+  "assignedDeliveryRequests",
+  "openDeliveryRequests",
+  "deliveriesAwaitingAssignment",
+  "deliveriesInProgress",
+]);
+
+function metricTone(key: ActivityRow["key"], count: number): MetricTone {
   if (count === 0) {
     return "normal";
   }
@@ -44,7 +63,15 @@ function metricTone(
     return "urgent";
   }
 
-  if (ATTENTION_METRICS.has(key)) {
+  if (key === "deliveriesAwaitingAssignment" && count >= 3) {
+    return "urgent";
+  }
+
+  if (ATTENTION_METRICS.has(key as keyof DashboardSummaryMetrics)) {
+    return "attention";
+  }
+
+  if (ATTENTION_DELIVERY_METRICS.has(key as DashboardDeliveryActivityItem["key"])) {
     return "attention";
   }
 
@@ -63,6 +90,9 @@ function metricCountClass(tone: MetricTone): string {
 
 export function StaffDashboardMetrics() {
   const [metrics, setMetrics] = useState<DashboardSummaryMetrics | null>(null);
+  const [deliveryActivity, setDeliveryActivity] = useState<
+    DashboardDeliveryActivityItem[] | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,12 +103,14 @@ export function StaffDashboardMetrics() {
       const response = await fetch("/api/dashboard/summary", { cache: "no-store" });
       const data = (await response.json()) as {
         metrics?: DashboardSummaryMetrics;
+        deliveryActivity?: DashboardDeliveryActivityItem[] | null;
         error?: string;
       };
       if (!response.ok) {
         throw new Error(data.error ?? "Unable to load dashboard summary.");
       }
       setMetrics(data.metrics ?? null);
+      setDeliveryActivity(data.deliveryActivity ?? null);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Unable to load dashboard summary.",
@@ -108,6 +140,21 @@ export function StaffDashboardMetrics() {
     );
   }
 
+  const activityRows: ActivityRow[] = [
+    ...METRIC_LINKS.map((item) => ({
+      kind: "metric" as const,
+      key: item.key,
+      label: item.label,
+      href: item.href,
+    })),
+    ...(deliveryActivity ?? []).map((item) => ({
+      kind: "delivery" as const,
+      key: item.key,
+      label: item.label,
+      href: "/jobs/delivery",
+    })),
+  ];
+
   return (
     <section className="glass-card rounded-2xl p-4 sm:p-5">
       <h2 className="text-base font-bold text-[#ebfbff]">Your Activity</h2>
@@ -115,12 +162,15 @@ export function StaffDashboardMetrics() {
         Your account counts unless you have manager or admin access.
       </p>
       <ul className="mt-3 divide-y divide-[#ebfbff]/10">
-        {METRIC_LINKS.map((item) => {
-          const count = metrics[item.key];
+        {activityRows.map((item) => {
+          const count =
+            item.kind === "metric"
+              ? metrics[item.key]
+              : (deliveryActivity?.find((row) => row.key === item.key)?.count ?? 0);
           const tone = metricTone(item.key, count);
 
           return (
-            <li key={item.key}>
+            <li key={`${item.kind}-${item.key}`}>
               <Link
                 href={item.href}
                 className="group flex items-center gap-2 py-1.5 transition-colors hover:text-[#00c6ff]"

@@ -17,7 +17,7 @@ import {
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 type CleaningJobPageProps = {
   params: Promise<{ id: string }>;
@@ -34,7 +34,30 @@ export default async function CleaningJobPage({ params }: CleaningJobPageProps) 
 
   const allowed = await canActorAccessCleaningJob(employee, accessContext, job);
   if (!allowed) {
-    redirect("/staff-dashboard");
+    return (
+      <StaffWorkspaceShell
+        sectionLabel="Job Management"
+        title="Access Restricted"
+        subtitle="You do not have access to this job location."
+        employeeId={employee.id}
+        accessLevel={employee.accessLevel}
+        operationalGroup={employee.operationalGroup}
+        companyEmail={employee.companyEmail}
+      >
+        <div className="mb-6">
+          <Link
+            href="/jobs"
+            className="inline-flex items-center gap-2 text-sm font-medium text-[#00c6ff] transition-colors hover:text-[#6cc801]"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Back to Jobs
+          </Link>
+        </div>
+        <div className="glass-card rounded-2xl p-6 text-sm text-[#ebfbff]/70">
+          You do not have access to this job location.
+        </div>
+      </StaffWorkspaceShell>
+    );
   }
 
   const logs = await listJobServiceLogsForJob(job.id);

@@ -1,4 +1,4 @@
-import { AccessLevel, OperationalGroup } from "@prisma/client";
+import { AccessLevel, EmployeeResponsibility, OperationalGroup } from "@prisma/client";
 import { EMPTY_JOB_ASSIGNMENTS } from "../src/lib/job-assignment-types.ts";
 import { createEmployeeAccessContext } from "../src/lib/operational-access.ts";
 import {
@@ -7,11 +7,17 @@ import {
   getVisibleNavItems,
 } from "../src/lib/portal-route-access.ts";
 
-function ctx(level, group = OperationalGroup.GENERAL, assignments = EMPTY_JOB_ASSIGNMENTS) {
+function ctx(
+  level,
+  group = OperationalGroup.GENERAL,
+  assignments = EMPTY_JOB_ASSIGNMENTS,
+  responsibilities,
+) {
   return createEmployeeAccessContext({
     accessLevel: level,
     operationalGroup: group,
     assignments,
+    responsibilities,
   });
 }
 
@@ -80,8 +86,24 @@ const cases = [
   },
   {
     employee: ctx(AccessLevel.MANAGER),
-    allow: ["/manager/approvals", "/jobs/bin-management", "/jobs"],
-    nav: ["Manager Approvals", "Bin Management", "Jobs"],
+    allow: ["/manager/approvals", "/jobs/bin-management", "/jobs", "/jobs/delivery"],
+    nav: ["Manager Approvals", "Bin Management", "Job Management", "Delivery"],
+  },
+  {
+    employee: ctx(
+      AccessLevel.SUPERVISOR,
+      OperationalGroup.GENERAL,
+      EMPTY_JOB_ASSIGNMENTS,
+      [
+        EmployeeResponsibility.GENERAL_OPERATIONS,
+        EmployeeResponsibility.DELIVERY_COORDINATOR,
+        EmployeeResponsibility.STOCK_ACCESS,
+      ],
+    ),
+    allow: ["/jobs/delivery", "/jobs", "/equipment-supplies"],
+    deny: ["/admin", "/manager/approvals"],
+    nav: ["Job Management", "Delivery", "Equipment & Supplies"],
+    absentNav: ["Admin", "Manager Approvals"],
   },
 ];
 

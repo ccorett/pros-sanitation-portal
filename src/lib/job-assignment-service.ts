@@ -46,21 +46,76 @@ function serializeAssignment(row: JobAssignment & { location: { slug: string } }
   };
 }
 
-export async function resolveEmployeeJobAssignments(
-  employee: Pick<Employee, "id" | "accessLevel">,
-): Promise<EmployeeJobAssignments> {
-  if (isManagerOrAbove(employee.accessLevel)) {
-    return { ...EMPTY_JOB_ASSIGNMENTS };
+export async function resolveAssignedCleaningLocationIds(
+  employee: Pick<Employee, "id"> & { locationAssignment?: string | null },
+): Promise<string[]> {
+  const rows = await prisma.jobAssignment.findMany({
+    where: { employeeId: employee.id, isActive: true },
+    select: { clientLocationId: true },
+  });
+
+  if (rows.length > 0) {
+    return rows.map((row) => row.clientLocationId);
   }
 
+  const locationName = employee.locationAssignment?.trim();
+  if (!locationName) {
+    return [];
+  }
+
+  const location = await prisma.clientLocation.findFirst({
+    where: {
+      locationName,
+      serviceType: { not: null },
+    },
+    select: { id: true },
+  });
+
+  return location ? [location.id] : [];
+}
+
+export async function resolveAssignedCleaningLocationSlugs(
+  employee: Pick<Employee, "id"> & { locationAssignment?: string | null },
+): Promise<string[]> {
   const rows = await prisma.jobAssignment.findMany({
     where: { employeeId: employee.id, isActive: true },
     include: assignmentInclude,
   });
 
+  if (rows.length > 0) {
+    return rows.map((row) => row.location.slug);
+  }
+
+  const locationName = employee.locationAssignment?.trim();
+  if (!locationName) {
+    return [];
+  }
+
+  const location = await prisma.clientLocation.findFirst({
+    where: {
+      locationName,
+      serviceType: { not: null },
+    },
+    select: { slug: true },
+  });
+
+  return location ? [location.slug] : [];
+}
+
+export async function resolveEmployeeJobAssignments(
+  employee: Pick<Employee, "id" | "accessLevel"> & {
+    locationAssignment?: string | null;
+  },
+): Promise<EmployeeJobAssignments> {
+  if (isManagerOrAbove(employee.accessLevel)) {
+    return { ...EMPTY_JOB_ASSIGNMENTS };
+  }
+
+  const assignedLocationIds = await resolveAssignedCleaningLocationSlugs(employee);
+
   return {
     assignedJobIds: [],
-    assignedLocationIds: rows.map((row) => row.location.slug),
+    assignedLocationIds,
     assignedBinManagement: false,
   };
 }

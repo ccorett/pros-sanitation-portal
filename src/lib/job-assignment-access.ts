@@ -1,7 +1,5 @@
 import type { EmployeeJobAssignments } from "@/lib/job-assignment-types";
-import { EmployeeResponsibility } from "@prisma/client";
 import {
-  canAccessJobsByResponsibility,
   isManagerOrAbove,
   type EmployeeAccessContext,
 } from "@/lib/operational-access";
@@ -15,19 +13,6 @@ export function hasActiveCleaningAssignments(
 export function canAccessGeneralJobs(ctx: EmployeeAccessContext): boolean {
   if (isManagerOrAbove(ctx.accessLevel)) {
     return true;
-  }
-
-  if (canAccessJobsByResponsibility(ctx)) {
-    const hasRouteResponsibility = ctx.responsibilities.some(
-      (item) =>
-        item === EmployeeResponsibility.DRIVER ||
-        item === EmployeeResponsibility.DELIVERY_COORDINATOR ||
-        item === EmployeeResponsibility.GENERAL_OPERATIONS,
-    );
-
-    return (
-      hasActiveCleaningAssignments(ctx.assignments) || hasRouteResponsibility
-    );
   }
 
   return hasActiveCleaningAssignments(ctx.assignments);

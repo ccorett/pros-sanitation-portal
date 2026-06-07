@@ -10,6 +10,10 @@ import { countUnacknowledgedPolicies } from "@/lib/policy-service";
 import { isManagerOrAbove } from "@/lib/operational-access";
 import { prisma } from "@/lib/prisma";
 import { listBinFieldJobsToday } from "@/lib/bin-service/field-service";
+import {
+  getDashboardDeliveryActivity,
+  type DashboardDeliveryActivityItem,
+} from "@/lib/dashboard-delivery-activity";
 
 const OPEN_VACATION_STATUSES: VacationFinalStatus[] = [
   VacationFinalStatus.PENDING_SUPERVISOR_REVIEW,
@@ -28,6 +32,7 @@ export type DashboardSummaryMetrics = {
 
 export type DashboardSummary = {
   metrics: DashboardSummaryMetrics;
+  deliveryActivity: DashboardDeliveryActivityItem[] | null;
 };
 
 function canSeeOrganizationActivity(employee: Employee): boolean {
@@ -50,6 +55,7 @@ export async function getDashboardSummary(
     availablePayslips,
     unacknowledgedPolicies,
     todaysBinJobs,
+    deliveryActivity,
   ] = await Promise.all([
     prisma.job.count({
       where: orgWide
@@ -104,6 +110,7 @@ export async function getDashboardSummary(
       : prisma.payslip.count({ where: { employeeId: employee.id } }),
     countUnacknowledgedPolicies(employee.id),
     listBinFieldJobsToday(employee).then((jobs) => jobs.length),
+    getDashboardDeliveryActivity(employee),
   ]);
 
   return {
@@ -116,5 +123,6 @@ export async function getDashboardSummary(
       pendingPayslipRequests,
       availablePayslips,
     },
+    deliveryActivity,
   };
 }

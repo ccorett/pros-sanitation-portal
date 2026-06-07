@@ -11,6 +11,7 @@ export default async function AdminAccountsPage() {
       sectionLabel="Admin"
       title="Account Access"
       subtitle="Approve pending accounts, assign access levels, and manage employee portal status."
+      layoutWidth="wide"
       employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}

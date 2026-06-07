@@ -327,94 +327,86 @@ export function AdminAccountsSection() {
         </p>
       ) : null}
 
-      {payload?.summary ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {SUMMARY_CARDS.map((card) => (
-            <div
-              key={card.key}
-              className="glass-card rounded-2xl px-4 py-4 sm:px-5"
-            >
-              <p className="text-xs uppercase tracking-wide text-[#ebfbff]/45">
-                {card.label}
-              </p>
-              <p className="mt-2 text-2xl font-bold text-[#ebfbff]">
-                {payload.summary[card.key]}
-              </p>
+      <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(220px,260px)_minmax(0,1fr)_minmax(200px,240px)] xl:items-start">
+        <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
+          <div className="glass-card rounded-2xl p-4 sm:p-5">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-[#00c6ff]">
+              Search &amp; Filters
+            </h2>
+            <div className="mt-4 space-y-3">
+              <label className="block">
+                <span className="text-sm text-[#ebfbff]/70">
+                  Search by name or email
+                </span>
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search employees…"
+                  className="mt-2 w-full min-h-[48px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-[#ebfbff]"
+                />
+              </label>
+              <FilterSelect
+                label="Access level"
+                value={filterAccessLevel}
+                onChange={setFilterAccessLevel}
+                options={Object.values(AccessLevel).map((level) => ({
+                  value: level,
+                  label: formatAccessLevelLabel(level),
+                }))}
+              />
+              <FilterSelect
+                label="Department"
+                value={filterDepartment}
+                onChange={setFilterDepartment}
+                options={EMPLOYEE_DEPARTMENTS.map((department) => ({
+                  value: department,
+                  label: department,
+                }))}
+              />
+              <FilterSelect
+                label="Location"
+                value={filterLocation}
+                onChange={setFilterLocation}
+                options={locationOptions.map((location) => ({
+                  value: location,
+                  label: location,
+                }))}
+              />
+              <FilterSelect
+                label="Responsibility"
+                value={filterResponsibility}
+                onChange={setFilterResponsibility}
+                options={ALL_EMPLOYEE_RESPONSIBILITIES.map((responsibility) => ({
+                  value: responsibility,
+                  label: formatResponsibilityLabel(responsibility),
+                }))}
+              />
+              <FilterSelect
+                label="Account status"
+                value={filterAccountStatus}
+                onChange={setFilterAccountStatus}
+                options={Object.values(AccountStatus).map((status) => ({
+                  value: status,
+                  label: status.charAt(0) + status.slice(1).toLowerCase(),
+                }))}
+              />
             </div>
-          ))}
-        </div>
-      ) : null}
+            <p className="mt-4 text-xs text-[#ebfbff]/45">
+              Showing {filteredAccounts.length} of {payload?.accounts.length ?? 0}{" "}
+              accounts
+            </p>
+          </div>
+        </aside>
 
-      <div className="glass-card rounded-2xl p-4 sm:p-5">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <label className="block md:col-span-2 xl:col-span-3">
-            <span className="text-sm text-[#ebfbff]/70">Search by name or email</span>
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search employees…"
-              className="mt-2 w-full min-h-[48px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-[#ebfbff]"
-            />
-          </label>
-          <FilterSelect
-            label="Access level"
-            value={filterAccessLevel}
-            onChange={setFilterAccessLevel}
-            options={Object.values(AccessLevel).map((level) => ({
-              value: level,
-              label: formatAccessLevelLabel(level),
-            }))}
-          />
-          <FilterSelect
-            label="Department"
-            value={filterDepartment}
-            onChange={setFilterDepartment}
-            options={EMPLOYEE_DEPARTMENTS.map((department) => ({
-              value: department,
-              label: department,
-            }))}
-          />
-          <FilterSelect
-            label="Location"
-            value={filterLocation}
-            onChange={setFilterLocation}
-            options={locationOptions.map((location) => ({
-              value: location,
-              label: location,
-            }))}
-          />
-          <FilterSelect
-            label="Responsibility"
-            value={filterResponsibility}
-            onChange={setFilterResponsibility}
-            options={ALL_EMPLOYEE_RESPONSIBILITIES.map((responsibility) => ({
-              value: responsibility,
-              label: formatResponsibilityLabel(responsibility),
-            }))}
-          />
-          <FilterSelect
-            label="Account status"
-            value={filterAccountStatus}
-            onChange={setFilterAccountStatus}
-            options={Object.values(AccountStatus).map((status) => ({
-              value: status,
-              label: status.charAt(0) + status.slice(1).toLowerCase(),
-            }))}
-          />
-        </div>
-        <p className="mt-3 text-xs text-[#ebfbff]/45">
-          Showing {filteredAccounts.length} of {payload?.accounts.length ?? 0} accounts
-        </p>
-      </div>
-
-      {loading ? (
-        <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
-          Loading employee accounts…
-        </div>
-      ) : (
-        <div className="glass-card portal-table-scroll rounded-2xl">
-          <table className="min-w-[1900px] w-full text-left text-sm">
+        <div className="min-w-0">
+          {loading ? (
+            <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+              Loading employee accounts…
+            </div>
+          ) : (
+            <div className="glass-card portal-table-scroll w-full rounded-2xl">
+              <table className="w-full min-w-[1200px] text-left text-sm">
             <thead>
               <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
                 <th className="px-4 py-4 font-semibold sm:px-6">Employee Name</th>
@@ -550,8 +542,35 @@ export function AdminAccountsSection() {
               ))}
             </tbody>
           </table>
+            </div>
+          )}
         </div>
-      )}
+
+        <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
+          {payload?.summary ? (
+            <div className="glass-card rounded-2xl p-4 sm:p-5">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-[#00c6ff]">
+                Account Summary
+              </h2>
+              <div className="mt-4 space-y-3">
+                {SUMMARY_CARDS.map((card) => (
+                  <div
+                    key={card.key}
+                    className="rounded-xl border border-[#ebfbff]/10 bg-[#0c151d]/40 px-4 py-3"
+                  >
+                    <p className="text-xs uppercase tracking-wide text-[#ebfbff]/45">
+                      {card.label}
+                    </p>
+                    <p className="mt-1 text-xl font-bold text-[#ebfbff]">
+                      {payload.summary[card.key]}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </aside>
+      </div>
 
       {viewTarget ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0c151d]/80 p-4 backdrop-blur-sm sm:items-center">

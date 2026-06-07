@@ -10,6 +10,7 @@ import {
   isManagerOrAbove,
   type EmployeeAccessContext,
 } from "@/lib/operational-access";
+import { resolveAssignedCleaningLocationIds } from "@/lib/job-assignment-service";
 import { prisma } from "@/lib/prisma";
 
 export type CleaningJobDto = {
@@ -97,13 +98,18 @@ function serializeJob(row: Job): CleaningJobDto {
   };
 }
 
-async function getAssignedLocationIds(employeeId: string): Promise<string[]> {
-  const rows = await prisma.jobAssignment.findMany({
-    where: { employeeId, isActive: true },
-    select: { clientLocationId: true },
-  });
+async function getActorAssignedCleaningLocationIds(
+  actor: Employee,
+): Promise<string[]> {
+  return resolveAssignedCleaningLocationIds(actor);
+}
 
-  return rows.map((row) => row.clientLocationId);
+function locationScopedJobsWhere(locationIds: string[]): Prisma.JobWhereInput {
+  if (locationIds.length === 0) {
+    return { id: { in: [] } };
+  }
+
+  return { clientLocationId: { in: locationIds } };
 }
 
 export async function buildCleaningJobsVisibilityWhere(
@@ -115,7 +121,7 @@ export async function buildCleaningJobsVisibilityWhere(
   }
 
   if (isBinOperationalRole(ctx)) {
-    const locationIds = await getAssignedLocationIds(actor.id);
+    const locationIds = await getActorAssignedCleaningLocationIds(actor);
     const filters: Prisma.JobWhereInput[] = [{ assignedEmployeeId: actor.id }];
     if (locationIds.length > 0) {
       filters.push({ clientLocationId: { in: locationIds } });
@@ -124,16 +130,15 @@ export async function buildCleaningJobsVisibilityWhere(
     return { OR: filters };
   }
 
-  if (ctx.accessLevel === AccessLevel.SUPERVISOR) {
-    const locationIds = await getAssignedLocationIds(actor.id);
-    if (locationIds.length === 0) {
-      return { id: { in: [] } };
-    }
-
-    return { clientLocationId: { in: locationIds } };
+  if (
+    ctx.accessLevel === AccessLevel.SUPERVISOR ||
+    ctx.accessLevel === AccessLevel.TEAM_MEMBER
+  ) {
+    const locationIds = await getActorAssignedCleaningLocationIds(actor);
+    return locationScopedJobsWhere(locationIds);
   }
 
-  return { assignedEmployeeId: actor.id };
+  return { id: { in: [] } };
 }
 
 export async function listCleaningJobsForActor(
@@ -169,16 +174,19 @@ export async function canActorAccessCleaningJob(
       return true;
     }
 
-    const locationIds = await getAssignedLocationIds(actor.id);
+    const locationIds = await getActorAssignedCleaningLocationIds(actor);
     return locationIds.includes(job.clientLocationId);
   }
 
-  if (ctx.accessLevel === AccessLevel.SUPERVISOR) {
-    const locationIds = await getAssignedLocationIds(actor.id);
+  if (
+    ctx.accessLevel === AccessLevel.SUPERVISOR ||
+    ctx.accessLevel === AccessLevel.TEAM_MEMBER
+  ) {
+    const locationIds = await getActorAssignedCleaningLocationIds(actor);
     return locationIds.includes(job.clientLocationId);
   }
 
-  return job.assignedEmployeeId === actor.id;
+  return false;
 }
 
 async function applyEmployeeAssignment(

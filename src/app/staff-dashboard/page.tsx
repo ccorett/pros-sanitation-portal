@@ -9,7 +9,7 @@ import {
   toEmployeeAccessContext,
 } from "@/lib/portal-route-access";
 import { requireStaffAccess } from "@/lib/require-staff-access";
-import { Briefcase, FileText, Package, Recycle, Users } from "lucide-react";
+import { Briefcase, FileText, Package, Recycle, Truck, Users } from "lucide-react";
 import Link from "next/link";
 
 const dashboardCards = [
@@ -19,6 +19,13 @@ const dashboardCards = [
     icon: Briefcase,
     href: "/jobs",
     feature: "jobs" as const,
+  },
+  {
+    title: "Delivery",
+    description: "Delivery requests, driver assignments, and fulfilment tracking.",
+    icon: Truck,
+    href: "/jobs/delivery",
+    feature: "delivery" as const,
   },
   {
     title: "Bin Management",
