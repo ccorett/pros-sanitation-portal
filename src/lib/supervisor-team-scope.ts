@@ -1,6 +1,12 @@
 import type { Employee } from "@prisma/client";
 import { AccessLevel, OperationalGroup } from "@prisma/client";
 import { ACTIVE_EMPLOYEE_FILTER } from "@/lib/account-retention";
+import {
+  getEmployeeLocationSummary,
+  listActiveLocationNamesForEmployee,
+  listActiveLocationNamesForEmployees,
+  locationsOverlap,
+} from "@/lib/employee-location-assignment-service";
 import { prisma } from "@/lib/prisma";
 
 export const FLOATING_UNASSIGNED_LOCATION = "Floating/Unassigned";
@@ -14,19 +20,31 @@ export function isFloatingUnassignedLocation(
 
 type SupervisorScopeActor = Pick<
   Employee,
-  "accessLevel" | "operationalGroup" | "locationAssignment"
+  "id" | "accessLevel" | "operationalGroup" | "locationAssignment"
 >;
 
 type TeamMemberScopeTarget = Pick<
   Employee,
-  "accessLevel" | "operationalGroup" | "locationAssignment"
+  "id" | "accessLevel" | "operationalGroup" | "locationAssignment"
 >;
 
+async function employeeLocationNames(
+  employee: Pick<Employee, "id" | "locationAssignment">,
+): Promise<string[]> {
+  const names = await listActiveLocationNamesForEmployee(employee.id);
+  if (names.length > 0) {
+    return names;
+  }
+
+  const legacy = employee.locationAssignment?.trim();
+  return legacy ? [legacy] : [];
+}
+
 /** Whether a supervisor may Agree/Disagree on this employee's vacation request. */
-export function canSupervisorReviewEmployeeVacation(
+export async function canSupervisorReviewEmployeeVacation(
   supervisor: SupervisorScopeActor,
   employee: TeamMemberScopeTarget,
-): boolean {
+): Promise<boolean> {
   if (supervisor.accessLevel !== AccessLevel.SUPERVISOR) {
     return false;
   }
@@ -35,7 +53,11 @@ export function canSupervisorReviewEmployeeVacation(
     return false;
   }
 
-  if (isFloatingUnassignedLocation(employee.locationAssignment)) {
+  const employeeLocations = await employeeLocationNames(employee);
+  if (
+    employeeLocations.length === 0 ||
+    employeeLocations.every((location) => isFloatingUnassignedLocation(location))
+  ) {
     return false;
   }
 
@@ -44,17 +66,21 @@ export function canSupervisorReviewEmployeeVacation(
   }
 
   if (supervisor.operationalGroup === OperationalGroup.GENERAL) {
+    if (employee.operationalGroup === OperationalGroup.BIN_TECHNICIAN) {
+      return false;
+    }
+
+    const supervisorLocations = await employeeLocationNames(supervisor);
     return (
-      employee.operationalGroup !== OperationalGroup.BIN_TECHNICIAN &&
-      Boolean(supervisor.locationAssignment) &&
-      supervisor.locationAssignment === employee.locationAssignment
+      supervisorLocations.length > 0 &&
+      locationsOverlap(supervisorLocations, employeeLocations)
     );
   }
 
   return false;
 }
 
-/** Employee IDs a supervisor may view (same location team or all bin technicians). */
+/** Employee IDs a supervisor may view (assigned locations or all bin technicians). */
 export async function getSupervisorVisibleEmployeeIds(
   supervisor: Employee,
 ): Promise<string[]> {
@@ -75,23 +101,46 @@ export async function getSupervisorVisibleEmployeeIds(
     return [supervisor.id, ...technicians.map((row) => row.id)];
   }
 
-  if (
-    supervisor.operationalGroup === OperationalGroup.GENERAL &&
-    supervisor.locationAssignment &&
-    !isFloatingUnassignedLocation(supervisor.locationAssignment)
-  ) {
+  if (supervisor.operationalGroup === OperationalGroup.GENERAL) {
+    const supervisorLocations = await employeeLocationNames(supervisor);
+    if (
+      supervisorLocations.length === 0 ||
+      supervisorLocations.every((location) => isFloatingUnassignedLocation(location))
+    ) {
+      return [supervisor.id];
+    }
+
     const teamMembers = await prisma.employee.findMany({
       where: {
         ...ACTIVE_EMPLOYEE_FILTER,
-        locationAssignment: supervisor.locationAssignment,
         operationalGroup: { not: OperationalGroup.BIN_TECHNICIAN },
         accessLevel: AccessLevel.TEAM_MEMBER,
       },
-      select: { id: true },
+      select: { id: true, locationAssignment: true },
     });
 
-    return [supervisor.id, ...teamMembers.map((row) => row.id)];
+    const locationMap = await listActiveLocationNamesForEmployees(
+      teamMembers.map((row) => row.id),
+    );
+
+    const visibleIds = teamMembers
+      .filter((member) => {
+        const memberLocations =
+          locationMap.get(member.id) ??
+          (member.locationAssignment?.trim() ? [member.locationAssignment.trim()] : []);
+        return locationsOverlap(supervisorLocations, memberLocations);
+      })
+      .map((row) => row.id);
+
+    return [supervisor.id, ...visibleIds];
   }
 
   return [supervisor.id];
+}
+
+export async function getSupervisorPrimaryLocation(
+  supervisor: Pick<Employee, "id" | "locationAssignment">,
+): Promise<string | null> {
+  const summary = await getEmployeeLocationSummary(supervisor.id);
+  return summary.primaryLocation ?? supervisor.locationAssignment?.trim() ?? null;
 }

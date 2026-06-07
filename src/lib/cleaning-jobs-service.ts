@@ -509,14 +509,26 @@ export type CleaningJobAssigneeDto = {
 export async function listCleaningJobAssignees(
   locationName: string,
 ): Promise<CleaningJobAssigneeDto[]> {
+  const trimmedLocation = locationName.trim();
+  const locationAssignmentRows = await prisma.employeeLocationAssignment.findMany({
+    where: {
+      locationName: trimmedLocation,
+      isActive: true,
+    },
+    select: { employeeId: true },
+  });
+
   const rows = await prisma.employee.findMany({
     where: {
       ...ACTIVE_EMPLOYEE_FILTER,
-      locationAssignment: locationName.trim(),
       operationalGroup: { not: OperationalGroup.BIN_TECHNICIAN },
       accessLevel: {
         in: [AccessLevel.TEAM_MEMBER, AccessLevel.SUPERVISOR],
       },
+      OR: [
+        { id: { in: locationAssignmentRows.map((row) => row.employeeId) } },
+        { locationAssignment: trimmedLocation },
+      ],
     },
     select: {
       id: true,

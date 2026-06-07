@@ -165,21 +165,25 @@ export async function listVacationRequestsForActor(
       locationAssignment: true,
     },
   });
-  const employeeById = new Map(employees.map((row) => [row.id, row]));
+  const employeeById = new Map(
+    employees.map((row) => [row.id, row]),
+  );
 
-  return serialized.map((request) => {
-    const employee = employeeById.get(request.employeeId);
-    const canAct =
-      request.finalStatus === VacationFinalStatus.PENDING_SUPERVISOR_REVIEW &&
-      employee !== undefined &&
-      canSupervisorReviewEmployeeVacation(actor, employee);
+  return Promise.all(
+    serialized.map(async (request) => {
+      const employee = employeeById.get(request.employeeId);
+      const canAct =
+        request.finalStatus === VacationFinalStatus.PENDING_SUPERVISOR_REVIEW &&
+        employee !== undefined &&
+        (await canSupervisorReviewEmployeeVacation(actor, employee));
 
-    return {
-      ...request,
-      supervisorCanAct: canAct,
-      supervisorActBlockedLabel: canAct ? null : "Not assigned to your team",
-    };
-  });
+      return {
+        ...request,
+        supervisorCanAct: canAct,
+        supervisorActBlockedLabel: canAct ? null : "Not assigned to your team",
+      };
+    }),
+  );
 }
 
 export async function canSupervisorActOnRequest(
@@ -193,6 +197,7 @@ export async function canSupervisorActOnRequest(
   const employee = await prisma.employee.findUnique({
     where: { id: request.employeeId },
     select: {
+      id: true,
       accessLevel: true,
       operationalGroup: true,
       locationAssignment: true,
@@ -203,7 +208,7 @@ export async function canSupervisorActOnRequest(
     return false;
   }
 
-  return canSupervisorReviewEmployeeVacation(supervisor, employee);
+  return await canSupervisorReviewEmployeeVacation(supervisor, employee);
 }
 
 export type CreateVacationRequestInput = {

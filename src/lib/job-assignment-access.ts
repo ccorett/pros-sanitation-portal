@@ -1,4 +1,5 @@
 import type { EmployeeJobAssignments } from "@/lib/job-assignment-types";
+import { canAccessDelivery } from "@/lib/delivery-access";
 import {
   isManagerOrAbove,
   type EmployeeAccessContext,
@@ -12,6 +13,10 @@ export function hasActiveCleaningAssignments(
 
 export function canAccessGeneralJobs(ctx: EmployeeAccessContext): boolean {
   if (isManagerOrAbove(ctx.accessLevel)) {
+    return true;
+  }
+
+  if (canAccessDelivery(ctx)) {
     return true;
   }
 

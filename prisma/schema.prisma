@@ -216,6 +216,7 @@ model Employee {
   policyAcknowledgements PolicyAcknowledgement[]
   noticeAcknowledgements NoticeAcknowledgement[]
   jobAssignments         JobAssignment[]
+  locationAssignments    EmployeeLocationAssignment[]
   jobServiceLogs         JobServiceLog[]
   payslips               Payslip[]
   assignedDeliveryRequests DeliveryRequest[] @relation("DeliveryDriver")
@@ -297,6 +298,24 @@ model ClientLocation {
 
   @@index([status])
   @@map("client_locations")
+}
+
+model EmployeeLocationAssignment {
+  id           String   @id @default(uuid()) @db.Uuid
+  employeeId   String   @db.Uuid
+  locationName String
+  isPrimary    Boolean  @default(false)
+  assignedBy   String
+  assignedAt   DateTime @default(now())
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, locationName])
+  @@index([employeeId, isActive])
+  @@map("employee_location_assignments")
 }
 
 model JobAssignment {

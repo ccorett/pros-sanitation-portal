@@ -51,10 +51,10 @@ export function resolveSupervisorEmailForSubmit(employee: {
   return "supervisor@prossanitation.com";
 }
 
-export function canSupervisorReviewRequest(
+export async function canSupervisorReviewRequest(
   supervisor: Pick<
     Employee,
-    "accessLevel" | "operationalGroup" | "locationAssignment"
+    "id" | "accessLevel" | "operationalGroup" | "locationAssignment"
   >,
   request: Pick<
     VacationWorkflowRequest,
@@ -62,12 +62,13 @@ export function canSupervisorReviewRequest(
     | "locationAssignment"
     | "workflowStatus"
   >,
-): boolean {
+): Promise<boolean> {
   if (request.workflowStatus !== "Pending Supervisor Review") {
     return false;
   }
 
   return canSupervisorReviewEmployeeVacation(supervisor, {
+    id: supervisor.id,
     accessLevel: AccessLevel.TEAM_MEMBER,
     operationalGroup: request.employeeOperationalGroup,
     locationAssignment: request.locationAssignment,

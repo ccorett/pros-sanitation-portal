@@ -46,7 +46,7 @@ async function main() {
     !checks.deliveryFeature ||
     !checks.pathDelivery ||
     !checks.canListRequests ||
-    !checks.navIncludesDelivery
+    checks.navIncludesDelivery
   ) {
     throw new Error("Delivery coordinator access checks failed.");
   }

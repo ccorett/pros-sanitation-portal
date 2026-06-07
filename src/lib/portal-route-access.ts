@@ -99,7 +99,6 @@ const FEATURE_ACCESS: Record<
 const NAV_CATALOG: PortalNavItem[] = [
   { label: "Dashboard", href: "/staff-dashboard", feature: "dashboard" },
   { label: "Job Management", href: "/jobs", feature: "jobs" },
-  { label: "Delivery", href: "/jobs/delivery", feature: "delivery" },
   { label: "Bin Management", href: "/jobs/bin-management", feature: "binManagement" },
   {
     label: "Equipment & Supplies",

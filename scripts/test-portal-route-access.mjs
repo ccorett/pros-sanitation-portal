@@ -87,7 +87,7 @@ const cases = [
   {
     employee: ctx(AccessLevel.MANAGER),
     allow: ["/manager/approvals", "/jobs/bin-management", "/jobs", "/jobs/delivery"],
-    nav: ["Manager Approvals", "Bin Management", "Job Management", "Delivery"],
+    nav: ["Manager Approvals", "Bin Management", "Job Management"],
   },
   {
     employee: ctx(
@@ -102,8 +102,8 @@ const cases = [
     ),
     allow: ["/jobs/delivery", "/jobs", "/equipment-supplies"],
     deny: ["/admin", "/manager/approvals"],
-    nav: ["Job Management", "Delivery", "Equipment & Supplies"],
-    absentNav: ["Admin", "Manager Approvals"],
+    nav: ["Job Management", "Equipment & Supplies"],
+    absentNav: ["Admin", "Manager Approvals", "Delivery"],
   },
 ];
 

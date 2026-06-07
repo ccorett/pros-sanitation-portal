@@ -28,6 +28,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     jobTitle?: string;
     department?: string;
     locationAssignment?: string;
+    primaryLocationAssignment?: string;
+    additionalLocationAssignments?: string[];
   };
 
   if (
@@ -57,7 +59,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           ? {
               jobTitle: body.jobTitle?.trim() ?? "",
               department: body.department?.trim() ?? "",
-              locationAssignment: body.locationAssignment?.trim() ?? "",
+              primaryLocationAssignment:
+                body.primaryLocationAssignment?.trim() ??
+                body.locationAssignment?.trim() ??
+                "",
+              additionalLocationAssignments:
+                body.additionalLocationAssignments ?? [],
             }
           : undefined,
     });

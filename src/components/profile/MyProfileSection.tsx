@@ -278,15 +278,27 @@ export function MyProfileSection() {
 
       <section className="glass-card rounded-2xl">
         <h2 className="border-b border-[#ebfbff]/10 px-5 py-4 text-lg font-bold text-[#ebfbff] sm:px-6">
-          Employment Information
+          Work Profile
         </h2>
         <div className="divide-y divide-[#ebfbff]/10">
-          <ReadOnlyField label="Position" value={profile.position ?? "—"} />
-          <ReadOnlyField label="Job Title" value={profile.jobTitle} />
-          <ReadOnlyField label="Department" value={profile.department} />
           <ReadOnlyField
-            label="Location Assignment"
-            value={profile.locationAssignment ?? "—"}
+            label="Primary Location"
+            value={profile.primaryLocationAssignment ?? "—"}
+          />
+          <ReadOnlyField
+            label="Additional Locations"
+            value={
+              profile.additionalLocationAssignments.length > 0
+                ? profile.additionalLocationAssignments.join(", ")
+                : "—"
+            }
+          />
+          <ReadOnlyField label="Department" value={profile.department} />
+          <ReadOnlyField label="Job Title" value={profile.jobTitle} />
+          <ReadOnlyField label="Access Level" value={profile.accessLevelLabel} />
+          <ReadOnlyField
+            label="Responsibilities"
+            value={profile.responsibilitiesLabel}
           />
           <ReadOnlyField
             label="Employment Status"

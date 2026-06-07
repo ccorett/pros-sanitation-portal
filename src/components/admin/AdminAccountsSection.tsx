@@ -87,6 +87,9 @@ export function AdminAccountsSection() {
   const [editJobTitle, setEditJobTitle] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
   const [editLocationAssignment, setEditLocationAssignment] = useState("");
+  const [editAdditionalLocations, setEditAdditionalLocations] = useState<string[]>(
+    [],
+  );
   const [responsibilityTarget, setResponsibilityTarget] =
     useState<AdminAccountRow | null>(null);
   const [selectedResponsibilities, setSelectedResponsibilities] = useState<
@@ -136,6 +139,8 @@ export function AdminAccountsSection() {
       jobTitle?: string;
       department?: string;
       locationAssignment?: string;
+      primaryLocationAssignment?: string;
+      additionalLocationAssignments?: string[];
     },
   ) {
     setBusyId(account.id);
@@ -154,6 +159,8 @@ export function AdminAccountsSection() {
           jobTitle: options?.jobTitle,
           department: options?.department,
           locationAssignment: options?.locationAssignment,
+          primaryLocationAssignment: options?.primaryLocationAssignment,
+          additionalLocationAssignments: options?.additionalLocationAssignments,
         }),
       });
       const data = (await response.json()) as { error?: string };
@@ -191,14 +198,30 @@ export function AdminAccountsSection() {
         ? account.department
         : "",
     );
-    setEditLocationAssignment(
-      account.locationAssignment === "—"
+    const primary =
+      account.primaryLocationAssignment === "—"
         ? ""
         : EMPLOYEE_LOCATION_ASSIGNMENTS.includes(
-              account.locationAssignment as (typeof EMPLOYEE_LOCATION_ASSIGNMENTS)[number],
+              account.primaryLocationAssignment as (typeof EMPLOYEE_LOCATION_ASSIGNMENTS)[number],
             )
-          ? account.locationAssignment
-          : "",
+          ? account.primaryLocationAssignment
+          : "";
+
+    setEditLocationAssignment(primary);
+    setEditAdditionalLocations(
+      account.additionalLocationAssignments.filter((location) =>
+        EMPLOYEE_LOCATION_ASSIGNMENTS.includes(
+          location as (typeof EMPLOYEE_LOCATION_ASSIGNMENTS)[number],
+        ),
+      ),
+    );
+  }
+
+  function toggleAdditionalLocation(location: string) {
+    setEditAdditionalLocations((current) =>
+      current.includes(location)
+        ? current.filter((item) => item !== location)
+        : [...current, location],
     );
   }
 
@@ -634,8 +657,16 @@ export function AdminAccountsSection() {
                 <dd>{viewTarget.department}</dd>
               </div>
               <div>
-                <dt className="text-[#ebfbff]/45">Location</dt>
-                <dd>{viewTarget.locationAssignment}</dd>
+                <dt className="text-[#ebfbff]/45">Primary Location</dt>
+                <dd>{viewTarget.primaryLocationAssignment}</dd>
+              </div>
+              <div>
+                <dt className="text-[#ebfbff]/45">Additional Locations</dt>
+                <dd>
+                  {viewTarget.additionalLocationAssignments.length > 0
+                    ? viewTarget.additionalLocationAssignments.join(", ")
+                    : "—"}
+                </dd>
               </div>
             </dl>
             <button
@@ -813,7 +844,7 @@ export function AdminAccountsSection() {
               </select>
             </label>
             <label className="block">
-              <span className="text-sm text-[#ebfbff]/70">Location Assignment</span>
+              <span className="text-sm text-[#ebfbff]/70">Primary Location</span>
               <select
                 value={editLocationAssignment}
                 onChange={(event) =>
@@ -821,7 +852,7 @@ export function AdminAccountsSection() {
                 }
                 className="mt-2 w-full min-h-[48px] rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-3 text-[#ebfbff]"
               >
-                <option value="">Select location</option>
+                <option value="">Select primary location</option>
                 {EMPLOYEE_LOCATION_ASSIGNMENTS.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -829,6 +860,27 @@ export function AdminAccountsSection() {
                 ))}
               </select>
             </label>
+            <div className="block">
+              <span className="text-sm text-[#ebfbff]/70">Additional Locations</span>
+              <div className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 p-3">
+                {EMPLOYEE_LOCATION_ASSIGNMENTS.filter(
+                  (option) => option !== editLocationAssignment,
+                ).map((option) => (
+                  <label
+                    key={option}
+                    className="flex min-h-[40px] items-center gap-3 rounded-lg px-2 py-1 text-sm text-[#ebfbff]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={editAdditionalLocations.includes(option)}
+                      onChange={() => toggleAdditionalLocation(option)}
+                      className="h-4 w-4"
+                    />
+                    <span>{option}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -847,7 +899,10 @@ export function AdminAccountsSection() {
                   void runAction(editTarget, "updateWorkProfile", {
                     jobTitle: editJobTitle,
                     department: editDepartment,
-                    locationAssignment: editLocationAssignment,
+                    primaryLocationAssignment: editLocationAssignment,
+                    additionalLocationAssignments: editAdditionalLocations.filter(
+                      (location) => location !== editLocationAssignment,
+                    ),
                   });
                 }}
                 disabled={busyId === editTarget.id}

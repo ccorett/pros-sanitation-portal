@@ -37,15 +37,15 @@ async function main() {
   }
 
   if (
-    !canSupervisorReviewEmployeeVacation(supervisor, teamMember) ||
-    canSupervisorReviewEmployeeVacation(supervisor, binTech)
+    !(await canSupervisorReviewEmployeeVacation(supervisor, teamMember)) ||
+    (await canSupervisorReviewEmployeeVacation(supervisor, binTech))
   ) {
     throw new Error("General supervisor scope mismatch.");
   }
 
   if (
-    !canSupervisorReviewEmployeeVacation(binSupervisor, binTech) ||
-    canSupervisorReviewEmployeeVacation(binSupervisor, teamMember)
+    !(await canSupervisorReviewEmployeeVacation(binSupervisor, binTech)) ||
+    (await canSupervisorReviewEmployeeVacation(binSupervisor, teamMember))
   ) {
     throw new Error("Bin supervisor scope mismatch.");
   }
@@ -54,7 +54,7 @@ async function main() {
     where: { locationAssignment: "Floating/Unassigned", accessLevel: "TEAM_MEMBER" },
   });
   if (floatingMember) {
-    if (canSupervisorReviewEmployeeVacation(supervisor, floatingMember)) {
+    if (await canSupervisorReviewEmployeeVacation(supervisor, floatingMember)) {
       throw new Error("General supervisor must not review floating/unassigned.");
     }
   }

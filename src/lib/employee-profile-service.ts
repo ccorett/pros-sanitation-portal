@@ -1,4 +1,10 @@
 import type { Employee } from "@prisma/client";
+import { formatAccessLevelLabel } from "@/lib/access-levels";
+import { getEmployeeLocationSummary } from "@/lib/employee-location-assignment-service";
+import {
+  formatResponsibilitiesList,
+  getDefaultResponsibilitiesForLevel,
+} from "@/lib/employee-responsibilities";
 import { derivePositionFromAccessLevel } from "@/lib/access-levels";
 import { prisma } from "@/lib/prisma";
 
@@ -18,11 +24,35 @@ export type EmployeeProfileDto = {
   position: string | null;
   department: string;
   locationAssignment: string | null;
+  primaryLocationAssignment: string | null;
+  additionalLocationAssignments: string[];
+  accessLevel: string;
+  accessLevelLabel: string;
+  responsibilitiesLabel: string;
   employmentStatus: string;
   accountStatus: string;
 };
 
-export function serializeEmployeeProfile(employee: Employee): EmployeeProfileDto {
+export async function buildEmployeeProfileDto(
+  employee: Employee,
+): Promise<EmployeeProfileDto> {
+  const [locationSummary, responsibilityEntries] = await Promise.all([
+    getEmployeeLocationSummary(employee.id),
+    prisma.employeeResponsibilityEntry.findMany({
+      where: { employeeId: employee.id },
+      select: { responsibility: true },
+      orderBy: { responsibility: "asc" },
+    }),
+  ]);
+
+  const responsibilities =
+    responsibilityEntries.length > 0
+      ? responsibilityEntries.map((entry) => entry.responsibility)
+      : getDefaultResponsibilitiesForLevel(
+          employee.accessLevel,
+          employee.operationalGroup,
+        );
+
   return {
     id: employee.id,
     employeeId: employee.employeeId,
@@ -36,7 +66,14 @@ export function serializeEmployeeProfile(employee: Employee): EmployeeProfileDto
     jobTitle: employee.jobTitle,
     position: derivePositionFromAccessLevel(employee.accessLevel),
     department: employee.department,
-    locationAssignment: employee.locationAssignment,
+    locationAssignment:
+      locationSummary.primaryLocation ?? employee.locationAssignment,
+    primaryLocationAssignment:
+      locationSummary.primaryLocation ?? employee.locationAssignment,
+    additionalLocationAssignments: locationSummary.additionalLocations,
+    accessLevel: employee.accessLevel,
+    accessLevelLabel: formatAccessLevelLabel(employee.accessLevel),
+    responsibilitiesLabel: formatResponsibilitiesList(responsibilities),
     employmentStatus: employee.employmentStatus,
     accountStatus: employee.accountStatus,
   };
@@ -47,7 +84,7 @@ export async function getEmployeeProfileByUserId(
 ): Promise<EmployeeProfileDto | null> {
   const employee = await prisma.employee.findUnique({ where: { userId } });
   if (!employee) return null;
-  return serializeEmployeeProfile(employee);
+  return buildEmployeeProfileDto(employee);
 }
 
 export type UpdateEmployeeProfileInput = {
@@ -88,5 +125,5 @@ export async function updateEmployeeProfile(
     },
   });
 
-  return serializeEmployeeProfile(employee);
+  return buildEmployeeProfileDto(employee);
 }

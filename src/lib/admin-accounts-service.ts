@@ -16,6 +16,10 @@ import {
   normalizeResponsibilities,
 } from "@/lib/employee-responsibilities";
 import {
+  getEmployeeLocationSummary,
+  setEmployeeLocationAssignments,
+} from "@/lib/employee-location-assignment-service";
+import {
   isEmployeeDepartment,
   isEmployeeJobTitle,
   isEmployeeLocationAssignment,
@@ -51,6 +55,8 @@ export type AdminAccountRow = {
   accountStatus: AccountStatus;
   accountStatusLabel: string;
   locationAssignment: string;
+  primaryLocationAssignment: string;
+  additionalLocationAssignments: string[];
   department: string;
   jobTitle: string;
   position: string;
@@ -273,6 +279,10 @@ export async function listAdminAccounts(options?: {
               employee.operationalGroup,
             );
 
+      const locationSummary = await getEmployeeLocationSummary(employee.id);
+      const primaryLocation =
+        locationSummary.primaryLocation ?? employee.locationAssignment ?? "—";
+
       return {
         id: employee.id,
         employeeName: `${employee.firstName} ${employee.lastName}`.trim(),
@@ -281,7 +291,9 @@ export async function listAdminAccounts(options?: {
         accessLevelLabel: formatAccessLevelLabel(employee.accessLevel),
         accountStatus: employee.accountStatus,
         accountStatusLabel: formatAccountStatusLabel(employee.accountStatus),
-        locationAssignment: employee.locationAssignment ?? "—",
+        locationAssignment: primaryLocation,
+        primaryLocationAssignment: primaryLocation,
+        additionalLocationAssignments: locationSummary.additionalLocations,
         department: employee.department,
         jobTitle: employee.jobTitle,
         position: derivePositionFromAccessLevel(employee.accessLevel),
@@ -480,7 +492,8 @@ export async function updateEmployeeLastLogin(userId: string) {
 export type EmployeeWorkProfileInput = {
   jobTitle: string;
   department: string;
-  locationAssignment: string;
+  primaryLocationAssignment: string;
+  additionalLocationAssignments?: string[];
 };
 
 export type AccountMutationInput = {
@@ -506,8 +519,14 @@ function validateWorkProfileInput(input: EmployeeWorkProfileInput): void {
   if (!isEmployeeDepartment(input.department)) {
     throw new Error("Select a valid department.");
   }
-  if (!isEmployeeLocationAssignment(input.locationAssignment)) {
-    throw new Error("Select a valid location assignment.");
+  if (!isEmployeeLocationAssignment(input.primaryLocationAssignment)) {
+    throw new Error("Select a valid primary location.");
+  }
+
+  for (const location of input.additionalLocationAssignments ?? []) {
+    if (!isEmployeeLocationAssignment(location)) {
+      throw new Error("Select valid additional locations.");
+    }
   }
 }
 
@@ -630,10 +649,15 @@ export async function mutateAdminAccount(
         jobTitle: input.workProfile.jobTitle,
         position: derivePositionFromAccessLevel(target.accessLevel),
         department: input.workProfile.department,
-        locationAssignment: input.workProfile.locationAssignment,
         lastEditedAt: new Date(),
         editedBy: actorName,
       },
+    });
+
+    await setEmployeeLocationAssignments(target.id, {
+      primaryLocation: input.workProfile.primaryLocationAssignment,
+      additionalLocations: input.workProfile.additionalLocationAssignments ?? [],
+      assignedBy: actorName,
     });
   } else if (input.action === "changeResponsibilities") {
     if (!input.responsibilities) {

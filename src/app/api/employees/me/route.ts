@@ -1,5 +1,5 @@
 import {
-  serializeEmployeeProfile,
+  buildEmployeeProfileDto,
   updateEmployeeProfile,
 } from "@/lib/employee-profile-service";
 import { getEmployeePortalAccess } from "@/lib/employee-portal-access";
@@ -27,7 +27,7 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    profile: serializeEmployeeProfile(access.employee),
+    profile: await buildEmployeeProfileDto(access.employee),
     pendingVerification: access.pendingVerification,
   });
 }

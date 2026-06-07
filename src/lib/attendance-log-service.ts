@@ -184,14 +184,20 @@ async function listTeamMembersForLocation(
   });
 
   if (actor.accessLevel === AccessLevel.SUPERVISOR) {
-    return rows
-      .filter((employee) => canSupervisorReviewEmployeeVacation(actor, employee))
-      .map((employee) => ({
-        id: employee.id,
-        employeePublicId: employee.employeeId,
-        fullName: employeeDisplayName(employee),
-        locationAssignment: employee.locationAssignment,
-      }));
+    const visible: AttendanceTeamMemberDto[] = [];
+
+    for (const employee of rows) {
+      if (await canSupervisorReviewEmployeeVacation(actor, employee)) {
+        visible.push({
+          id: employee.id,
+          employeePublicId: employee.employeeId,
+          fullName: employeeDisplayName(employee),
+          locationAssignment: employee.locationAssignment,
+        });
+      }
+    }
+
+    return visible;
   }
 
   return rows.map((employee) => ({

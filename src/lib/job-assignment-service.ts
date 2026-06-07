@@ -3,6 +3,7 @@ import {
   EMPTY_JOB_ASSIGNMENTS,
   type EmployeeJobAssignments,
 } from "@/lib/job-assignment-types";
+import { resolveClientLocationIdsForEmployee } from "@/lib/employee-location-assignment-service";
 import { filterClientLocationsByAssignments } from "@/lib/job-assignment-access";
 import type { ClientLocationDto } from "@/lib/job-management-service";
 import { isManagerOrAbove, type EmployeeAccessContext } from "@/lib/operational-access";
@@ -49,57 +50,36 @@ function serializeAssignment(row: JobAssignment & { location: { slug: string } }
 export async function resolveAssignedCleaningLocationIds(
   employee: Pick<Employee, "id"> & { locationAssignment?: string | null },
 ): Promise<string[]> {
-  const rows = await prisma.jobAssignment.findMany({
-    where: { employeeId: employee.id, isActive: true },
-    select: { clientLocationId: true },
-  });
+  const [jobAssignmentRows, locationAssignmentIds] = await Promise.all([
+    prisma.jobAssignment.findMany({
+      where: { employeeId: employee.id, isActive: true },
+      select: { clientLocationId: true },
+    }),
+    resolveClientLocationIdsForEmployee(employee),
+  ]);
 
-  if (rows.length > 0) {
-    return rows.map((row) => row.clientLocationId);
-  }
+  const ids = new Set<string>([
+    ...jobAssignmentRows.map((row) => row.clientLocationId),
+    ...locationAssignmentIds,
+  ]);
 
-  const locationName = employee.locationAssignment?.trim();
-  if (!locationName) {
-    return [];
-  }
-
-  const location = await prisma.clientLocation.findFirst({
-    where: {
-      locationName,
-      serviceType: { not: null },
-    },
-    select: { id: true },
-  });
-
-  return location ? [location.id] : [];
+  return [...ids];
 }
 
 export async function resolveAssignedCleaningLocationSlugs(
   employee: Pick<Employee, "id"> & { locationAssignment?: string | null },
 ): Promise<string[]> {
-  const rows = await prisma.jobAssignment.findMany({
-    where: { employeeId: employee.id, isActive: true },
-    include: assignmentInclude,
-  });
-
-  if (rows.length > 0) {
-    return rows.map((row) => row.location.slug);
-  }
-
-  const locationName = employee.locationAssignment?.trim();
-  if (!locationName) {
+  const locationIds = await resolveAssignedCleaningLocationIds(employee);
+  if (locationIds.length === 0) {
     return [];
   }
 
-  const location = await prisma.clientLocation.findFirst({
-    where: {
-      locationName,
-      serviceType: { not: null },
-    },
+  const locations = await prisma.clientLocation.findMany({
+    where: { id: { in: locationIds } },
     select: { slug: true },
   });
 
-  return location ? [location.slug] : [];
+  return locations.map((row) => row.slug);
 }
 
 export async function resolveEmployeeJobAssignments(
