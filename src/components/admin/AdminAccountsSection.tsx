@@ -94,13 +94,15 @@ export function AdminAccountsSection() {
   >([]);
   const [deleteTarget, setDeleteTarget] = useState<AdminAccountRow | null>(null);
   const [deletePin, setDeletePin] = useState("");
+  const [showRemovedAccounts, setShowRemovedAccounts] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const loadAccounts = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/admin/accounts");
+      const query = showRemovedAccounts ? "?includeRemoved=1" : "";
+      const response = await fetch(`/api/admin/accounts${query}`);
       const data = (await response.json()) as AccountsPayload & { error?: string };
       if (!response.ok) {
         throw new Error(data.error ?? "Unable to load accounts.");
@@ -111,7 +113,7 @@ export function AdminAccountsSection() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showRemovedAccounts]);
 
   useEffect(() => {
     void loadAccounts();
@@ -125,7 +127,8 @@ export function AdminAccountsSection() {
       | "updateWorkProfile"
       | "changeResponsibilities"
       | "disable"
-      | "deleteAccount",
+      | "deleteAccount"
+      | "restoreAccount",
     options?: {
       accessLevel?: AccessLevel;
       responsibilities?: EmployeeResponsibility[];
@@ -327,8 +330,31 @@ export function AdminAccountsSection() {
         </p>
       ) : null}
 
-      <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(220px,260px)_minmax(0,1fr)_minmax(200px,240px)] xl:items-start">
-        <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
+      {payload?.summary ? (
+        <div className="glass-card min-w-0 rounded-2xl p-4 sm:p-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[#00c6ff]">
+            Account Summary
+          </h2>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-9">
+            {SUMMARY_CARDS.map((card) => (
+              <div
+                key={card.key}
+                className="min-w-0 rounded-xl border border-[#ebfbff]/10 bg-[#0c151d]/40 px-3 py-2.5"
+              >
+                <p className="text-[10px] font-medium uppercase leading-tight tracking-wide text-[#ebfbff]/45">
+                  {card.label}
+                </p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-[#ebfbff]">
+                  {payload.summary[card.key]}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(220px,260px)_minmax(0,1fr)] lg:items-start">
+        <aside className="min-w-0 lg:sticky lg:top-4 lg:self-start">
           <div className="glass-card rounded-2xl p-4 sm:p-5">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-[#00c6ff]">
               Search &amp; Filters
@@ -392,6 +418,17 @@ export function AdminAccountsSection() {
                 }))}
               />
             </div>
+            {isSuperAdmin ? (
+              <label className="mt-4 flex items-center gap-3 rounded-xl border border-[#ebfbff]/10 bg-[#0c151d]/40 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={showRemovedAccounts}
+                  onChange={(event) => setShowRemovedAccounts(event.target.checked)}
+                  className="h-4 w-4 accent-[#00c6ff]"
+                />
+                <span className="text-sm text-[#ebfbff]/80">Show Removed Accounts</span>
+              </label>
+            ) : null}
             <p className="mt-4 text-xs text-[#ebfbff]/45">
               Showing {filteredAccounts.length} of {payload?.accounts.length ?? 0}{" "}
               accounts
@@ -405,23 +442,23 @@ export function AdminAccountsSection() {
               Loading employee accounts…
             </div>
           ) : (
-            <div className="glass-card portal-table-scroll w-full rounded-2xl">
-              <table className="w-full min-w-[1200px] text-left text-sm">
+            <div className="glass-card portal-table-scroll min-w-0 w-full rounded-2xl">
+              <table className="w-full table-auto text-left text-xs">
             <thead>
-              <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
-                <th className="px-4 py-4 font-semibold sm:px-6">Employee Name</th>
-                <th className="px-4 py-4 font-semibold">Email</th>
-                <th className="px-4 py-4 font-semibold">Job Title</th>
-                <th className="px-4 py-4 font-semibold">Position</th>
-                <th className="px-4 py-4 font-semibold">Access Level</th>
-                <th className="px-4 py-4 font-semibold">Responsibilities</th>
-                <th className="px-4 py-4 font-semibold">Account Status</th>
-                <th className="px-4 py-4 font-semibold">Location Assignment</th>
-                <th className="px-4 py-4 font-semibold">Department</th>
-                <th className="px-4 py-4 font-semibold">Last Login</th>
-                <th className="px-4 py-4 font-semibold">Last Edited</th>
-                <th className="px-4 py-4 font-semibold">Edited By</th>
-                <th className="px-4 py-4 font-semibold sm:px-6">Actions</th>
+              <tr className="border-b border-[#ebfbff]/10 text-[10px] uppercase tracking-wide text-[#ebfbff]/50">
+                <th className="px-2 py-3 font-semibold sm:px-3">Employee Name</th>
+                <th className="px-2 py-3 font-semibold sm:px-3">Email</th>
+                <th className="px-2 py-3 font-semibold sm:px-3">Job Title</th>
+                <th className="px-2 py-3 font-semibold sm:px-3">Position</th>
+                <th className="px-2 py-3 font-semibold sm:px-3">Access Level</th>
+                <th className="px-2 py-3 font-semibold sm:px-3">Responsibilities</th>
+                <th className="px-2 py-3 font-semibold sm:px-3">Account Status</th>
+                <th className="px-2 py-3 font-semibold sm:px-3">Location Assignment</th>
+                <th className="px-2 py-3 font-semibold sm:px-3">Department</th>
+                <th className="px-2 py-3 font-semibold sm:px-3">Last Login</th>
+                <th className="px-2 py-3 font-semibold sm:px-3">Last Edited</th>
+                <th className="px-2 py-3 font-semibold sm:px-3">Edited By</th>
+                <th className="px-2 py-3 font-semibold sm:px-3">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -430,44 +467,52 @@ export function AdminAccountsSection() {
                   key={account.id}
                   className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
                 >
-                  <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
+                  <td className="whitespace-normal px-2 py-3 font-medium text-[#ebfbff] sm:px-3">
                     {account.employeeName}
                     {account.isSuperAdminProtected ? (
-                      <span className="ml-2 rounded-full border border-[#f5c542]/35 bg-[#f5c542]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#f5c542]">
+                      <span className="ml-1 inline-flex rounded-full border border-[#f5c542]/35 bg-[#f5c542]/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#f5c542]">
                         Protected
                       </span>
                     ) : null}
                   </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">{account.email}</td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">{account.jobTitle}</td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">{account.position}</td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
+                  <td className="whitespace-normal break-all px-2 py-3 text-[#ebfbff]/70 sm:px-3">
+                    {account.email}
+                  </td>
+                  <td className="whitespace-normal px-2 py-3 text-[#ebfbff]/70 sm:px-3">
+                    {account.jobTitle}
+                  </td>
+                  <td className="whitespace-normal px-2 py-3 text-[#ebfbff]/70 sm:px-3">
+                    {account.position}
+                  </td>
+                  <td className="whitespace-normal px-2 py-3 text-[#ebfbff]/70 sm:px-3">
                     {account.accessLevelLabel}
                   </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
+                  <td className="whitespace-normal px-2 py-3 text-[#ebfbff]/70 sm:px-3">
                     {account.responsibilitiesLabel}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="whitespace-normal px-2 py-3 sm:px-3">
                     <span
-                      className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClass(account.accountStatus)}`}
+                      className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusClass(account.accountStatus)}`}
                     >
                       {account.accountStatusLabel}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
+                  <td className="whitespace-normal px-2 py-3 text-[#ebfbff]/70 sm:px-3">
                     {account.locationAssignment}
                   </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">{account.department}</td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
+                  <td className="whitespace-normal px-2 py-3 text-[#ebfbff]/70 sm:px-3">
+                    {account.department}
+                  </td>
+                  <td className="whitespace-normal px-2 py-3 text-[#ebfbff]/70 sm:px-3">
                     {formatOptionalTimestamp(account.lastLoginAt)}
                   </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
+                  <td className="whitespace-normal px-2 py-3 text-[#ebfbff]/70 sm:px-3">
                     {formatOptionalTimestamp(account.lastEditedAt)}
                   </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
+                  <td className="whitespace-normal px-2 py-3 text-[#ebfbff]/70 sm:px-3">
                     {account.editedBy ?? "—"}
                   </td>
-                  <td className="px-4 py-4 sm:px-6">
+                  <td className="whitespace-normal px-2 py-3 sm:px-3">
                     <div className="flex flex-wrap gap-2">
                       <ActionButton
                         label="View"
@@ -517,6 +562,14 @@ export function AdminAccountsSection() {
                           !canAct(account, "disable") || busyId === account.id
                         }
                       />
+                      {account.canRestore && canAct(account, "restoreAccount") ? (
+                        <ActionButton
+                          label="Restore"
+                          tone="success"
+                          onClick={() => void runAction(account, "restoreAccount")}
+                          disabled={busyId === account.id}
+                        />
+                      ) : null}
                       {isSuperAdmin && !account.isSuperAdminProtected ? (
                         <ActionButton
                           label="Delete Account"
@@ -545,31 +598,6 @@ export function AdminAccountsSection() {
             </div>
           )}
         </div>
-
-        <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
-          {payload?.summary ? (
-            <div className="glass-card rounded-2xl p-4 sm:p-5">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-[#00c6ff]">
-                Account Summary
-              </h2>
-              <div className="mt-4 space-y-3">
-                {SUMMARY_CARDS.map((card) => (
-                  <div
-                    key={card.key}
-                    className="rounded-xl border border-[#ebfbff]/10 bg-[#0c151d]/40 px-4 py-3"
-                  >
-                    <p className="text-xs uppercase tracking-wide text-[#ebfbff]/45">
-                      {card.label}
-                    </p>
-                    <p className="mt-1 text-xl font-bold text-[#ebfbff]">
-                      {payload.summary[card.key]}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </aside>
       </div>
 
       {viewTarget ? (
@@ -896,8 +924,9 @@ export function AdminAccountsSection() {
               Delete Account · {deleteTarget.employeeName}
             </h3>
             <p className="text-sm text-[#ff4d4f]/80">
-              This soft-deletes the account (status REMOVED, access disabled).
-              Audit history is retained. Enter your Super Admin PIN to confirm.
+              This soft-deletes the account immediately. The profile stays in Neon
+              for 90 days, then auto-purges. HR, payslip, audit, and approval
+              history are retained. Enter your Super Admin PIN to confirm.
             </p>
             <label className="block">
               <span className="text-sm text-[#ebfbff]/70">Super Admin PIN</span>

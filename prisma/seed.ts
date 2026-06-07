@@ -104,6 +104,7 @@ async function main() {
       create: {
         id: "00000000-0000-4000-8000-000000000030",
         employeeId,
+        employeeName: "Jordan Mitchell",
         payPeriod: "March 2026",
         fileName: "payslip-march-2026.pdf",
         fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",

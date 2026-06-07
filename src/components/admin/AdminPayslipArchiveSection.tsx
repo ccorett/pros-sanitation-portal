@@ -3,7 +3,12 @@
 import { Button } from "@/components/ui/Button";
 import { authInputClassName, authLabelClassName } from "@/lib/auth-form-styles";
 import { formatDisplayDate } from "@/lib/hr-mock-data";
-import type { PayslipArchiveDto } from "@/lib/payslip-archive-service";
+import {
+  formatPayslipMoney,
+  type PayslipArchiveDto,
+} from "@/lib/payslip-archive-service";
+import { RefreshCw } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 export function AdminPayslipArchiveSection() {
@@ -15,6 +20,7 @@ export function AdminPayslipArchiveSection() {
   const [fileName, setFileName] = useState("");
   const [fileUrl, setFileUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const loadPayslips = useCallback(async () => {
     setLoading(true);
@@ -37,6 +43,34 @@ export function AdminPayslipArchiveSection() {
   useEffect(() => {
     void loadPayslips();
   }, [loadPayslips]);
+
+  async function handleSync() {
+    setMessage(null);
+    setSyncing(true);
+    try {
+      const response = await fetch("/api/hr/payslip-sync", { method: "POST" });
+      const data = (await response.json()) as {
+        error?: string;
+        recordsImported?: number;
+        recordsUpdated?: number;
+        employeesNotMatched?: string[];
+        recordsArchived?: number;
+      };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to sync payslips.");
+      }
+      setMessage(
+        `Sync complete: ${data.recordsImported ?? 0} imported, ${data.recordsUpdated ?? 0} updated, ${data.recordsArchived ?? 0} archived.`,
+      );
+      await loadPayslips();
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Unable to sync payslips.",
+      );
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   async function handleCreate(event: React.FormEvent) {
     event.preventDefault();
@@ -92,8 +126,27 @@ export function AdminPayslipArchiveSection() {
 
   return (
     <div className="space-y-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-[#ebfbff]">Payslip Archive</h2>
+          <p className="text-sm text-[#ebfbff]/55">
+            Sync payroll from Google Sheets or manually attach legacy PDF records.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          className="min-h-[48px]"
+          disabled={syncing}
+          onClick={() => void handleSync()}
+        >
+          <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
+          {syncing ? "Syncing…" : "Sync Payslips"}
+        </Button>
+      </div>
+
       <form onSubmit={handleCreate} className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">
-        <h2 className="text-lg font-bold text-[#ebfbff]">Add Payslip Record</h2>
+        <h3 className="text-base font-bold text-[#ebfbff]">Add Legacy PDF Record</h3>
         <p className="text-sm text-[#ebfbff]/55">
           Link a document URL (PDF hosted on your file store or CDN) to an employee.
         </p>
@@ -157,38 +210,77 @@ export function AdminPayslipArchiveSection() {
           No payslip records yet.
         </div>
       ) : (
-        <div className="space-y-3">
-          {payslips.map((payslip) => (
-            <article key={payslip.id} className="glass-card rounded-2xl p-5 sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-base font-bold text-[#ebfbff]">
-                    {payslip.payPeriod} — {payslip.employeeName || payslip.employeeId}
-                  </h3>
-                  <p className="mt-1 text-xs text-[#ebfbff]/45">
-                    {payslip.fileName} · Uploaded {formatDisplayDate(payslip.uploadedAt)} by{" "}
-                    {payslip.uploadedBy}
-                  </p>
-                  <a
-                    href={payslip.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 inline-block text-xs text-[#00c6ff] hover:underline"
-                  >
-                    {payslip.fileUrl}
-                  </a>
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="min-h-[44px] text-xs"
-                  onClick={() => void handleDelete(payslip.id)}
-                >
-                  Delete
-                </Button>
-              </div>
-            </article>
-          ))}
+        <div className="glass-card overflow-hidden rounded-2xl">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="border-b border-[#ebfbff]/10 bg-[#0c151d]/50">
+                <tr>
+                  <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Employee</th>
+                  <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Pay Period</th>
+                  <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Net Pay</th>
+                  <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Status</th>
+                  <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payslips.map((payslip) => (
+                  <tr key={payslip.id} className="border-b border-[#ebfbff]/10 last:border-0">
+                    <td className="px-4 py-3 text-[#ebfbff]">{payslip.employeeName}</td>
+                    <td className="px-4 py-3 text-[#ebfbff]/80">{payslip.payPeriod}</td>
+                    <td className="px-4 py-3 text-[#ebfbff]/80">
+                      {formatPayslipMoney(payslip.netPay)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                          payslip.archived
+                            ? "border-[#ebfbff]/20 bg-[#ebfbff]/10 text-[#ebfbff]/70"
+                            : "border-[#6cc801]/30 bg-[#6cc801]/10 text-[#6cc801]"
+                        }`}
+                      >
+                        {payslip.statusLabel}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Link
+                          href={`/hr/payslips/${payslip.id}`}
+                          className="text-sm font-medium text-[#00c6ff] hover:text-[#6cc801]"
+                        >
+                          View
+                        </Link>
+                        {payslip.fileUrl ? (
+                          <a
+                            href={payslip.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-[#ebfbff]/55 hover:text-[#00c6ff]"
+                          >
+                            PDF
+                          </a>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="min-h-[36px] px-3 text-xs"
+                          onClick={() => void handleDelete(payslip.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                      <p className="mt-1 text-xs text-[#ebfbff]/45">
+                        {payslip.importedAt
+                          ? `Imported ${formatDisplayDate(payslip.importedAt)}`
+                          : payslip.uploadedAt
+                            ? `Uploaded ${formatDisplayDate(payslip.uploadedAt)}`
+                            : null}
+                      </p>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

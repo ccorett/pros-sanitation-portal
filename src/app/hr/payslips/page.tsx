@@ -1,19 +1,21 @@
 import { PayslipsSection } from "@/components/hr/PayslipsSection";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
+import { isManagerOrAbove } from "@/lib/operational-access";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default async function HrPayslipsPage() {
   const { employee } = await requireStaffAccess({ pathname: "/hr" });
+  const canSyncPayslips = isManagerOrAbove(employee.accessLevel);
 
   return (
     <StaffWorkspaceShell
       sectionLabel="Human Resources"
       title="Payslips"
-      subtitle="Request payslip copies and track approval status. View available payslip PDFs below."
-          employeeId={employee.id}
-          accessLevel={employee.accessLevel}
+      subtitle="Request payslip copies, review synced pay periods, and view payslip history."
+      employeeId={employee.id}
+      accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}
     >
@@ -27,7 +29,10 @@ export default async function HrPayslipsPage() {
         </Link>
       </div>
 
-      <PayslipsSection />
+      <PayslipsSection
+        viewerEmployeeId={employee.id}
+        canSyncPayslips={canSyncPayslips}
+      />
     </StaffWorkspaceShell>
   );
 }

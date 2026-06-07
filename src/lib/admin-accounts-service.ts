@@ -20,6 +20,15 @@ import {
   isEmployeeJobTitle,
   isEmployeeLocationAssignment,
 } from "@/lib/employee-signup-options";
+import {
+  buildAccountRestoreSnapshot,
+  canRestoreRemovedAccount,
+  deactivateEmployeeAssignments,
+  employeeDisplayName,
+  formatRetentionAuditNotes,
+  parseAccountRestoreSnapshot,
+  scheduledPurgeDateFrom,
+} from "@/lib/account-retention";
 import { prisma } from "@/lib/prisma";
 import { verifyActorPin } from "@/lib/verify-actor-pin";
 import {
@@ -28,6 +37,7 @@ import {
   AccountStatus,
   EmployeeResponsibility,
   EmploymentStatus,
+  Prisma,
   type AccessHistory,
   type Employee,
 } from "@prisma/client";
@@ -50,6 +60,9 @@ export type AdminAccountRow = {
   lastLoginAt: string | null;
   lastEditedAt: string | null;
   editedBy: string | null;
+  removedAt: string | null;
+  scheduledPurgeAt: string | null;
+  canRestore: boolean;
 };
 
 export type AdminAccountsSummary = {
@@ -66,7 +79,7 @@ export type AdminAccountsSummary = {
 
 export type AccountAuditHistoryRow = {
   id: string;
-  employeeId: string;
+  employeeId: string | null;
   employeeName: string;
   action: AccountAuditAction;
   actionLabel: string;
@@ -85,6 +98,7 @@ const AUDIT_ACTION_LABELS: Record<AccountAuditAction, string> = {
   [AccountAuditAction.RESPONSIBILITIES_CHANGED]: "Responsibilities changed",
   [AccountAuditAction.ACCOUNT_DISABLED]: "Account disabled",
   [AccountAuditAction.ACCOUNT_REMOVED]: "Account deleted",
+  [AccountAuditAction.ACCOUNT_RESTORED]: "Account restored",
 };
 
 function toIso(value: Date | null | undefined): string | null {
@@ -144,6 +158,11 @@ export async function getAdminAccountsSummary(): Promise<AdminAccountsSummary> {
   let disabledRemoved = 0;
 
   for (const employee of employees) {
+    if (employee.accountStatus === AccountStatus.REMOVED) {
+      disabledRemoved += 1;
+      continue;
+    }
+
     const responsibilities =
       employee.responsibilityEntries.length > 0
         ? employee.responsibilityEntries.map((entry) => entry.responsibility)
@@ -163,10 +182,7 @@ export async function getAdminAccountsSummary(): Promise<AdminAccountsSummary> {
       pendingVerification += 1;
     }
 
-    if (
-      employee.accountStatus === AccountStatus.DISABLED ||
-      employee.accountStatus === AccountStatus.REMOVED
-    ) {
+    if (employee.accountStatus === AccountStatus.DISABLED) {
       disabledRemoved += 1;
     }
 
@@ -218,8 +234,13 @@ export async function getAdminAccountsSummary(): Promise<AdminAccountsSummary> {
   };
 }
 
-export async function listAdminAccounts(): Promise<AdminAccountRow[]> {
+export async function listAdminAccounts(options?: {
+  includeRemoved?: boolean;
+}): Promise<AdminAccountRow[]> {
   const employees = await prisma.employee.findMany({
+    where: options?.includeRemoved
+      ? undefined
+      : { accountStatus: { not: AccountStatus.REMOVED } },
     orderBy: [{ accountStatus: "asc" }, { lastName: "asc" }, { firstName: "asc" }],
     include: {
       user: {
@@ -270,6 +291,9 @@ export async function listAdminAccounts(): Promise<AdminAccountRow[]> {
         lastLoginAt: toIso(lastLogin),
         lastEditedAt: toIso(employee.lastEditedAt),
         editedBy: employee.editedBy,
+        removedAt: toIso(employee.removedAt),
+        scheduledPurgeAt: toIso(employee.scheduledPurgeAt),
+        canRestore: canRestoreRemovedAccount(employee),
       };
     }),
   );
@@ -302,8 +326,8 @@ export async function getAccountAuditHistoryForEmployee(
 
   const auditHistory = auditRows.map((row) => ({
     id: row.id,
-    employeeId: row.employeeId,
-    employeeName: name,
+    employeeId: row.employeeId ?? employeeId,
+    employeeName: row.employeeName || name,
     action: row.action,
     actionLabel: AUDIT_ACTION_LABELS[row.action],
     previousValue: row.previousValue,
@@ -341,6 +365,7 @@ export async function getAccessHistoryForEmployee(
 
 async function recordAccountAuditLog(input: {
   employeeId: string;
+  employeeName: string;
   action: AccountAuditAction;
   previousValue?: string | null;
   newValue?: string | null;
@@ -350,6 +375,7 @@ async function recordAccountAuditLog(input: {
   return prisma.accountAuditLog.create({
     data: {
       employeeId: input.employeeId,
+      employeeName: input.employeeName,
       action: input.action,
       previousValue: input.previousValue ?? null,
       newValue: input.newValue ?? null,
@@ -370,8 +396,14 @@ async function recordAccessLevelChange(
     return null;
   }
 
+  const employee = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    select: { firstName: true, lastName: true },
+  });
+
   await recordAccountAuditLog({
     employeeId,
+    employeeName: employee ? employeeDisplayName(employee) : "Former Employee",
     action: AccountAuditAction.ACCESS_LEVEL_CHANGED,
     previousValue: formatAccessLevelLabel(previousLevel),
     newValue: formatAccessLevelLabel(newLevel),
@@ -458,7 +490,8 @@ export type AccountMutationInput = {
     | "updateWorkProfile"
     | "changeResponsibilities"
     | "disable"
-    | "deleteAccount";
+    | "deleteAccount"
+    | "restoreAccount";
   accessLevel?: AccessLevel;
   responsibilities?: EmployeeResponsibility[];
   notes?: string;
@@ -499,6 +532,7 @@ export async function mutateAdminAccount(
 
   const actorName =
     `${actor.firstName} ${actor.lastName}`.trim() || actor.companyEmail;
+  const targetName = employeeDisplayName(target);
 
   if (input.action === "approve") {
     if (
@@ -639,6 +673,7 @@ export async function mutateAdminAccount(
 
     await recordAccountAuditLog({
       employeeId: target.id,
+      employeeName: targetName,
       action: AccountAuditAction.RESPONSIBILITIES_CHANGED,
       previousValue: formatResponsibilitiesList(previousResponsibilities),
       newValue: formatResponsibilitiesList(nextResponsibilities),
@@ -673,6 +708,7 @@ export async function mutateAdminAccount(
 
     await recordAccountAuditLog({
       employeeId: target.id,
+      employeeName: targetName,
       action: AccountAuditAction.ACCOUNT_DISABLED,
       previousValue: formatAccountStatusLabel(target.accountStatus),
       newValue: formatAccountStatusLabel(AccountStatus.DISABLED),
@@ -706,13 +742,24 @@ export async function mutateAdminAccount(
       throw new Error("Invalid Super Admin PIN.");
     }
 
+    const removedAt = new Date();
+    const scheduledPurgeAt = scheduledPurgeDateFrom(removedAt);
+    const restoreSnapshot = await buildAccountRestoreSnapshot(target);
+
     await recordAccountAuditLog({
       employeeId: target.id,
+      employeeName: targetName,
       action: AccountAuditAction.ACCOUNT_REMOVED,
       previousValue: formatAccountStatusLabel(target.accountStatus),
       newValue: formatAccountStatusLabel(AccountStatus.REMOVED),
       changedBy: actorName,
-      notes: input.notes ?? "Account deleted",
+      notes:
+        input.notes ??
+        formatRetentionAuditNotes({
+          deletedBy: actorName,
+          employeeName: targetName,
+          scheduledPurgeAt,
+        }),
     });
 
     await touchEmployeeAudit(target.id, actorName, {
@@ -721,13 +768,85 @@ export async function mutateAdminAccount(
 
     await prisma.employee.update({
       where: { id: target.id },
-      data: { employmentStatus: EmploymentStatus.DISABLED },
+      data: {
+        employmentStatus: EmploymentStatus.DISABLED,
+        removedAt,
+        scheduledPurgeAt,
+        restoreSnapshot,
+      },
     });
 
+    await deactivateEmployeeAssignments(target.id);
     await revokeEmployeeSessions(target.userId);
+  } else if (input.action === "restoreAccount") {
+    if (
+      !canPerformAccountAction(
+        actor.accessLevel,
+        target.accessLevel,
+        target.accountStatus,
+        "restoreAccount",
+      )
+    ) {
+      throw new Error("You cannot restore this account.");
+    }
+
+    if (!canRestoreRemovedAccount(target)) {
+      throw new Error("This account can no longer be restored.");
+    }
+
+    const snapshot = parseAccountRestoreSnapshot(target.restoreSnapshot);
+    if (!snapshot) {
+      throw new Error("Restore snapshot is missing for this account.");
+    }
+
+    const restoredStatus =
+      snapshot.accountStatus === AccountStatus.REMOVED
+        ? AccountStatus.ACTIVE
+        : snapshot.accountStatus;
+
+    await recordAccountAuditLog({
+      employeeId: target.id,
+      employeeName: targetName,
+      action: AccountAuditAction.ACCOUNT_RESTORED,
+      previousValue: formatAccountStatusLabel(AccountStatus.REMOVED),
+      newValue: formatAccountStatusLabel(restoredStatus),
+      changedBy: actorName,
+      notes: `Employee Restored: ${targetName}\nRestored By: ${actorName}`,
+    });
+
+    await replaceEmployeeResponsibilities(
+      target.id,
+      snapshot.responsibilities,
+      snapshot.operationalGroup,
+    );
+
+    await prisma.employee.update({
+      where: { id: target.id },
+      data: {
+        accessLevel: snapshot.accessLevel,
+        accountStatus: restoredStatus,
+        employmentStatus: snapshot.employmentStatus,
+        operationalGroup: snapshot.operationalGroup,
+        locationAssignment: snapshot.locationAssignment,
+        department: snapshot.department,
+        jobTitle: snapshot.jobTitle,
+        position: snapshot.position,
+        supervisorName: snapshot.supervisorName,
+        removedAt: null,
+        scheduledPurgeAt: null,
+        restoreSnapshot: Prisma.DbNull,
+        lastEditedAt: new Date(),
+        editedBy: actorName,
+      },
+    });
+
+    await prisma.jobAssignment.updateMany({
+      where: { employeeId: target.id },
+      data: { isActive: true },
+    });
   }
 
-  const rows = await listAdminAccounts();
+  const rows = await listAdminAccounts({ includeRemoved: true });
   const updated = rows.find((row) => row.id === targetId);
 
   if (!updated) {

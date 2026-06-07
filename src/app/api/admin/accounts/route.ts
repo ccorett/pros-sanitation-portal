@@ -8,17 +8,21 @@ import {
 } from "@/lib/admin-accounts-service";
 import { requireAdminApiActor } from "@/lib/require-admin-api";
 import { AccessLevel } from "@prisma/client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const authResult = await requireAdminApiActor();
   if ("error" in authResult) {
     return authResult.error;
   }
 
   const { actor } = authResult;
+  const includeRemoved =
+    request.nextUrl.searchParams.get("includeRemoved") === "1" &&
+    actor.accessLevel === AccessLevel.SUPER_ADMIN;
+
   const [accounts, summary] = await Promise.all([
-    listAdminAccounts(),
+    listAdminAccounts({ includeRemoved }),
     getAdminAccountsSummary(),
   ]);
 

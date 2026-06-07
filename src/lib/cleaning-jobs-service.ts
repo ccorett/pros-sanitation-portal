@@ -49,7 +49,7 @@ export type JobServiceLogDto = {
   id: string;
   jobId: string;
   job: string;
-  employeeId: string;
+  employeeId: string | null;
   employeeName: string;
   employeeEmail: string;
   actionType: JobActionType;

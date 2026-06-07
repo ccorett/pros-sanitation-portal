@@ -1,4 +1,4 @@
-import type { Employee, JobAssignment } from "@prisma/client";
+import { AccountStatus, type Employee, type JobAssignment } from "@prisma/client";
 import {
   EMPTY_JOB_ASSIGNMENTS,
   type EmployeeJobAssignments,
@@ -152,6 +152,10 @@ export async function createJobAssignment(
 
   if (!employee) {
     throw new Error("Employee not found.");
+  }
+
+  if (employee.accountStatus === AccountStatus.REMOVED) {
+    throw new Error("This employee account has been removed.");
   }
 
   const location = await prisma.clientLocation.findFirst({

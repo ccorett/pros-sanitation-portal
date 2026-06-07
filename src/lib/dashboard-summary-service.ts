@@ -8,6 +8,7 @@ import {
 import { canAccessAdminModule } from "@/lib/access-levels";
 import { countUnacknowledgedPolicies } from "@/lib/policy-service";
 import { isManagerOrAbove } from "@/lib/operational-access";
+import { countVisiblePayslipsForEmployee } from "@/lib/payslip-archive-service";
 import { prisma } from "@/lib/prisma";
 import { listBinFieldJobsToday } from "@/lib/bin-service/field-service";
 import {
@@ -106,8 +107,8 @@ export async function getDashboardSummary(
           },
     }),
     orgWide
-      ? prisma.payslip.count()
-      : prisma.payslip.count({ where: { employeeId: employee.id } }),
+      ? prisma.payslip.count({ where: { archived: false } })
+      : countVisiblePayslipsForEmployee(employee.id),
     countUnacknowledgedPolicies(employee.id),
     listBinFieldJobsToday(employee).then((jobs) => jobs.length),
     getDashboardDeliveryActivity(employee),

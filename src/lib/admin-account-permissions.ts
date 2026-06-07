@@ -17,6 +17,7 @@ export type AdminAccountAction =
   | "changeResponsibilities"
   | "disable"
   | "deleteAccount"
+  | "restoreAccount"
   | "viewHistory";
 
 export function isAdminOrSuperAdmin(level: AccessLevel): boolean {
@@ -109,6 +110,10 @@ export function canPerformAccountAction(
   }
 
   if (action === "view" || action === "viewHistory") {
+    if (targetStatus === AccountStatus.REMOVED) {
+      return actorLevel === AccessLevel.SUPER_ADMIN;
+    }
+
     return (
       canAdminManageTarget(actorLevel, targetLevel) ||
       actorLevel === AccessLevel.SUPER_ADMIN
@@ -150,6 +155,13 @@ export function canPerformAccountAction(
     return (
       actorLevel === AccessLevel.SUPER_ADMIN &&
       targetStatus !== AccountStatus.REMOVED
+    );
+  }
+
+  if (action === "restoreAccount") {
+    return (
+      actorLevel === AccessLevel.SUPER_ADMIN &&
+      targetStatus === AccountStatus.REMOVED
     );
   }
 

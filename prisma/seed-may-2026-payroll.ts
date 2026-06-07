@@ -445,6 +445,7 @@ async function upsertPayrollEmployee(
 async function upsertMay2026Payslip(
   prisma: PrismaClient,
   employeeId: string,
+  employeeName: string,
 ): Promise<"created" | "updated"> {
   const existing = await prisma.payslip.findFirst({
     where: {
@@ -468,6 +469,7 @@ async function upsertMay2026Payslip(
   await prisma.payslip.create({
     data: {
       employeeId,
+      employeeName,
       payPeriod: MAY_2026_PAY_PERIOD,
       fileName: MAY_2026_PAYSLIP_FILE_NAME,
       fileUrl: MAY_2026_PAYSLIP_FILE_URL,
@@ -517,7 +519,7 @@ export async function seedMay2026PayrollEmployees(
       result.accountsCreated += 1;
     }
 
-    const payslipAction = await upsertMay2026Payslip(prisma, employeeId);
+    const payslipAction = await upsertMay2026Payslip(prisma, employeeId, seed.fullName);
     if (payslipAction === "created") {
       result.payslipsCreated += 1;
     } else {

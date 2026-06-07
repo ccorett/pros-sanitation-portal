@@ -19,7 +19,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       | "updateWorkProfile"
       | "changeResponsibilities"
       | "disable"
-      | "deleteAccount";
+      | "deleteAccount"
+      | "restoreAccount";
     accessLevel?: AccessLevel;
     responsibilities?: EmployeeResponsibility[];
     notes?: string;
@@ -38,6 +39,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       "changeResponsibilities",
       "disable",
       "deleteAccount",
+      "restoreAccount",
     ].includes(body.action)
   ) {
     return NextResponse.json({ error: "Invalid action." }, { status: 400 });

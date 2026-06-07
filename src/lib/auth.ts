@@ -8,6 +8,7 @@ import { getAuthAdvancedOptions, resolveTrustedOrigins } from "@/lib/auth-config
 import { prisma } from "@/lib/prisma";
 import { PIN_REQUIREMENTS_MESSAGE, isPinValid } from "@/lib/pin";
 import { sendPasswordResetEmail } from "@/lib/password-reset-email";
+import { isRemovedEmployeeEmail } from "@/lib/account-retention";
 import {
   getEmployeeSignupMode,
   validateEmployeeSignup,
@@ -74,11 +75,33 @@ export const auth = betterAuth({
 
       if (ctx.path === "/sign-in/email") {
         assertPinCredential(ctx.body as Record<string, unknown>, ["password"]);
+        const email = (ctx.body as { email?: string } | undefined)?.email?.trim();
+        if (email && (await isRemovedEmployeeEmail(email))) {
+          throw new APIError("BAD_REQUEST", {
+            message: "This account is no longer active. Contact an administrator.",
+          });
+        }
+        return;
+      }
+
+      if (ctx.path === "/request-password-reset") {
+        const email = (ctx.body as { email?: string } | undefined)?.email?.trim();
+        if (email && (await isRemovedEmployeeEmail(email))) {
+          throw new APIError("BAD_REQUEST", {
+            message: "This account is no longer active. Contact an administrator.",
+          });
+        }
         return;
       }
 
       if (ctx.path === "/reset-password") {
         assertPinCredential(ctx.body as Record<string, unknown>, ["newPassword"]);
+        const email = (ctx.body as { email?: string } | undefined)?.email?.trim();
+        if (email && (await isRemovedEmployeeEmail(email))) {
+          throw new APIError("BAD_REQUEST", {
+            message: "This account is no longer active. Contact an administrator.",
+          });
+        }
         return;
       }
 

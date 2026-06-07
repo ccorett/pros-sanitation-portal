@@ -1,4 +1,4 @@
-import { getPayslipForEmployee } from "@/lib/payslip-archive-service";
+import { getPayslipDetailForActor } from "@/lib/payslip-archive-service";
 import { requirePortalStaffActor } from "@/lib/require-portal-staff-api";
 import { NextResponse } from "next/server";
 
@@ -13,11 +13,11 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   const { id } = await context.params;
-  const payslip = await getPayslipForEmployee(id, authResult.actor.id);
+  const payslip = await getPayslipDetailForActor(id, authResult.actor);
 
   if (!payslip) {
     return NextResponse.json({ error: "Payslip not found." }, { status: 404 });
   }
 
-  return NextResponse.redirect(payslip.fileUrl);
+  return NextResponse.json({ payslip });
 }

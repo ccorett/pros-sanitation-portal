@@ -1,5 +1,6 @@
 import type { Employee } from "@prisma/client";
 import { AccessLevel, OperationalGroup } from "@prisma/client";
+import { ACTIVE_EMPLOYEE_FILTER } from "@/lib/account-retention";
 import { prisma } from "@/lib/prisma";
 
 export const FLOATING_UNASSIGNED_LOCATION = "Floating/Unassigned";
@@ -64,6 +65,7 @@ export async function getSupervisorVisibleEmployeeIds(
   if (supervisor.operationalGroup === OperationalGroup.BIN_SERVICE_SUPERVISOR) {
     const technicians = await prisma.employee.findMany({
       where: {
+        ...ACTIVE_EMPLOYEE_FILTER,
         operationalGroup: OperationalGroup.BIN_TECHNICIAN,
         accessLevel: AccessLevel.TEAM_MEMBER,
       },
@@ -80,6 +82,7 @@ export async function getSupervisorVisibleEmployeeIds(
   ) {
     const teamMembers = await prisma.employee.findMany({
       where: {
+        ...ACTIVE_EMPLOYEE_FILTER,
         locationAssignment: supervisor.locationAssignment,
         operationalGroup: { not: OperationalGroup.BIN_TECHNICIAN },
         accessLevel: AccessLevel.TEAM_MEMBER,

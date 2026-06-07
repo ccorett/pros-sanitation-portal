@@ -10,9 +10,69 @@ import {
 } from "@/lib/portal-route-access";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import { Briefcase, FileText, Package, Recycle, Truck, Users } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 
-const dashboardCards = [
+const PRIMARY_MODULE_SLOT_COUNT = 4;
+
+const PRIMARY_MODULE_PLACEMENTS = [
+  "lg:col-start-2 lg:row-start-1",
+  "lg:col-start-3 lg:row-start-1",
+  "lg:col-start-2 lg:row-start-2",
+  "lg:col-start-3 lg:row-start-2",
+] as const;
+
+type DashboardCard = {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  href: string;
+  feature:
+    | "jobs"
+    | "delivery"
+    | "binManagement"
+    | "humanResources"
+    | "equipmentSupplies";
+};
+
+function DashboardModuleCard({
+  card,
+  className = "",
+}: {
+  card: DashboardCard;
+  className?: string;
+}) {
+  const Icon = card.icon;
+  const content = (
+    <>
+      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#00c6ff]/15 text-[#00c6ff]">
+        <Icon className="h-5 w-5" aria-hidden="true" />
+      </div>
+      <h2 className="mt-4 text-lg font-bold text-[#ebfbff]">{card.title}</h2>
+      <p className="mt-2 text-sm text-[#ebfbff]/55">{card.description}</p>
+      <p className="mt-4 text-xs font-medium text-[#6cc801]">
+        {card.href ? "Open module" : "Coming soon"}
+      </p>
+    </>
+  );
+
+  const cardClassName = `glass-card flex h-full flex-col rounded-2xl p-5 sm:p-6 ${className}`;
+
+  if (card.href) {
+    return (
+      <Link
+        href={card.href}
+        className={`${cardClassName} transition-shadow hover:shadow-lg hover:shadow-[#00c6ff]/10`}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className={cardClassName}>{content}</div>;
+}
+
+const dashboardCards: DashboardCard[] = [
   {
     title: "Job Management",
     description: "Assigned non-bin client locations and service jobs.",
@@ -74,6 +134,11 @@ export default async function StaffDashboardPage() {
     canAccessPortalFeature(accessContext, card.feature),
   );
 
+  const primaryModuleCards = visibleCards.slice(0, PRIMARY_MODULE_SLOT_COUNT);
+  const secondaryModuleCards = visibleCards.slice(PRIMARY_MODULE_SLOT_COUNT);
+  const activityRowSpan = Math.max(1, Math.ceil(primaryModuleCards.length / 2));
+  const secondaryRowStart = activityRowSpan + 1;
+
   return (
     <main className="relative min-h-dvh">
       <SessionInactivityGuard />
@@ -115,45 +180,35 @@ export default async function StaffDashboardPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(260px,320px)_1fr_1fr]">
-          <div className="sm:col-span-2 lg:col-span-1 lg:row-span-2 lg:flex lg:min-h-0 lg:self-stretch">
+          <div
+            className={`sm:col-span-2 lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:flex lg:min-h-0 lg:self-stretch ${
+              activityRowSpan === 1 ? "lg:row-span-1" : "lg:row-span-2"
+            }`}
+          >
             <div className="lg:flex lg:h-full lg:w-full lg:flex-col [&>*]:lg:h-full">
               <StaffDashboardMetrics />
             </div>
           </div>
 
-          {visibleCards.map((card) => {
-            const Icon = card.icon;
-            const content = (
-              <>
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#00c6ff]/15 text-[#00c6ff]">
-                  <Icon className="h-5 w-5" aria-hidden="true" />
-                </div>
-                <h2 className="mt-4 text-lg font-bold text-[#ebfbff]">{card.title}</h2>
-                <p className="mt-2 text-sm text-[#ebfbff]/55">{card.description}</p>
-                <p className="mt-4 text-xs font-medium text-[#6cc801]">
-                  {card.href ? "Open module" : "Coming soon"}
-                </p>
-              </>
-            );
+          {primaryModuleCards.map((card, index) => (
+            <DashboardModuleCard
+              key={card.title}
+              card={card}
+              className={PRIMARY_MODULE_PLACEMENTS[index] ?? ""}
+            />
+          ))}
 
-            if (card.href) {
-              return (
-                <Link
-                  key={card.title}
-                  href={card.href}
-                  className="glass-card block rounded-2xl p-5 transition-shadow hover:shadow-lg hover:shadow-[#00c6ff]/10 sm:p-6"
-                >
-                  {content}
-                </Link>
-              );
-            }
-
-            return (
-              <div key={card.title} className="glass-card rounded-2xl p-5 sm:p-6">
-                {content}
-              </div>
-            );
-          })}
+          {secondaryModuleCards.length > 0 ? (
+            <div
+              className={`grid gap-4 sm:col-span-2 sm:grid-cols-2 lg:col-span-2 lg:col-start-2 ${
+                secondaryRowStart === 2 ? "lg:row-start-2" : "lg:row-start-3"
+              }`}
+            >
+              {secondaryModuleCards.map((card) => (
+                <DashboardModuleCard key={card.title} card={card} />
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </main>
