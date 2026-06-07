@@ -90,7 +90,7 @@ export default async function StaffDashboardPage() {
       </header>
 
       <div className="relative z-10 mx-auto w-full min-w-0 max-w-6xl overflow-x-hidden px-4 py-8 sm:px-6 lg:px-8">
-        <div className="glass-card mb-6 rounded-2xl p-6 sm:p-8">
+        <div className="glass-card mb-4 rounded-2xl p-6 sm:p-8">
           <p className="text-sm font-medium text-[#00c6ff]">Welcome Card</p>
           <h1 className="mt-2 text-2xl font-bold text-[#ebfbff] sm:text-3xl">
             Welcome back, {displayName}
@@ -100,11 +100,13 @@ export default async function StaffDashboardPage() {
           </p>
         </div>
 
-        <div className="mb-8">
-          <StaffDashboardMetrics />
-        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(260px,320px)_1fr_1fr]">
+          <div className="sm:col-span-2 lg:col-span-1 lg:row-span-2 lg:flex lg:min-h-0 lg:self-stretch">
+            <div className="lg:flex lg:h-full lg:w-full lg:flex-col [&>*]:lg:h-full">
+              <StaffDashboardMetrics />
+            </div>
+          </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
           {visibleCards.map((card) => {
             const Icon = card.icon;
             const content = (
