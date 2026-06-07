@@ -8,6 +8,10 @@ import {
   PrismaClient,
 } from "@prisma/client";
 import { seedAccessTestAccounts } from "./seed-access-test-accounts";
+import {
+  logMay2026PayrollSeedResult,
+  seedMay2026PayrollEmployees,
+} from "./seed-may-2026-payroll";
 
 const prisma = new PrismaClient();
 
@@ -311,6 +315,9 @@ async function main() {
   await seedCleaningClientLocations(prisma);
 
   await seedAccessTestAccounts(prisma);
+
+  const payrollSeedResult = await seedMay2026PayrollEmployees(prisma);
+  await logMay2026PayrollSeedResult(payrollSeedResult);
 
   const { seedJobAssignments } = await import("./seed-job-assignments");
   await seedJobAssignments(prisma);
