@@ -74,11 +74,6 @@ const NAV_CATALOG: PortalNavItem[] = [
   },
   { label: "Human Resources", href: "/hr", feature: "humanResources" },
   {
-    label: "Team Requests",
-    href: "/hr/supervisor-reviews",
-    feature: "supervisorTeamRequests",
-  },
-  {
     label: "Manager Approvals",
     href: "/manager/approvals",
     feature: "managerApprovals",

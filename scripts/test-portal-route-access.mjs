@@ -47,15 +47,15 @@ const cases = [
     employee: ctx(AccessLevel.SUPERVISOR),
     allow: ["/equipment-supplies", "/hr/supervisor-reviews", "/jobs"],
     deny: ["/admin", "/manager/approvals", "/jobs/bin-management"],
-    nav: ["Jobs", "Equipment & Supplies", "Team Requests"],
-    absentNav: ["Bin Management"],
+    nav: ["Jobs", "Equipment & Supplies"],
+    absentNav: ["Bin Management", "Team Requests"],
   },
   {
     employee: ctx(AccessLevel.SUPERVISOR, OperationalGroup.BIN_SERVICE_SUPERVISOR),
     allow: ["/jobs/bin-management", "/equipment-supplies"],
     deny: ["/jobs"],
     nav: ["Dashboard", "Bin Management", "Equipment & Supplies", "Human Resources", "My Profile"],
-    absentNav: ["Jobs"],
+    absentNav: ["Jobs", "Team Requests"],
   },
   {
     employee: ctx(

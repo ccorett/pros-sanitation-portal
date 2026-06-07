@@ -21,22 +21,6 @@ export default async function HrPage() {
       operationalGroup={employee.operationalGroup}
       companyEmail={employee.companyEmail}
     >
-      {employee.accessLevel === AccessLevel.SUPERVISOR ? (
-        <div className="mb-6 glass-card rounded-2xl border border-[#00c6ff]/25 p-5">
-          <p className="text-sm font-semibold text-[#00c6ff]">Supervisor review queue</p>
-          <p className="mt-2 text-sm text-[#ebfbff]/65">
-            Vacation requests for your location or bin technicians are waiting for
-            Agree or Disagree review before manager approval.
-          </p>
-          <Link
-            href="/hr/supervisor-reviews"
-            className="mt-4 inline-flex min-h-[44px] items-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-4 py-2 text-sm font-semibold text-[#6cc801] hover:bg-[#6cc801]/20"
-          >
-            Open Team Requests
-          </Link>
-        </div>
-      ) : null}
-
       {canAccessHrOrganisation(employee) ? (
         <div className="mb-6 glass-card rounded-2xl border border-[#6cc801]/25 p-5">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#6cc801]/15 text-[#6cc801]">
@@ -53,6 +37,22 @@ export default async function HrPage() {
             className="mt-4 inline-flex min-h-[44px] items-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-4 py-2 text-sm font-semibold text-[#6cc801] hover:bg-[#6cc801]/20"
           >
             Open Organisation View
+          </Link>
+        </div>
+      ) : null}
+
+      {employee.accessLevel === AccessLevel.SUPERVISOR ? (
+        <div className="mb-6 glass-card rounded-2xl border border-[#00c6ff]/25 p-5">
+          <p className="text-lg font-bold text-[#ebfbff]">Supervisor Review Queue</p>
+          <p className="mt-2 text-sm text-[#ebfbff]/65">
+            Vacation requests for your location or bin technicians are waiting for
+            Agree or Disagree review before manager approval.
+          </p>
+          <Link
+            href="/hr/supervisor-reviews"
+            className="mt-4 inline-flex min-h-[44px] items-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-4 py-2 text-sm font-semibold text-[#6cc801] hover:bg-[#6cc801]/20"
+          >
+            Open Supervisor Review Queue
           </Link>
         </div>
       ) : null}
