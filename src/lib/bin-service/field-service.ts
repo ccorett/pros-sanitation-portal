@@ -131,7 +131,12 @@ export async function listBinFieldSitesForActor(
 
   await Promise.all(
     sites
-      .filter((site) => site.setup?.active && site.setup.assignedTechnicianId)
+      .filter(
+        (site) =>
+          site.setup?.active &&
+          !site.setup.removedAt &&
+          site.setup.assignedTechnicianId,
+      )
       .map((site) => ensureOpenJobForSetup(site.setup!)),
   );
 
@@ -147,7 +152,7 @@ export async function listBinFieldSitesForActor(
       );
 
   return scoped
-    .filter((site) => site.setup?.active)
+    .filter((site) => site.setup?.active && !site.setup.removedAt)
     .map((site) => buildSiteRow(site));
 }
 
@@ -204,7 +209,7 @@ async function listAllOpenDueJobs() {
           BinServiceJobStatus.ISSUE_REPORTED,
         ],
       },
-      setup: { active: true },
+      setup: { active: true, removedAt: null },
     },
     include: binJobInclude,
   });

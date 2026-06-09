@@ -70,7 +70,12 @@ export async function listBinServiceSites() {
 
   await Promise.all(
     sites
-      .filter((site) => site.setup?.active && site.setup.assignedTechnicianId)
+      .filter(
+        (site) =>
+          site.setup?.active &&
+          !site.setup.removedAt &&
+          site.setup.assignedTechnicianId,
+      )
       .map((site) => ensureOpenJobForSetup(site.setup!)),
   );
 
@@ -86,7 +91,11 @@ export async function getBinServiceSite(siteId: string) {
     include: binSiteInclude,
   });
 
-  if (site?.setup?.active && site.setup.assignedTechnicianId) {
+  if (
+    site?.setup?.active &&
+    !site.setup.removedAt &&
+    site.setup.assignedTechnicianId
+  ) {
     await ensureOpenJobForSetup(site.setup);
   }
 
@@ -132,6 +141,7 @@ export async function listTechnicianBinJobs(technicianId: string) {
   const setups = await prisma.binServiceSetup.findMany({
     where: {
       active: true,
+      removedAt: null,
       assignedTechnicianId: technicianId,
     },
   });
@@ -144,6 +154,7 @@ export async function listTechnicianBinJobs(technicianId: string) {
     where: {
       assignedTechnicianId: technicianId,
       status: { in: OPEN_JOB_STATUSES },
+      setup: { removedAt: null, active: true },
       OR: [
         { scheduledDate: { lte: today } },
         { status: { in: [BinServiceJobStatus.CANNOT_ACCESS, BinServiceJobStatus.ISSUE_REPORTED] } },
@@ -446,9 +457,66 @@ export async function listActiveTechnicians() {
   });
 }
 
+export async function softRemoveBinServiceSite(siteId: string, removedBy: string) {
+  const site = await prisma.binServiceSite.findUnique({
+    where: { id: siteId },
+    include: { setup: true },
+  });
+
+  if (!site) {
+    throw new Error("Site not found.");
+  }
+
+  if (site.setup?.removedAt) {
+    return site.setup;
+  }
+
+  const now = new Date();
+
+  if (site.setup) {
+    return prisma.binServiceSetup.update({
+      where: { siteId },
+      data: {
+        active: false,
+        removedAt: now,
+        removedBy,
+      },
+    });
+  }
+
+  return prisma.binServiceSetup.create({
+    data: {
+      siteId,
+      expectedRegularBins: 0,
+      expectedNewBins: 0,
+      weekPattern: "WEEK_1_3",
+      serviceDay: "TUESDAY",
+      assignedTechnicianId: null,
+      active: false,
+      removedAt: now,
+      removedBy,
+      signatureRequired: false,
+    },
+  });
+}
+
 export function enrichSiteWithStatus(site: BinSiteWithRelations) {
   const openJob = site.jobs[0] ?? null;
   const setup = site.setup;
+
+  if (setup?.removedAt) {
+    return {
+      site,
+      openJob,
+      rotation: {
+        color: "grey" as const,
+        label: "Removed",
+        isOverdue: false,
+        isDueSoon: false,
+        needsAttention: false,
+      },
+    };
+  }
 
   const rotation = getRotationStatus({
     active: setup?.active ?? false,

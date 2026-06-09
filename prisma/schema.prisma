@@ -529,6 +529,8 @@ model BinServiceSetup {
   active                   Boolean           @default(true)
   lastCompletedServiceDate DateTime?         @db.Date
   nextServiceDate          DateTime?         @db.Date
+  removedAt                DateTime?
+  removedBy                String?
   createdAt                DateTime          @default(now())
   updatedAt                DateTime          @updatedAt
 

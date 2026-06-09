@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function AddBinSiteForm() {
+type AddBinSiteFormProps = {
+  onCreated?: () => void;
+};
+
+export function AddBinSiteForm({ onCreated }: AddBinSiteFormProps = {}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,13 +39,14 @@ export function AddBinSiteForm() {
     }
 
     const data = (await response.json()) as { site: { id: string } };
+    onCreated?.();
     router.push(`/jobs/bin-management/setup/${data.site.id}?from=admin`);
     router.refresh();
   }
 
   return (
     <form onSubmit={handleSubmit} className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">
-      <h2 className="text-lg font-bold text-[#ebfbff]">Add Bin Service Site</h2>
+      <h2 className="text-lg font-bold text-[#ebfbff]">Add Bin Location</h2>
       <label className="block">
         <span className="text-sm text-[#ebfbff]/70">Client name</span>
         <input
@@ -91,7 +96,7 @@ export function AddBinSiteForm() {
         </p>
       ) : null}
       <Button type="submit" fullWidth loading={loading}>
-        Add Site
+        Add Bin Location
       </Button>
     </form>
   );
