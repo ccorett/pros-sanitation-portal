@@ -289,6 +289,12 @@ export function DeliverySection() {
             New Delivery Request
           </button>
         ) : null}
+        <TabButton active={tab === "requests"} onClick={() => setTab("requests")}>
+          Delivery Requests
+        </TabButton>
+        <TabButton active={tab === "list"} onClick={() => setTab("list")}>
+          Delivery List
+        </TabButton>
       </div>
 
       {message ? (
@@ -301,15 +307,6 @@ export function DeliverySection() {
           {error}
         </p>
       ) : null}
-
-      <div className="flex flex-wrap gap-2">
-        <TabButton active={tab === "requests"} onClick={() => setTab("requests")}>
-          Delivery Requests
-        </TabButton>
-        <TabButton active={tab === "list"} onClick={() => setTab("list")}>
-          Delivery List
-        </TabButton>
-      </div>
 
       {isDriverOnly ? (
         <p className="text-sm text-[#ebfbff]/60">

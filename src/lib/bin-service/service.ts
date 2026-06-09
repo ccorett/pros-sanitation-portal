@@ -1,6 +1,7 @@
 import {
   BinServiceJobStatus,
   type BinServiceSetup,
+  type Employee,
   type Prisma,
 } from "@prisma/client";
 import {
@@ -8,6 +9,12 @@ import {
   computeNextServiceDateAfterCompletion,
   startOfUtcDay,
 } from "@/lib/bin-service/schedule";
+import {
+  employeeCanAccessBinSite,
+  getEmployeeBinLocationNames,
+  resolveTechnicianIdForBinSite,
+  siteHasBinRouteCoverage,
+} from "@/lib/bin-service/location-access";
 import { getRotationStatus } from "@/lib/bin-service/status";
 import { prisma } from "@/lib/prisma";
 
@@ -70,13 +77,16 @@ export async function listBinServiceSites() {
 
   await Promise.all(
     sites
-      .filter(
-        (site) =>
-          site.setup?.active &&
-          !site.setup.removedAt &&
-          site.setup.assignedTechnicianId,
-      )
-      .map((site) => ensureOpenJobForSetup(site.setup!)),
+      .filter((site) => site.setup?.active && !site.setup.removedAt)
+      .map(async (site) => {
+        const covered = await siteHasBinRouteCoverage({
+          siteName: site.name,
+          setupAssignedTechnicianId: site.setup?.assignedTechnicianId,
+        });
+        if (covered && site.setup) {
+          await ensureOpenJobForSetup(site.setup, site.name);
+        }
+      }),
   );
 
   return prisma.binServiceSite.findMany({
@@ -91,12 +101,14 @@ export async function getBinServiceSite(siteId: string) {
     include: binSiteInclude,
   });
 
-  if (
-    site?.setup?.active &&
-    !site.setup.removedAt &&
-    site.setup.assignedTechnicianId
-  ) {
-    await ensureOpenJobForSetup(site.setup);
+  if (site?.setup?.active && !site.setup.removedAt) {
+    const covered = await siteHasBinRouteCoverage({
+      siteName: site.name,
+      setupAssignedTechnicianId: site.setup.assignedTechnicianId,
+    });
+    if (covered) {
+      await ensureOpenJobForSetup(site.setup, site.name);
+    }
   }
 
   return prisma.binServiceSite.findUnique({
@@ -105,8 +117,33 @@ export async function getBinServiceSite(siteId: string) {
   });
 }
 
-export async function ensureOpenJobForSetup(setup: BinServiceSetup) {
-  if (!setup.active || !setup.assignedTechnicianId) {
+export async function ensureOpenJobForSetup(
+  setup: BinServiceSetup,
+  siteName?: string,
+) {
+  if (!setup.active || setup.removedAt) {
+    return null;
+  }
+
+  const resolvedSiteName =
+    siteName ??
+    (
+      await prisma.binServiceSite.findUnique({
+        where: { id: setup.siteId },
+        select: { name: true },
+      })
+    )?.name;
+
+  if (!resolvedSiteName) {
+    return null;
+  }
+
+  const technicianId = await resolveTechnicianIdForBinSite(
+    resolvedSiteName,
+    setup.assignedTechnicianId,
+  );
+
+  if (!technicianId) {
     return null;
   }
 
@@ -130,29 +167,53 @@ export async function ensureOpenJobForSetup(setup: BinServiceSetup) {
     data: {
       setupId: setup.id,
       siteId: setup.siteId,
-      assignedTechnicianId: setup.assignedTechnicianId,
+      assignedTechnicianId: technicianId,
       scheduledDate,
       status: BinServiceJobStatus.SCHEDULED,
     },
   });
 }
 
-export async function listTechnicianBinJobs(technicianId: string) {
+export async function listTechnicianBinJobs(
+  employee: Pick<Employee, "id" | "locationAssignment">,
+) {
+  const employeeLocations = await getEmployeeBinLocationNames(employee);
+
   const setups = await prisma.binServiceSetup.findMany({
     where: {
       active: true,
       removedAt: null,
-      assignedTechnicianId: technicianId,
+    },
+    include: {
+      site: {
+        select: { name: true },
+      },
     },
   });
 
-  await Promise.all(setups.map((setup) => ensureOpenJobForSetup(setup)));
+  const accessibleSetups = setups.filter((setup) =>
+    employeeCanAccessBinSite({
+      employeeId: employee.id,
+      employeeLocations,
+      siteName: setup.site.name,
+      setupAssignedTechnicianId: setup.assignedTechnicianId,
+    }),
+  );
+
+  await Promise.all(
+    accessibleSetups.map((setup) => ensureOpenJobForSetup(setup, setup.site.name)),
+  );
+
+  const accessibleSiteIds = accessibleSetups.map((setup) => setup.siteId);
+  if (accessibleSiteIds.length === 0) {
+    return [];
+  }
 
   const today = startOfUtcDay(new Date());
 
   const jobs = await prisma.binServiceJob.findMany({
     where: {
-      assignedTechnicianId: technicianId,
+      siteId: { in: accessibleSiteIds },
       status: { in: OPEN_JOB_STATUSES },
       setup: { removedAt: null, active: true },
       OR: [
@@ -246,8 +307,20 @@ export async function upsertBinServiceSetup(
     },
   });
 
-  if (setup.active && setup.assignedTechnicianId) {
-    await ensureOpenJobForSetup(setup);
+  if (setup.active && !setup.removedAt) {
+    const site = await prisma.binServiceSite.findUnique({
+      where: { id: siteId },
+      select: { name: true },
+    });
+    if (site) {
+      const covered = await siteHasBinRouteCoverage({
+        siteName: site.name,
+        setupAssignedTechnicianId: setup.assignedTechnicianId,
+      });
+      if (covered) {
+        await ensureOpenJobForSetup(setup, site.name);
+      }
+    }
   }
 
   return setup;
@@ -436,24 +509,6 @@ export async function reportBinJobIssue(input: {
         completedAt,
       },
     });
-  });
-}
-
-export async function listActiveTechnicians() {
-  return prisma.employee.findMany({
-    where: {
-      accountStatus: "ACTIVE",
-      accessLevel: { not: "PENDING_VERIFICATION" },
-      employmentStatus: "ACTIVE",
-    },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      employeeId: true,
-      jobTitle: true,
-    },
-    orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
   });
 }
 

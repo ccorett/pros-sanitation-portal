@@ -5,6 +5,11 @@ import {
 } from "@prisma/client";
 import { canActOnBinJob, canViewAllBinFieldSites } from "@/lib/bin-service/field-access";
 import { filterAttentionSites } from "@/lib/bin-service/field-filters";
+import {
+  employeeCanAccessBinSite,
+  getEmployeeBinLocationNames,
+  siteHasBinRouteCoverage,
+} from "@/lib/bin-service/location-access";
 import type {
   BinFieldAttentionItem,
   BinFieldJobDetail,
@@ -124,6 +129,8 @@ const binSiteFieldInclude = {
 export async function listBinFieldSitesForActor(
   employee: Employee,
 ): Promise<BinFieldSiteRow[]> {
+  const employeeLocations = await getEmployeeBinLocationNames(employee);
+
   const sites = await prisma.binServiceSite.findMany({
     include: binSiteFieldInclude,
     orderBy: [{ client: { name: "asc" } }, { name: "asc" }],
@@ -131,13 +138,16 @@ export async function listBinFieldSitesForActor(
 
   await Promise.all(
     sites
-      .filter(
-        (site) =>
-          site.setup?.active &&
-          !site.setup.removedAt &&
-          site.setup.assignedTechnicianId,
-      )
-      .map((site) => ensureOpenJobForSetup(site.setup!)),
+      .filter((site) => site.setup?.active && !site.setup.removedAt)
+      .map(async (site) => {
+        const covered = await siteHasBinRouteCoverage({
+          siteName: site.name,
+          setupAssignedTechnicianId: site.setup?.assignedTechnicianId,
+        });
+        if (covered && site.setup) {
+          await ensureOpenJobForSetup(site.setup, site.name);
+        }
+      }),
   );
 
   const refreshed = await prisma.binServiceSite.findMany({
@@ -148,7 +158,14 @@ export async function listBinFieldSitesForActor(
   const scoped = canViewAllBinFieldSites(employee)
     ? refreshed
     : refreshed.filter(
-        (site) => site.setup?.assignedTechnicianId === employee.id,
+        (site) =>
+          site.setup &&
+          employeeCanAccessBinSite({
+            employeeId: employee.id,
+            employeeLocations,
+            siteName: site.name,
+            setupAssignedTechnicianId: site.setup.assignedTechnicianId,
+          }),
       );
 
   return scoped
@@ -181,7 +198,7 @@ export function toAttentionItems(rows: BinFieldSiteRow[]): BinFieldAttentionItem
 export async function listBinFieldJobsToday(employee: Employee) {
   const jobs = canViewAllBinFieldSites(employee)
     ? await listAllOpenDueJobs()
-    : await listTechnicianBinJobs(employee.id);
+    : await listTechnicianBinJobs(employee);
 
   return jobs.map((job) => {
     const enriched = enrichJobWithStatus(job);
@@ -247,7 +264,15 @@ export async function getBinFieldJobDetail(
 
   if (!job) return null;
 
-  if (!canActOnBinJob(employee, job.assignedTechnicianId)) {
+  const employeeLocations = await getEmployeeBinLocationNames(employee);
+
+  if (
+    !canActOnBinJob(employee, job.assignedTechnicianId, {
+      siteName: job.site.name,
+      employeeLocations,
+      setupAssignedTechnicianId: job.setup.assignedTechnicianId,
+    })
+  ) {
     return null;
   }
 
@@ -269,14 +294,27 @@ export async function getBinFieldJobDetail(
 export async function assertBinJobAccess(jobId: string, employee: Employee) {
   const job = await prisma.binServiceJob.findUnique({
     where: { id: jobId },
-    select: { id: true, assignedTechnicianId: true },
+    select: {
+      id: true,
+      assignedTechnicianId: true,
+      site: { select: { name: true } },
+      setup: { select: { assignedTechnicianId: true } },
+    },
   });
 
   if (!job) {
     throw new Error("Job not found.");
   }
 
-  if (!canActOnBinJob(employee, job.assignedTechnicianId)) {
+  const employeeLocations = await getEmployeeBinLocationNames(employee);
+
+  if (
+    !canActOnBinJob(employee, job.assignedTechnicianId, {
+      siteName: job.site.name,
+      employeeLocations,
+      setupAssignedTechnicianId: job.setup.assignedTechnicianId,
+    })
+  ) {
     throw new Error("Forbidden");
   }
 
@@ -306,19 +344,32 @@ export async function applyBinFieldServiceUpdate(input: {
     throw new Error("Site not found or inactive.");
   }
 
+  const employeeLocations = await getEmployeeBinLocationNames(input.actor);
+
   if (
     !canViewAllBinFieldSites(input.actor) &&
-    site.setup.assignedTechnicianId !== input.actor.id
+    !employeeCanAccessBinSite({
+      employeeId: input.actor.id,
+      employeeLocations,
+      siteName: site.name,
+      setupAssignedTechnicianId: site.setup.assignedTechnicianId,
+    })
   ) {
     throw new Error("Forbidden");
   }
 
-  const openJob = await ensureOpenJobForSetup(site.setup);
+  const openJob = await ensureOpenJobForSetup(site.setup, site.name);
   if (!openJob) {
     throw new Error("No open job for this site.");
   }
 
-  if (!canActOnBinJob(input.actor, openJob.assignedTechnicianId)) {
+  if (
+    !canActOnBinJob(input.actor, openJob.assignedTechnicianId, {
+      siteName: site.name,
+      employeeLocations,
+      setupAssignedTechnicianId: site.setup.assignedTechnicianId,
+    })
+  ) {
     throw new Error("Forbidden");
   }
 

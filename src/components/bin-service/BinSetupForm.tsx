@@ -8,14 +8,7 @@ import {
 } from "@/lib/bin-service/schedule";
 import type { BinWeekPattern, ServiceDayOfWeek } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-
-type Technician = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  employeeId: string;
-};
+import { useState } from "react";
 
 type BinSetupFormProps = {
   siteId: string;
@@ -26,7 +19,6 @@ type BinSetupFormProps = {
     expectedNewBins: number;
     weekPattern: BinWeekPattern;
     serviceDay: ServiceDayOfWeek;
-    assignedTechnicianId: string | null;
     accessInstructions: string | null;
     contactName: string | null;
     contactPhone: string | null;
@@ -42,7 +34,6 @@ export function BinSetupForm({
   initial,
 }: BinSetupFormProps) {
   const router = useRouter();
-  const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -50,22 +41,12 @@ export function BinSetupForm({
     expectedNewBins: initial?.expectedNewBins ?? 0,
     weekPattern: initial?.weekPattern ?? ("WEEK_1_3" as BinWeekPattern),
     serviceDay: initial?.serviceDay ?? ("TUESDAY" as ServiceDayOfWeek),
-    assignedTechnicianId: initial?.assignedTechnicianId ?? "",
     accessInstructions: initial?.accessInstructions ?? "",
     contactName: initial?.contactName ?? "",
     contactPhone: initial?.contactPhone ?? "",
     signatureRequired: initial?.signatureRequired ?? false,
     active: initial?.active ?? true,
   });
-
-  useEffect(() => {
-    fetch("/api/bin-service/technicians")
-      .then((res) => res.json())
-      .then((data: { technicians: Technician[] }) => {
-        setTechnicians(data.technicians ?? []);
-      })
-      .catch(() => setTechnicians([]));
-  }, []);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -75,10 +56,7 @@ export function BinSetupForm({
     const response = await fetch(`/api/bin-service/sites/${siteId}/setup`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        assignedTechnicianId: form.assignedTechnicianId || null,
-      }),
+      body: JSON.stringify(form),
     });
 
     setLoading(false);
@@ -99,7 +77,8 @@ export function BinSetupForm({
         <h2 className="text-lg font-bold text-[#ebfbff]">{siteName}</h2>
         <p className="mt-2 text-sm text-[#ebfbff]/55">
           Biweekly sanitary bin service setup. Counts are expected totals, not
-          fixed bin asset IDs.
+          fixed bin asset IDs. Technician route access is managed from each
+          employee&apos;s work profile assigned locations.
         </p>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -171,41 +150,8 @@ export function BinSetupForm({
         </div>
       </div>
 
-      <div className="glass-card rounded-2xl p-5 sm:p-6 space-y-4">
-        <p className="text-sm font-medium text-[#00c6ff]">Assignment & access</p>
-
-        <div>
-          <p className="mb-2 text-sm text-[#ebfbff]/70">Assigned technician</p>
-          <div className="grid gap-2">
-            {technicians.length === 0 ? (
-              <p className="text-sm text-[#ebfbff]/50">No active technicians found.</p>
-            ) : (
-              technicians.map((tech) => (
-                <button
-                  key={tech.id}
-                  type="button"
-                  onClick={() =>
-                    setForm((current) => ({
-                      ...current,
-                      assignedTechnicianId: tech.id,
-                    }))
-                  }
-                  className={[
-                    "min-h-[52px] rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-colors",
-                    form.assignedTechnicianId === tech.id
-                      ? "border-[#6cc801]/50 bg-[#6cc801]/15 text-[#6cc801]"
-                      : "border-[#ebfbff]/15 bg-[#ebfbff]/5 text-[#ebfbff]/70 hover:bg-[#ebfbff]/10",
-                  ].join(" ")}
-                >
-                  {tech.firstName} {tech.lastName}
-                  <span className="ml-2 text-xs font-normal text-[#ebfbff]/45">
-                    {tech.employeeId}
-                  </span>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
+      <div className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">
+        <p className="text-sm font-medium text-[#00c6ff]">Site contact & access</p>
 
         <label className="block">
           <span className="text-sm text-[#ebfbff]/70">Access instructions</span>

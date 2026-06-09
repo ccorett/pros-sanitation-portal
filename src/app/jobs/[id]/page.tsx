@@ -63,7 +63,10 @@ export default async function CleaningJobPage({ params }: CleaningJobPageProps) 
     );
   }
 
-  const attendanceLogs = await listAttendanceLogsForCleaningLocation(job.clientLocation);
+  const attendanceLogs = await listAttendanceLogsForCleaningLocation(
+    job.clientLocation,
+    employee,
+  );
   const canPerformActions = canActorActOnCleaningJob(employee, job);
   const canEditAssignment = canEditCleaningJobAssignment(accessContext);
   const assignedByName = `${employee.firstName} ${employee.lastName}`.trim();

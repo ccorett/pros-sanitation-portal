@@ -29,7 +29,7 @@ async function main() {
     throw new Error("Bin test accounts missing. Run prisma db seed first.");
   }
 
-  const jobsBefore = await listTechnicianBinJobs(binTech.id);
+  const jobsBefore = await listTechnicianBinJobs(binTech);
   if (jobsBefore.length === 0) {
     throw new Error("No open bin jobs for bin tech — check seed assignments.");
   }

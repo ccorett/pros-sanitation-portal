@@ -58,10 +58,12 @@ export type CleaningLocationAttendanceLogDto = {
   id: string;
   attendanceDate: string;
   employeeName: string;
+  status: AttendanceStatus;
   statusLabel: string;
   checkInTime: string | null;
   supervisorName: string;
   notes: string | null;
+  canEdit: boolean;
 };
 
 function attendanceHistoryWindowStart(
@@ -285,6 +287,7 @@ function serializeAttendanceLog(
 
 export async function listAttendanceLogsForCleaningLocation(
   location: string,
+  actor: Employee,
 ): Promise<CleaningLocationAttendanceLogDto[]> {
   const trimmedLocation = location.trim();
   if (!trimmedLocation) {
@@ -309,10 +312,12 @@ export async function listAttendanceLogsForCleaningLocation(
     id: row.id,
     attendanceDate: formatAttendanceDate(row.attendanceDate),
     employeeName: employeeDisplayName(row.employee),
+    status: row.status,
     statusLabel: STATUS_LABELS[row.status],
     checkInTime: row.checkInTime?.toISOString() ?? null,
     supervisorName: employeeDisplayName(row.supervisor),
     notes: row.notes,
+    canEdit: canEditAttendanceLog(actor, row),
   }));
 }
 

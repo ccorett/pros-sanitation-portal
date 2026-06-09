@@ -7,10 +7,21 @@ import {
 } from "@/components/ui/MobileRecordCard";
 import { formatDisplayDate } from "@/lib/hr-mock-data";
 import type { CleaningLocationAttendanceLogDto } from "@/lib/attendance-log-service";
+import { AttendanceStatus } from "@prisma/client";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 type CleaningJobAttendanceLogHistoryProps = {
   logs: CleaningLocationAttendanceLogDto[];
 };
+
+const STATUS_OPTIONS: Array<{ value: AttendanceStatus; label: string }> = [
+  { value: AttendanceStatus.PRESENT, label: "Present" },
+  { value: AttendanceStatus.ABSENT, label: "Absent" },
+  { value: AttendanceStatus.LATE, label: "Late" },
+  { value: AttendanceStatus.SICK, label: "Sick" },
+  { value: AttendanceStatus.VACATION, label: "Vacation" },
+];
 
 function formatCheckInTime(value: string | null): string {
   if (!value) {
@@ -24,14 +35,68 @@ function formatCheckInTime(value: string | null): string {
 }
 
 export function CleaningJobAttendanceLogHistory({
-  logs,
+  logs: initialLogs,
 }: CleaningJobAttendanceLogHistoryProps) {
+  const router = useRouter();
+  const [logs, setLogs] = useState(initialLogs);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleEditLog(
+    log: CleaningLocationAttendanceLogDto,
+    status: AttendanceStatus,
+  ) {
+    setEditingId(log.id);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/jobs/team-check-in/attendance/${log.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const data = (await response.json()) as {
+        error?: string;
+        log?: { status: AttendanceStatus; statusLabel: string };
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to update attendance record.");
+      }
+
+      setLogs((current) =>
+        current.map((row) =>
+          row.id === log.id
+            ? {
+                ...row,
+                status,
+                statusLabel: data.log?.statusLabel ?? row.statusLabel,
+              }
+            : row,
+        ),
+      );
+      router.refresh();
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Unable to update attendance record.",
+      );
+    } finally {
+      setEditingId(null);
+    }
+  }
+
   return (
     <section className="glass-card mt-6 rounded-2xl p-5 sm:p-6">
       <h3 className="text-lg font-bold text-[#ebfbff]">Attendance Log</h3>
       <p className="mt-1 text-sm text-[#ebfbff]/50">
         Last 3 months of attendance for this location.
       </p>
+
+      {error ? (
+        <p className="mt-4 rounded-xl border border-[#ff4d4f]/30 bg-[#ff4d4f]/10 px-4 py-3 text-sm text-[#ff4d4f]">
+          {error}
+        </p>
+      ) : null}
 
       {logs.length === 0 ? (
         <p className="mt-6 text-sm text-[#ebfbff]/55">
@@ -71,7 +136,29 @@ export function CleaningJobAttendanceLogHistory({
                         <td className="px-4 py-3 font-medium text-[#ebfbff]">
                           {log.employeeName}
                         </td>
-                        <td className="px-4 py-3 text-[#ebfbff]/80">{log.statusLabel}</td>
+                        <td className="px-4 py-3 text-[#ebfbff]/80">
+                          {log.canEdit ? (
+                            <select
+                              value={log.status}
+                              disabled={editingId === log.id}
+                              onChange={(event) =>
+                                void handleEditLog(
+                                  log,
+                                  event.target.value as AttendanceStatus,
+                                )
+                              }
+                              className="min-h-[36px] rounded-lg border border-[#ebfbff]/15 bg-[#0c151d]/60 px-2 py-1 text-xs text-[#ebfbff]"
+                            >
+                              {STATUS_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            log.statusLabel
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-[#ebfbff]/80">
                           {formatCheckInTime(log.checkInTime)}
                         </td>
@@ -92,7 +179,9 @@ export function CleaningJobAttendanceLogHistory({
                 title={log.employeeName}
                 subtitle={formatDisplayDate(log.attendanceDate)}
                 fields={[
-                  { label: "Status", value: log.statusLabel },
+                  ...(log.canEdit
+                    ? []
+                    : [{ label: "Status", value: log.statusLabel }]),
                   { label: "Check-In Time", value: formatCheckInTime(log.checkInTime) },
                   { label: "Supervisor", value: log.supervisorName },
                 ]}
@@ -100,6 +189,27 @@ export function CleaningJobAttendanceLogHistory({
                   log.notes?.trim()
                     ? [{ label: "Notes", value: log.notes }]
                     : undefined
+                }
+                actions={
+                  log.canEdit ? (
+                    <select
+                      value={log.status}
+                      disabled={editingId === log.id}
+                      onChange={(event) =>
+                        void handleEditLog(
+                          log,
+                          event.target.value as AttendanceStatus,
+                        )
+                      }
+                      className="min-h-[44px] w-full rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-2 text-sm text-[#ebfbff]"
+                    >
+                      {STATUS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : undefined
                 }
               />
             ))}

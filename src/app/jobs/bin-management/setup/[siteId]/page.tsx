@@ -64,7 +64,6 @@ export default async function BinSetupPage({ params, searchParams }: SetupPagePr
                 expectedNewBins: site.setup.expectedNewBins,
                 weekPattern: site.setup.weekPattern,
                 serviceDay: site.setup.serviceDay,
-                assignedTechnicianId: site.setup.assignedTechnicianId,
                 accessInstructions: site.setup.accessInstructions,
                 contactName: site.setup.contactName,
                 contactPhone: site.setup.contactPhone,

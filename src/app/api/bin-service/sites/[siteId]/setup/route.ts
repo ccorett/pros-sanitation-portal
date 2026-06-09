@@ -69,7 +69,7 @@ export async function PUT(request: Request, context: RouteContext) {
     expectedNewBins: Math.max(0, Number(body.expectedNewBins ?? 0)),
     weekPattern: body.weekPattern ?? site.setup?.weekPattern ?? "WEEK_1_3",
     serviceDay: body.serviceDay ?? site.setup?.serviceDay ?? "TUESDAY",
-    assignedTechnicianId: body.assignedTechnicianId ?? null,
+    assignedTechnicianId: site.setup?.assignedTechnicianId ?? null,
     accessInstructions: body.accessInstructions ?? null,
     contactName: body.contactName ?? null,
     contactPhone: body.contactPhone ?? null,
