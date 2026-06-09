@@ -1,6 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import {
+  DesktopTableView,
+  MobileCardStack,
+  MobileRecordCard,
+} from "@/components/ui/MobileRecordCard";
 import { formatDisplayDate } from "@/lib/hr-mock-data";
 import type {
   AttendanceLogDto,
@@ -414,9 +419,11 @@ export function TeamCheckInSection({ isManager }: TeamCheckInSectionProps) {
               No attendance records yet.
             </div>
           ) : (
-            <div className="glass-card overflow-hidden rounded-2xl">
-              <div className="max-h-[320px] overflow-x-auto overflow-y-auto sm:max-h-[500px] lg:max-h-[560px]">
-                <table className="min-w-full text-left text-sm">
+            <>
+            <DesktopTableView>
+              <div className="glass-card overflow-hidden rounded-2xl">
+                <div className="max-h-[320px] overflow-x-auto overflow-y-auto sm:max-h-[500px] lg:max-h-[560px]">
+                  <table className="min-w-full text-left text-sm">
                   <thead className="sticky top-0 z-10 border-b border-[#ebfbff]/10 bg-[#0c151d]">
                     <tr>
                       <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Date</th>
@@ -484,9 +491,48 @@ export function TeamCheckInSection({ isManager }: TeamCheckInSectionProps) {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                  </table>
+                </div>
               </div>
-            </div>
+            </DesktopTableView>
+
+            <MobileCardStack>
+              {logs.map((log) => (
+                <MobileRecordCard
+                  key={log.id}
+                  title={log.employeeName}
+                  subtitle={log.location}
+                  fields={[
+                    { label: "Date", value: formatDisplayDate(log.attendanceDate) },
+                    { label: "Status", value: log.statusLabel },
+                    { label: "Check-In Time", value: formatCheckInTime(log.checkInTime) },
+                    { label: "Supervisor", value: log.supervisorName },
+                  ]}
+                  actions={
+                    log.canEdit ? (
+                      <select
+                        value={log.status}
+                        disabled={editingId === log.id}
+                        onChange={(event) =>
+                          void handleEditLog(
+                            log,
+                            event.target.value as AttendanceStatus,
+                          )
+                        }
+                        className="min-h-[44px] w-full rounded-xl border border-[#ebfbff]/15 bg-[#0c151d]/60 px-4 py-2 text-sm text-[#ebfbff]"
+                      >
+                        {STATUS_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : undefined
+                  }
+                />
+              ))}
+            </MobileCardStack>
+            </>
           )}
         </div>
       )}

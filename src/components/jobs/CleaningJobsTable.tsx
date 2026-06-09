@@ -7,6 +7,11 @@ import {
   cleaningJobStatusLabel,
   formatCleaningJobDate,
 } from "@/lib/cleaning-jobs-display";
+import {
+  DesktopTableView,
+  MobileCardStack,
+  MobileRecordCard,
+} from "@/components/ui/MobileRecordCard";
 import type { CleaningJobDto } from "@/lib/cleaning-jobs-service";
 import type { CleaningJobStatus } from "@prisma/client";
 import Link from "next/link";
@@ -68,8 +73,9 @@ export function CleaningJobsTable({
         </p>
       ) : null}
 
-      <div className="glass-card portal-table-scroll rounded-2xl">
-        <table className="min-w-[1100px] w-full text-left text-sm">
+      <DesktopTableView>
+        <div className="glass-card portal-table-scroll rounded-2xl">
+          <table className="min-w-[1100px] w-full text-left text-sm">
           <thead>
             <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
               <th className="px-4 py-4 font-semibold sm:px-6">Job Title</th>
@@ -144,8 +150,76 @@ export function CleaningJobsTable({
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
+          </table>
+        </div>
+      </DesktopTableView>
+
+      <MobileCardStack>
+        {jobs.map((job) => (
+          <MobileRecordCard
+            key={job.id}
+            title={job.title}
+            subtitle={job.clientLocation}
+            fields={[
+              { label: "Assigned To", value: job.assignedEmployeeName ?? "Unassigned" },
+              {
+                label: "Scheduled Date",
+                value: formatCleaningJobDate(job.scheduledDate),
+              },
+              {
+                label: "Priority",
+                value: (
+                  <span
+                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${cleaningJobPriorityBadgeClass(job.priority)}`}
+                  >
+                    {cleaningJobPriorityLabel(job.priority)}
+                  </span>
+                ),
+              },
+              {
+                label: "Status",
+                value: (
+                  <span
+                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${cleaningJobStatusBadgeClass(job.status)}`}
+                  >
+                    {cleaningJobStatusLabel(job.status)}
+                  </span>
+                ),
+              },
+            ]}
+            actions={
+              <>
+                <Link
+                  href={`/jobs/${job.id}`}
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] transition-colors hover:bg-[#00c6ff]/20"
+                >
+                  View Job
+                </Link>
+                {canPerformActions && canStart(job.status) ? (
+                  <button
+                    type="button"
+                    disabled={pendingId === job.id}
+                    onClick={() => void handleAction(job.id, "start")}
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] transition-colors hover:bg-[#6cc801]/20 disabled:opacity-50"
+                  >
+                    Start Job
+                  </button>
+                ) : null}
+                {canPerformActions && canComplete(job.status) ? (
+                  <button
+                    type="button"
+                    disabled={pendingId === job.id}
+                    onClick={() => void handleAction(job.id, "complete")}
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#259f00]/40 bg-[#259f00]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] transition-colors hover:bg-[#259f00]/20 disabled:opacity-50"
+                  >
+                    Complete Job
+                  </button>
+                ) : null}
+              </>
+            }
+          />
+        ))}
+      </MobileCardStack>
     </div>
   );
 }

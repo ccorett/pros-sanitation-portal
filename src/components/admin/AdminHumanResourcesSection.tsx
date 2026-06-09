@@ -1,6 +1,11 @@
 "use client";
 
 import {
+  DesktopTableView,
+  MobileCardStack,
+  MobileRecordCard,
+} from "@/components/ui/MobileRecordCard";
+import {
   formatDisplayDate,
   jobLetterStatusClass,
 } from "@/lib/hr-mock-data";
@@ -173,56 +178,96 @@ export function AdminHumanResourcesSection() {
             No vacation requests at this time.
           </div>
         ) : (
-          <div className="glass-card portal-table-scroll rounded-2xl">
-            <table className="min-w-[1100px] w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
-                  <th className="px-4 py-4 font-semibold sm:px-6">Employee</th>
-                  <th className="px-4 py-4 font-semibold">Details</th>
-                  <th className="px-4 py-4 font-semibold">Date Submitted</th>
-                  <th className="px-4 py-4 font-semibold">Supervisor</th>
-                  <th className="px-4 py-4 font-semibold">Manager</th>
-                  <th className="px-4 py-4 font-semibold sm:px-6">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {vacationRequests.map((request) => (
-                  <tr
-                    key={request.id}
-                    id={inboxRecordElementId("vacation", request.id)}
-                    className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
-                  >
-                    <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
-                      {request.employeeName}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {formatDisplayDate(request.startDate)} –{" "}
-                      {formatDisplayDate(request.endDate)} · {request.reason}
-                      <span className="mt-1 block text-xs text-[#ebfbff]/45">
-                        {request.locationAssignment}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {formatDisplayDate(request.createdAt)}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {request.supervisorStatusLabel}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {request.managerStatusLabel}
-                    </td>
-                    <td className="px-4 py-4 sm:px-6">
-                      <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${workflowStatusClass(request.finalStatusLabel)}`}
+          <>
+            <DesktopTableView>
+              <div className="glass-card portal-table-scroll rounded-2xl">
+                <table className="min-w-[1100px] w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
+                      <th className="px-4 py-4 font-semibold sm:px-6">Employee</th>
+                      <th className="px-4 py-4 font-semibold">Details</th>
+                      <th className="px-4 py-4 font-semibold">Date Submitted</th>
+                      <th className="px-4 py-4 font-semibold">Supervisor</th>
+                      <th className="px-4 py-4 font-semibold">Manager</th>
+                      <th className="px-4 py-4 font-semibold sm:px-6">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vacationRequests.map((request) => (
+                      <tr
+                        key={request.id}
+                        id={inboxRecordElementId("vacation", request.id)}
+                        className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
                       >
-                        {request.finalStatusLabel}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
+                          {request.employeeName}
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">
+                          {formatDisplayDate(request.startDate)} –{" "}
+                          {formatDisplayDate(request.endDate)} · {request.reason}
+                          <span className="mt-1 block text-xs text-[#ebfbff]/45">
+                            {request.locationAssignment}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">
+                          {formatDisplayDate(request.createdAt)}
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">
+                          {request.supervisorStatusLabel}
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">
+                          {request.managerStatusLabel}
+                        </td>
+                        <td className="px-4 py-4 sm:px-6">
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${workflowStatusClass(request.finalStatusLabel)}`}
+                          >
+                            {request.finalStatusLabel}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </DesktopTableView>
+
+            <MobileCardStack>
+              {vacationRequests.map((request) => (
+                <div
+                  key={request.id}
+                  id={inboxRecordElementId("vacation", request.id)}
+                >
+                  <MobileRecordCard
+                    title={request.employeeName}
+                    subtitle={`${formatDisplayDate(request.startDate)} – ${formatDisplayDate(request.endDate)}`}
+                    fields={[
+                      { label: "Supervisor", value: request.supervisorStatusLabel },
+                      { label: "Manager", value: request.managerStatusLabel },
+                      {
+                        label: "Status",
+                        value: (
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${workflowStatusClass(request.finalStatusLabel)}`}
+                          >
+                            {request.finalStatusLabel}
+                          </span>
+                        ),
+                      },
+                    ]}
+                    detailFields={[
+                      { label: "Reason", value: request.reason },
+                      { label: "Location", value: request.locationAssignment },
+                      {
+                        label: "Date Submitted",
+                        value: formatDisplayDate(request.createdAt),
+                      },
+                    ]}
+                  />
+                </div>
+              ))}
+            </MobileCardStack>
+          </>
         )}
       </section>
 
@@ -243,49 +288,117 @@ export function AdminHumanResourcesSection() {
             No job letter requests at this time.
           </div>
         ) : (
-          <div className="glass-card portal-table-scroll rounded-2xl">
-            <table className="min-w-[1100px] w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
-                  <th className="px-4 py-4 font-semibold sm:px-6">Employee</th>
-                  <th className="px-4 py-4 font-semibold">Letter Type</th>
-                  <th className="px-4 py-4 font-semibold">Details</th>
-                  <th className="px-4 py-4 font-semibold">Date Submitted</th>
-                  <th className="px-4 py-4 font-semibold">Status</th>
-                  <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {jobLetterRequests.map((request) => (
-                  <tr
-                    key={request.id}
-                    id={inboxRecordElementId("job-letter", request.id)}
-                    className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
-                  >
-                    <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
-                      {request.employeeName}
-                      <span className="mt-1 block text-xs font-normal text-[#ebfbff]/45">
-                        {request.employeeEmail}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {request.letterTypeLabel}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {request.notes ?? "—"}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {formatDisplayDate(request.createdAt)}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${jobLetterStatusClass(request.statusLabel)}`}
+          <>
+            <DesktopTableView>
+              <div className="glass-card portal-table-scroll rounded-2xl">
+                <table className="min-w-[1100px] w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
+                      <th className="px-4 py-4 font-semibold sm:px-6">Employee</th>
+                      <th className="px-4 py-4 font-semibold">Letter Type</th>
+                      <th className="px-4 py-4 font-semibold">Details</th>
+                      <th className="px-4 py-4 font-semibold">Date Submitted</th>
+                      <th className="px-4 py-4 font-semibold">Status</th>
+                      <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jobLetterRequests.map((request) => (
+                      <tr
+                        key={request.id}
+                        id={inboxRecordElementId("job-letter", request.id)}
+                        className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
                       >
-                        {request.statusLabel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 sm:px-6">
-                      <div className="flex flex-wrap gap-2">
+                        <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
+                          {request.employeeName}
+                          <span className="mt-1 block text-xs font-normal text-[#ebfbff]/45">
+                            {request.employeeEmail}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">
+                          {request.letterTypeLabel}
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">
+                          {request.notes ?? "—"}
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">
+                          {formatDisplayDate(request.createdAt)}
+                        </td>
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${jobLetterStatusClass(request.statusLabel)}`}
+                          >
+                            {request.statusLabel}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 sm:px-6">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              disabled={
+                                request.statusLabel !== "Pending" ||
+                                actingJobLetterId === request.id
+                              }
+                              onClick={() =>
+                                void handleJobLetterReview(request.id, "APPROVED")
+                              }
+                              className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              disabled={
+                                request.statusLabel !== "Pending" ||
+                                actingJobLetterId === request.id
+                              }
+                              onClick={() =>
+                                void handleJobLetterReview(request.id, "REJECTED")
+                              }
+                              className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </DesktopTableView>
+
+            <MobileCardStack>
+              {jobLetterRequests.map((request) => (
+                <div
+                  key={request.id}
+                  id={inboxRecordElementId("job-letter", request.id)}
+                >
+                  <MobileRecordCard
+                    title={request.employeeName}
+                    subtitle={request.employeeEmail}
+                    fields={[
+                      { label: "Letter Type", value: request.letterTypeLabel },
+                      {
+                        label: "Status",
+                        value: (
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${jobLetterStatusClass(request.statusLabel)}`}
+                          >
+                            {request.statusLabel}
+                          </span>
+                        ),
+                      },
+                    ]}
+                    detailFields={[
+                      { label: "Details", value: request.notes ?? "—" },
+                      {
+                        label: "Date Submitted",
+                        value: formatDisplayDate(request.createdAt),
+                      },
+                    ]}
+                    actions={
+                      <>
                         <button
                           type="button"
                           disabled={
@@ -295,7 +408,7 @@ export function AdminHumanResourcesSection() {
                           onClick={() =>
                             void handleJobLetterReview(request.id, "APPROVED")
                           }
-                          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
+                          className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
                         >
                           Approve
                         </button>
@@ -308,17 +421,17 @@ export function AdminHumanResourcesSection() {
                           onClick={() =>
                             void handleJobLetterReview(request.id, "REJECTED")
                           }
-                          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
+                          className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
                         >
                           Reject
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </>
+                    }
+                  />
+                </div>
+              ))}
+            </MobileCardStack>
+          </>
         )}
       </section>
 
@@ -339,47 +452,115 @@ export function AdminHumanResourcesSection() {
             No payslip requests at this time.
           </div>
         ) : (
-          <div className="glass-card portal-table-scroll rounded-2xl">
-            <table className="min-w-[1100px] w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
-                  <th className="px-4 py-4 font-semibold sm:px-6">Employee</th>
-                  <th className="px-4 py-4 font-semibold">Pay Period</th>
-                  <th className="px-4 py-4 font-semibold">Notes</th>
-                  <th className="px-4 py-4 font-semibold">Date Submitted</th>
-                  <th className="px-4 py-4 font-semibold">Status</th>
-                  <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payslipRequests.map((request) => (
-                  <tr
-                    key={request.id}
-                    id={inboxRecordElementId("payslip", request.id)}
-                    className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
-                  >
-                    <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
-                      {request.employeeName}
-                      <span className="mt-1 block text-xs font-normal text-[#ebfbff]/45">
-                        {request.employeeEmail}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">{request.payPeriod}</td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {request.notes ?? "—"}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {formatDisplayDate(request.createdAt)}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${jobLetterStatusClass(request.statusLabel)}`}
+          <>
+            <DesktopTableView>
+              <div className="glass-card portal-table-scroll rounded-2xl">
+                <table className="min-w-[1100px] w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
+                      <th className="px-4 py-4 font-semibold sm:px-6">Employee</th>
+                      <th className="px-4 py-4 font-semibold">Pay Period</th>
+                      <th className="px-4 py-4 font-semibold">Notes</th>
+                      <th className="px-4 py-4 font-semibold">Date Submitted</th>
+                      <th className="px-4 py-4 font-semibold">Status</th>
+                      <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payslipRequests.map((request) => (
+                      <tr
+                        key={request.id}
+                        id={inboxRecordElementId("payslip", request.id)}
+                        className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
                       >
-                        {request.statusLabel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 sm:px-6">
-                      <div className="flex flex-wrap gap-2">
+                        <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
+                          {request.employeeName}
+                          <span className="mt-1 block text-xs font-normal text-[#ebfbff]/45">
+                            {request.employeeEmail}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">{request.payPeriod}</td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">
+                          {request.notes ?? "—"}
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">
+                          {formatDisplayDate(request.createdAt)}
+                        </td>
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${jobLetterStatusClass(request.statusLabel)}`}
+                          >
+                            {request.statusLabel}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 sm:px-6">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              disabled={
+                                request.statusLabel !== "Pending" ||
+                                actingPayslipId === request.id
+                              }
+                              onClick={() =>
+                                void handlePayslipReview(request.id, "APPROVED")
+                              }
+                              className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              disabled={
+                                request.statusLabel !== "Pending" ||
+                                actingPayslipId === request.id
+                              }
+                              onClick={() =>
+                                void handlePayslipReview(request.id, "REJECTED")
+                              }
+                              className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </DesktopTableView>
+
+            <MobileCardStack>
+              {payslipRequests.map((request) => (
+                <div
+                  key={request.id}
+                  id={inboxRecordElementId("payslip", request.id)}
+                >
+                  <MobileRecordCard
+                    title={request.employeeName}
+                    subtitle={request.employeeEmail}
+                    fields={[
+                      { label: "Pay Period", value: request.payPeriod },
+                      {
+                        label: "Status",
+                        value: (
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${jobLetterStatusClass(request.statusLabel)}`}
+                          >
+                            {request.statusLabel}
+                          </span>
+                        ),
+                      },
+                    ]}
+                    detailFields={[
+                      { label: "Notes", value: request.notes ?? "—" },
+                      {
+                        label: "Date Submitted",
+                        value: formatDisplayDate(request.createdAt),
+                      },
+                    ]}
+                    actions={
+                      <>
                         <button
                           type="button"
                           disabled={
@@ -389,7 +570,7 @@ export function AdminHumanResourcesSection() {
                           onClick={() =>
                             void handlePayslipReview(request.id, "APPROVED")
                           }
-                          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
+                          className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
                         >
                           Approve
                         </button>
@@ -402,17 +583,17 @@ export function AdminHumanResourcesSection() {
                           onClick={() =>
                             void handlePayslipReview(request.id, "REJECTED")
                           }
-                          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
+                          className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff] disabled:opacity-40"
                         >
                           Reject
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </>
+                    }
+                  />
+                </div>
+              ))}
+            </MobileCardStack>
+          </>
         )}
       </section>
     </div>

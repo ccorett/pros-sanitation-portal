@@ -1,6 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import {
+  DesktopTableView,
+  MobileCardStack,
+  MobileRecordCard,
+} from "@/components/ui/MobileRecordCard";
 import { authInputClassName, authLabelClassName } from "@/lib/auth-form-styles";
 import { formatDisplayDate } from "@/lib/hr-mock-data";
 import {
@@ -178,27 +183,93 @@ export function AdminPayslipArchiveSection() {
           No payslip records yet.
         </div>
       ) : (
-        <div className="glass-card overflow-hidden rounded-2xl">
-          <div className="max-h-[320px] overflow-x-auto overflow-y-auto sm:max-h-[500px] lg:max-h-[560px]">
-            <table className="min-w-full text-left text-sm">
-              <thead className="sticky top-0 z-10 border-b border-[#ebfbff]/10 bg-[#0c151d]">
-                <tr>
-                  <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Employee</th>
-                  <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Pay Period</th>
-                  <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Net Pay</th>
-                  <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Status</th>
-                  <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payslips.map((payslip) => (
-                  <tr key={payslip.id} className="border-b border-[#ebfbff]/10 last:border-0">
-                    <td className="px-4 py-3 text-[#ebfbff]">{payslip.employeeName}</td>
-                    <td className="px-4 py-3 text-[#ebfbff]/80">{payslip.payPeriod}</td>
-                    <td className="px-4 py-3 text-[#ebfbff]/80">
-                      {formatPayslipMoney(payslip.netPay)}
-                    </td>
-                    <td className="px-4 py-3">
+        <>
+          <DesktopTableView>
+            <div className="glass-card overflow-hidden rounded-2xl">
+              <div className="max-h-[320px] overflow-x-auto overflow-y-auto sm:max-h-[500px] lg:max-h-[560px]">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="sticky top-0 z-10 border-b border-[#ebfbff]/10 bg-[#0c151d]">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Employee</th>
+                      <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Pay Period</th>
+                      <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Net Pay</th>
+                      <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Status</th>
+                      <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payslips.map((payslip) => (
+                      <tr key={payslip.id} className="border-b border-[#ebfbff]/10 last:border-0">
+                        <td className="px-4 py-3 text-[#ebfbff]">{payslip.employeeName}</td>
+                        <td className="px-4 py-3 text-[#ebfbff]/80">{payslip.payPeriod}</td>
+                        <td className="px-4 py-3 text-[#ebfbff]/80">
+                          {formatPayslipMoney(payslip.netPay)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                              payslip.archived
+                                ? "border-[#ebfbff]/20 bg-[#ebfbff]/10 text-[#ebfbff]/70"
+                                : "border-[#6cc801]/30 bg-[#6cc801]/10 text-[#6cc801]"
+                            }`}
+                          >
+                            {payslip.statusLabel}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <Link
+                              href={`/hr/payslips/${payslip.id}`}
+                              className="text-sm font-medium text-[#00c6ff] hover:text-[#6cc801]"
+                            >
+                              View
+                            </Link>
+                            {payslip.fileUrl ? (
+                              <a
+                                href={payslip.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-[#ebfbff]/55 hover:text-[#00c6ff]"
+                              >
+                                PDF
+                              </a>
+                            ) : null}
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="min-h-[36px] px-3 text-xs"
+                              onClick={() => void handleDelete(payslip.id)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                          <p className="mt-1 text-xs text-[#ebfbff]/45">
+                            {payslip.importedAt
+                              ? `Imported ${formatDisplayDate(payslip.importedAt)}`
+                              : payslip.uploadedAt
+                                ? `Uploaded ${formatDisplayDate(payslip.uploadedAt)}`
+                                : null}
+                          </p>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </DesktopTableView>
+
+          <MobileCardStack>
+            {payslips.map((payslip) => (
+              <MobileRecordCard
+                key={payslip.id}
+                title={payslip.employeeName}
+                subtitle={payslip.payPeriod}
+                fields={[
+                  { label: "Net Pay", value: formatPayslipMoney(payslip.netPay) },
+                  {
+                    label: "Status",
+                    value: (
                       <span
                         className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
                           payslip.archived
@@ -208,48 +279,51 @@ export function AdminPayslipArchiveSection() {
                       >
                         {payslip.statusLabel}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Link
-                          href={`/hr/payslips/${payslip.id}`}
-                          className="text-sm font-medium text-[#00c6ff] hover:text-[#6cc801]"
-                        >
-                          View
-                        </Link>
-                        {payslip.fileUrl ? (
-                          <a
-                            href={payslip.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-[#ebfbff]/55 hover:text-[#00c6ff]"
-                          >
-                            PDF
-                          </a>
-                        ) : null}
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="min-h-[36px] px-3 text-xs"
-                          onClick={() => void handleDelete(payslip.id)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                      <p className="mt-1 text-xs text-[#ebfbff]/45">
-                        {payslip.importedAt
-                          ? `Imported ${formatDisplayDate(payslip.importedAt)}`
-                          : payslip.uploadedAt
-                            ? `Uploaded ${formatDisplayDate(payslip.uploadedAt)}`
-                            : null}
-                      </p>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    ),
+                  },
+                ]}
+                detailFields={[
+                  {
+                    label: "Last Updated",
+                    value: payslip.importedAt
+                      ? `Imported ${formatDisplayDate(payslip.importedAt)}`
+                      : payslip.uploadedAt
+                        ? `Uploaded ${formatDisplayDate(payslip.uploadedAt)}`
+                        : "—",
+                  },
+                ]}
+                actions={
+                  <>
+                    <Link
+                      href={`/hr/payslips/${payslip.id}`}
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] transition-colors hover:bg-[#00c6ff]/20"
+                    >
+                      View Payslip
+                    </Link>
+                    {payslip.fileUrl ? (
+                      <a
+                        href={payslip.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ebfbff]/20 bg-[#ebfbff]/5 px-4 py-2 text-sm font-semibold text-[#ebfbff]/80 transition-colors hover:bg-[#ebfbff]/10"
+                      >
+                        Open PDF
+                      </a>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      fullWidth
+                      onClick={() => void handleDelete(payslip.id)}
+                    >
+                      Delete
+                    </Button>
+                  </>
+                }
+              />
+            ))}
+          </MobileCardStack>
+        </>
       )}
     </div>
   );

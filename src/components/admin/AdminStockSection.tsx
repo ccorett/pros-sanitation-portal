@@ -3,6 +3,11 @@
 import { StockEditHistoryModal } from "@/components/admin/StockEditHistoryModal";
 import { Button } from "@/components/ui/Button";
 import {
+  DesktopTableView,
+  MobileCardStack,
+  MobileRecordCard,
+} from "@/components/ui/MobileRecordCard";
+import {
   inventoryStatusClass,
   type InventoryStatus,
 } from "@/lib/equipment-supplies-mock-data";
@@ -158,113 +163,189 @@ export function AdminStockSection({ canEditStock }: AdminStockSectionProps) {
         </p>
       ) : null}
 
-      <div className="glass-card portal-table-scroll rounded-2xl">
-        <table className="min-w-[1400px] w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
-              <th className="px-4 py-4 font-semibold sm:px-6">Item Name</th>
-              <th className="px-4 py-4 font-semibold">Category</th>
-              <th className="px-4 py-4 font-semibold">Available Quantity</th>
-              <th className="px-4 py-4 font-semibold">Unit</th>
-              <th className="px-4 py-4 font-semibold">Reorder Level</th>
-              <th className="px-4 py-4 font-semibold">Stock Status</th>
-              <th className="px-4 py-4 font-semibold">Storage Area</th>
-              <th className="px-4 py-4 font-semibold">Supplier</th>
-              <th className="px-4 py-4 font-semibold">Last Edited</th>
-              <th className="px-4 py-4 font-semibold">Edited By</th>
-              <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td
-                  colSpan={11}
-                  className="px-4 py-8 text-center text-[#ebfbff]/55 sm:px-6"
-                >
-                  Loading inventory…
-                </td>
+      <DesktopTableView>
+        <div className="glass-card portal-table-scroll rounded-2xl">
+          <table className="min-w-[1400px] w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
+                <th className="px-4 py-4 font-semibold sm:px-6">Item Name</th>
+                <th className="px-4 py-4 font-semibold">Category</th>
+                <th className="px-4 py-4 font-semibold">Available Quantity</th>
+                <th className="px-4 py-4 font-semibold">Unit</th>
+                <th className="px-4 py-4 font-semibold">Reorder Level</th>
+                <th className="px-4 py-4 font-semibold">Stock Status</th>
+                <th className="px-4 py-4 font-semibold">Storage Area</th>
+                <th className="px-4 py-4 font-semibold">Supplier</th>
+                <th className="px-4 py-4 font-semibold">Last Edited</th>
+                <th className="px-4 py-4 font-semibold">Edited By</th>
+                <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
               </tr>
-            ) : items.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={11}
-                  className="px-4 py-8 text-center text-[#ebfbff]/55 sm:px-6"
-                >
-                  No active inventory items found.
-                </td>
-              </tr>
-            ) : (
-              items.map((item) => (
-                <tr
-                  key={item.id}
-                  className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
-                >
-                  <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
-                    {item.itemName}
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan={11}
+                    className="px-4 py-8 text-center text-[#ebfbff]/55 sm:px-6"
+                  >
+                    Loading inventory…
                   </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">{item.categoryLabel}</td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {item.availableQuantity}
+                </tr>
+              ) : items.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={11}
+                    className="px-4 py-8 text-center text-[#ebfbff]/55 sm:px-6"
+                  >
+                    No active inventory items found.
                   </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">{item.unit}</td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">{item.reorderLevel}</td>
-                  <td className="px-4 py-4">
+                </tr>
+              ) : (
+                items.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
+                  >
+                    <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
+                      {item.itemName}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">{item.categoryLabel}</td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {item.availableQuantity}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">{item.unit}</td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">{item.reorderLevel}</td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${inventoryStatusClass(item.stockStatus as InventoryStatus)}`}
+                      >
+                        {item.stockStatus}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">{item.storageArea}</td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {item.supplier ?? "—"}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {item.lastEditedAt
+                        ? formatEditTimestamp(item.lastEditedAt)
+                        : formatEditTimestamp(item.updatedAt)}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {item.lastEditedBy ?? "—"}
+                    </td>
+                    <td className="px-4 py-4 sm:px-6">
+                      <div className="flex flex-wrap gap-2">
+                        {canEditStock ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => openEdit(item)}
+                              className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                            >
+                              Edit Stock
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void disableItem(item)}
+                              className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                            >
+                              Disable Item
+                            </button>
+                          </>
+                        ) : null}
+                        {canEditStock ? (
+                          <button
+                            type="button"
+                            onClick={() => setHistoryTarget(item)}
+                            className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ebfbff]/20 bg-[#ebfbff]/5 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                          >
+                            View Edit History
+                          </button>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </DesktopTableView>
+
+      {loading ? (
+        <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55 md:hidden">
+          Loading inventory…
+        </div>
+      ) : items.length === 0 ? (
+        <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55 md:hidden">
+          No active inventory items found.
+        </div>
+      ) : (
+        <MobileCardStack>
+          {items.map((item) => (
+            <MobileRecordCard
+              key={item.id}
+              title={item.itemName}
+              subtitle={item.categoryLabel}
+              fields={[
+                { label: "Available Quantity", value: item.availableQuantity },
+                { label: "Unit", value: item.unit },
+                { label: "Reorder Level", value: item.reorderLevel },
+                {
+                  label: "Stock Status",
+                  value: (
                     <span
                       className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${inventoryStatusClass(item.stockStatus as InventoryStatus)}`}
                     >
                       {item.stockStatus}
                     </span>
-                  </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">{item.storageArea}</td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {item.supplier ?? "—"}
-                  </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {item.lastEditedAt
-                      ? formatEditTimestamp(item.lastEditedAt)
-                      : formatEditTimestamp(item.updatedAt)}
-                  </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {item.lastEditedBy ?? "—"}
-                  </td>
-                  <td className="px-4 py-4 sm:px-6">
-                    <div className="flex flex-wrap gap-2">
-                      {canEditStock ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => openEdit(item)}
-                            className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
-                          >
-                            Edit Stock
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void disableItem(item)}
-                            className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
-                          >
-                            Disable Item
-                          </button>
-                        </>
-                      ) : null}
-                      {canEditStock ? (
-                        <button
-                          type="button"
-                          onClick={() => setHistoryTarget(item)}
-                          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ebfbff]/20 bg-[#ebfbff]/5 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
-                        >
-                          View Edit History
-                        </button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                  ),
+                },
+                { label: "Storage Area", value: item.storageArea },
+                { label: "Supplier", value: item.supplier ?? "—" },
+              ]}
+              detailFields={[
+                {
+                  label: "Last Edited",
+                  value: item.lastEditedAt
+                    ? formatEditTimestamp(item.lastEditedAt)
+                    : formatEditTimestamp(item.updatedAt),
+                },
+                { label: "Edited By", value: item.lastEditedBy ?? "—" },
+                { label: "Item ID", value: item.id },
+              ]}
+              actions={
+                canEditStock ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => openEdit(item)}
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff]"
+                    >
+                      Edit Stock
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void disableItem(item)}
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff]"
+                    >
+                      Disable Item
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryTarget(item)}
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ebfbff]/20 bg-[#ebfbff]/5 px-4 py-2 text-sm font-semibold text-[#ebfbff]"
+                    >
+                      View Edit History
+                    </button>
+                  </>
+                ) : undefined
+              }
+            />
+          ))}
+        </MobileCardStack>
+      )}
 
       {editing ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0c151d]/80 p-4 backdrop-blur-sm sm:items-center">

@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  DesktopTableView,
+  MobileCardStack,
+  MobileRecordCard,
+} from "@/components/ui/MobileRecordCard";
 import type { DeliveryRequestDto } from "@/lib/delivery-request-service";
 import type { DeliveryRequestStatus } from "@prisma/client";
 import Link from "next/link";
@@ -104,6 +109,100 @@ export function DeliverySection() {
     }
     return requests;
   }, [payload?.requests, tab]);
+
+  function renderDeliveryActions(request: DeliveryRequestDto) {
+    return (
+      <>
+        {canCoordinate && request.status === "PENDING" ? (
+          <ActionButton
+            label="Assign"
+            onClick={() => {
+              setAssignTarget(request);
+              setSelectedDriverId(payload?.drivers?.[0]?.id ?? "");
+            }}
+            disabled={busyId === request.id}
+          />
+        ) : null}
+        {canCoordinate &&
+        request.status !== "FULFILLED" &&
+        request.status !== "CANCELLED" ? (
+          <ActionButton
+            label="Fulfilled"
+            tone="success"
+            onClick={() =>
+              patchRequest(request.id, {
+                action: "updateStatus",
+                status: "FULFILLED",
+              })
+            }
+            disabled={busyId === request.id}
+          />
+        ) : null}
+        {canCoordinate &&
+        request.status !== "FULFILLED" &&
+        request.status !== "CANCELLED" ? (
+          <ActionButton
+            label="Close"
+            tone="danger"
+            onClick={() =>
+              patchRequest(request.id, {
+                action: "close",
+                notes: "Closed by coordinator",
+              })
+            }
+            disabled={busyId === request.id}
+          />
+        ) : null}
+        {isDriverOnly && request.status === "ASSIGNED" ? (
+          <ActionButton
+            label="In Transit"
+            onClick={() =>
+              patchRequest(request.id, {
+                action: "updateStatus",
+                status: "IN_TRANSIT",
+              })
+            }
+            disabled={busyId === request.id}
+          />
+        ) : null}
+        {isDriverOnly &&
+        (request.status === "ASSIGNED" || request.status === "IN_TRANSIT") ? (
+          <>
+            <ActionButton
+              label="Fulfilled"
+              tone="success"
+              onClick={() =>
+                patchRequest(request.id, {
+                  action: "updateStatus",
+                  status: "FULFILLED",
+                })
+              }
+              disabled={busyId === request.id}
+            />
+            <ActionButton
+              label="Cannot Fulfil"
+              tone="danger"
+              onClick={() =>
+                patchRequest(request.id, {
+                  action: "updateStatus",
+                  status: "CANNOT_FULFIL",
+                })
+              }
+              disabled={busyId === request.id}
+            />
+          </>
+        ) : null}
+        <ActionButton
+          label="Add Note"
+          onClick={() => {
+            setNoteTarget(request);
+            setNoteText("");
+          }}
+          disabled={busyId === request.id}
+        />
+      </>
+    );
+  }
 
   async function patchRequest(
     requestId: string,
@@ -222,174 +321,111 @@ export function DeliverySection() {
         <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
           Loading delivery requests…
         </div>
-      ) : (
-        <div className="glass-card portal-table-scroll rounded-2xl">
-          <table className="min-w-[1500px] w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
-                <th className="px-4 py-4 font-semibold sm:px-6">Request ID</th>
-                <th className="px-4 py-4 font-semibold">Item(s)</th>
-                <th className="px-4 py-4 font-semibold">Requested By</th>
-                <th className="px-4 py-4 font-semibold">Requesting Location</th>
-                <th className="px-4 py-4 font-semibold">Responsible Supervisor</th>
-                <th className="px-4 py-4 font-semibold">Requested Date</th>
-                <th className="px-4 py-4 font-semibold">Priority</th>
-                <th className="px-4 py-4 font-semibold">Status</th>
-                <th className="px-4 py-4 font-semibold">Driver</th>
-                <th className="px-4 py-4 font-semibold">Notes</th>
-                <th className="px-4 py-4 font-semibold sm:px-6">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRequests.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={11}
-                    className="px-6 py-8 text-center text-sm text-[#ebfbff]/55"
-                  >
-                    No delivery requests in this view.
-                  </td>
-                </tr>
-              ) : (
-                visibleRequests.map((request) => (
-                  <tr
-                    key={request.id}
-                    className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
-                  >
-                    <td className="px-4 py-4 font-medium text-[#00c6ff] sm:px-6">
-                      {request.requestNumber}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {request.itemsSummary}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {request.requestedByName}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {request.requestingLocation}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {request.responsibleSupervisorName ?? "—"}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {formatDate(request.requestedDate)}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {request.priorityLabel}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClass(request.status)}`}
-                      >
-                        {request.statusLabel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {request.assignedDriverName ?? "—"}
-                    </td>
-                    <td className="max-w-[220px] px-4 py-4 text-[#ebfbff]/70">
-                      <span className="line-clamp-2">{request.notes ?? "—"}</span>
-                    </td>
-                    <td className="px-4 py-4 sm:px-6">
-                      <div className="flex flex-wrap gap-2">
-                        {canCoordinate && request.status === "PENDING" ? (
-                          <ActionButton
-                            label="Assign"
-                            onClick={() => {
-                              setAssignTarget(request);
-                              setSelectedDriverId(
-                                payload?.drivers?.[0]?.id ?? "",
-                              );
-                            }}
-                            disabled={busyId === request.id}
-                          />
-                        ) : null}
-                        {canCoordinate &&
-                        request.status !== "FULFILLED" &&
-                        request.status !== "CANCELLED" ? (
-                          <ActionButton
-                            label="Fulfilled"
-                            tone="success"
-                            onClick={() =>
-                              patchRequest(request.id, {
-                                action: "updateStatus",
-                                status: "FULFILLED",
-                              })
-                            }
-                            disabled={busyId === request.id}
-                          />
-                        ) : null}
-                        {canCoordinate &&
-                        request.status !== "FULFILLED" &&
-                        request.status !== "CANCELLED" ? (
-                          <ActionButton
-                            label="Close"
-                            tone="danger"
-                            onClick={() =>
-                              patchRequest(request.id, {
-                                action: "close",
-                                notes: "Closed by coordinator",
-                              })
-                            }
-                            disabled={busyId === request.id}
-                          />
-                        ) : null}
-                        {isDriverOnly && request.status === "ASSIGNED" ? (
-                          <ActionButton
-                            label="In Transit"
-                            onClick={() =>
-                              patchRequest(request.id, {
-                                action: "updateStatus",
-                                status: "IN_TRANSIT",
-                              })
-                            }
-                            disabled={busyId === request.id}
-                          />
-                        ) : null}
-                        {isDriverOnly &&
-                        (request.status === "ASSIGNED" ||
-                          request.status === "IN_TRANSIT") ? (
-                          <>
-                            <ActionButton
-                              label="Fulfilled"
-                              tone="success"
-                              onClick={() =>
-                                patchRequest(request.id, {
-                                  action: "updateStatus",
-                                  status: "FULFILLED",
-                                })
-                              }
-                              disabled={busyId === request.id}
-                            />
-                            <ActionButton
-                              label="Cannot Fulfil"
-                              tone="danger"
-                              onClick={() =>
-                                patchRequest(request.id, {
-                                  action: "updateStatus",
-                                  status: "CANNOT_FULFIL",
-                                })
-                              }
-                              disabled={busyId === request.id}
-                            />
-                          </>
-                        ) : null}
-                        <ActionButton
-                          label="Add Note"
-                          onClick={() => {
-                            setNoteTarget(request);
-                            setNoteText("");
-                          }}
-                          disabled={busyId === request.id}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      ) : visibleRequests.length === 0 ? (
+        <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+          No delivery requests in this view.
         </div>
+      ) : (
+        <>
+          <DesktopTableView>
+            <div className="glass-card portal-table-scroll rounded-2xl">
+              <table className="min-w-[1500px] w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
+                    <th className="px-4 py-4 font-semibold sm:px-6">Request ID</th>
+                    <th className="px-4 py-4 font-semibold">Item(s)</th>
+                    <th className="px-4 py-4 font-semibold">Requested By</th>
+                    <th className="px-4 py-4 font-semibold">Requesting Location</th>
+                    <th className="px-4 py-4 font-semibold">Responsible Supervisor</th>
+                    <th className="px-4 py-4 font-semibold">Requested Date</th>
+                    <th className="px-4 py-4 font-semibold">Priority</th>
+                    <th className="px-4 py-4 font-semibold">Status</th>
+                    <th className="px-4 py-4 font-semibold">Driver</th>
+                    <th className="px-4 py-4 font-semibold">Notes</th>
+                    <th className="px-4 py-4 font-semibold sm:px-6">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleRequests.map((request) => (
+                    <tr
+                      key={request.id}
+                      className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
+                    >
+                      <td className="px-4 py-4 font-medium text-[#00c6ff] sm:px-6">
+                        {request.requestNumber}
+                      </td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70">
+                        {request.itemsSummary}
+                      </td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70">
+                        {request.requestedByName}
+                      </td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70">
+                        {request.requestingLocation}
+                      </td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70">
+                        {request.responsibleSupervisorName ?? "—"}
+                      </td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70">
+                        {formatDate(request.requestedDate)}
+                      </td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70">
+                        {request.priorityLabel}
+                      </td>
+                      <td className="px-4 py-4">
+                        <span
+                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClass(request.status)}`}
+                        >
+                          {request.statusLabel}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70">
+                        {request.assignedDriverName ?? "—"}
+                      </td>
+                      <td className="max-w-[220px] px-4 py-4 text-[#ebfbff]/70">
+                        <span className="line-clamp-2">{request.notes ?? "—"}</span>
+                      </td>
+                      <td className="px-4 py-4 sm:px-6">
+                        <div className="flex flex-wrap gap-2">
+                          {renderDeliveryActions(request)}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </DesktopTableView>
+
+          <MobileCardStack>
+            {visibleRequests.map((request) => (
+              <MobileRecordCard
+                key={request.id}
+                title={request.itemsSummary}
+                subtitle={request.requestingLocation}
+                headerExtra={
+                  <span
+                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClass(request.status)}`}
+                  >
+                    {request.statusLabel}
+                  </span>
+                }
+                fields={[
+                  { label: "Requested By", value: request.requestedByName },
+                  { label: "Supervisor", value: request.responsibleSupervisorName ?? "—" },
+                  { label: "Requested Date", value: formatDate(request.requestedDate) },
+                  { label: "Priority", value: request.priorityLabel },
+                  { label: "Driver", value: request.assignedDriverName ?? "—" },
+                ]}
+                detailFields={[
+                  { label: "Request ID", value: request.requestNumber },
+                  { label: "Notes", value: request.notes ?? "—" },
+                ]}
+                actions={renderDeliveryActions(request)}
+              />
+            ))}
+          </MobileCardStack>
+        </>
       )}
 
       {showCreate ? (

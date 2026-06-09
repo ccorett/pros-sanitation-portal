@@ -2,6 +2,11 @@
 
 import { AccessHistoryModal } from "@/components/admin/AccessHistoryModal";
 import {
+  DesktopTableView,
+  MobileCardStack,
+  MobileRecordCard,
+} from "@/components/ui/MobileRecordCard";
+import {
   canPerformAccountAction,
   getAssignableAccessLevels,
 } from "@/lib/admin-account-permissions";
@@ -280,6 +285,79 @@ export function AdminAccountsSection() {
     ? getAssignableAccessLevels(actorLevel)
     : [];
 
+  function renderAccountActions(account: AdminAccountRow) {
+    return (
+      <>
+        <ActionButton
+          label="View"
+          onClick={() => setViewTarget(account)}
+          disabled={!canAct(account, "view")}
+        />
+        <ActionButton
+          label="Approve"
+          tone="success"
+          onClick={() => {
+            setApproveTarget(account);
+            setSelectedLevel(assignableLevels[0] ?? AccessLevel.TEAM_MEMBER);
+          }}
+          disabled={!canAct(account, "approve")}
+        />
+        {!account.isSuperAdminProtected ? (
+          <ActionButton
+            label="Change Level"
+            onClick={() => {
+              setLevelTarget(account);
+              setSelectedLevel(assignableLevels[0] ?? AccessLevel.TEAM_MEMBER);
+            }}
+            disabled={!canAct(account, "changeAccessLevel")}
+          />
+        ) : null}
+        <ActionButton
+          label="Edit Employment Profile"
+          onClick={() => openWorkProfileEditor(account)}
+          disabled={!canAct(account, "editWorkProfile")}
+        />
+        {!account.isSuperAdminProtected ? (
+          <ActionButton
+            label="Responsibilities"
+            onClick={() => openResponsibilityEditor(account)}
+            disabled={!canAct(account, "changeResponsibilities")}
+          />
+        ) : null}
+        <ActionButton
+          label="Disable"
+          tone="danger"
+          onClick={() => runAction(account, "disable")}
+          disabled={!canAct(account, "disable") || busyId === account.id}
+        />
+        {account.canRestore && canAct(account, "restoreAccount") ? (
+          <ActionButton
+            label="Restore"
+            tone="success"
+            onClick={() => void runAction(account, "restoreAccount")}
+            disabled={busyId === account.id}
+          />
+        ) : null}
+        {isSuperAdmin && !account.isSuperAdminProtected ? (
+          <ActionButton
+            label="Delete Account"
+            tone="danger"
+            onClick={() => {
+              setDeleteTarget(account);
+              setDeletePin("");
+            }}
+            disabled={!canAct(account, "deleteAccount") || busyId === account.id}
+          />
+        ) : null}
+        <ActionButton
+          label="History"
+          onClick={() => openHistory(account)}
+          disabled={!canAct(account, "viewHistory")}
+        />
+      </>
+    );
+  }
+
   const filteredAccounts = useMemo(() => {
     const accounts = payload?.accounts ?? [];
     const query = searchQuery.trim().toLowerCase();
@@ -465,8 +543,10 @@ export function AdminAccountsSection() {
               Loading employee accounts…
             </div>
           ) : (
-            <div className="glass-card portal-table-scroll min-w-0 w-full rounded-2xl">
-              <table className="w-full table-auto text-left text-xs">
+            <>
+            <DesktopTableView>
+              <div className="glass-card portal-table-scroll min-w-0 w-full rounded-2xl">
+                <table className="w-full table-auto text-left text-xs">
             <thead>
               <tr className="border-b border-[#ebfbff]/10 text-[10px] uppercase tracking-wide text-[#ebfbff]/50">
                 <th className="px-2 py-3 font-semibold sm:px-3">Employee Name</th>
@@ -537,88 +617,66 @@ export function AdminAccountsSection() {
                   </td>
                   <td className="whitespace-normal px-2 py-3 sm:px-3">
                     <div className="flex flex-wrap gap-2">
-                      <ActionButton
-                        label="View"
-                        onClick={() => setViewTarget(account)}
-                        disabled={!canAct(account, "view")}
-                      />
-                      <ActionButton
-                        label="Approve"
-                        tone="success"
-                        onClick={() => {
-                          setApproveTarget(account);
-                          setSelectedLevel(
-                            assignableLevels[0] ?? AccessLevel.TEAM_MEMBER,
-                          );
-                        }}
-                        disabled={!canAct(account, "approve")}
-                      />
-                      {!account.isSuperAdminProtected ? (
-                        <ActionButton
-                          label="Change Level"
-                          onClick={() => {
-                            setLevelTarget(account);
-                            setSelectedLevel(
-                              assignableLevels[0] ?? AccessLevel.TEAM_MEMBER,
-                            );
-                          }}
-                          disabled={!canAct(account, "changeAccessLevel")}
-                        />
-                      ) : null}
-                      <ActionButton
-                        label="Edit Employment Profile"
-                        onClick={() => openWorkProfileEditor(account)}
-                        disabled={!canAct(account, "editWorkProfile")}
-                      />
-                      {!account.isSuperAdminProtected ? (
-                        <ActionButton
-                          label="Responsibilities"
-                          onClick={() => openResponsibilityEditor(account)}
-                          disabled={!canAct(account, "changeResponsibilities")}
-                        />
-                      ) : null}
-                      <ActionButton
-                        label="Disable"
-                        tone="danger"
-                        onClick={() => runAction(account, "disable")}
-                        disabled={
-                          !canAct(account, "disable") || busyId === account.id
-                        }
-                      />
-                      {account.canRestore && canAct(account, "restoreAccount") ? (
-                        <ActionButton
-                          label="Restore"
-                          tone="success"
-                          onClick={() => void runAction(account, "restoreAccount")}
-                          disabled={busyId === account.id}
-                        />
-                      ) : null}
-                      {isSuperAdmin && !account.isSuperAdminProtected ? (
-                        <ActionButton
-                          label="Delete Account"
-                          tone="danger"
-                          onClick={() => {
-                            setDeleteTarget(account);
-                            setDeletePin("");
-                          }}
-                          disabled={
-                            !canAct(account, "deleteAccount") ||
-                            busyId === account.id
-                          }
-                        />
-                      ) : null}
-                      <ActionButton
-                        label="History"
-                        onClick={() => openHistory(account)}
-                        disabled={!canAct(account, "viewHistory")}
-                      />
+                      {renderAccountActions(account)}
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
-            </div>
+                </table>
+              </div>
+            </DesktopTableView>
+
+            <MobileCardStack>
+              {filteredAccounts.map((account) => (
+                <MobileRecordCard
+                  key={account.id}
+                  title={account.employeeName}
+                  subtitle={account.email}
+                  headerExtra={
+                    account.isSuperAdminProtected ? (
+                      <span className="inline-flex rounded-full border border-[#f5c542]/35 bg-[#f5c542]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#f5c542]">
+                        Protected
+                      </span>
+                    ) : null
+                  }
+                  fields={[
+                    { label: "Job Title", value: account.jobTitle },
+                    { label: "Position", value: account.position },
+                    { label: "Role", value: account.accessLevelLabel },
+                    {
+                      label: "Responsibilities",
+                      value: account.responsibilitiesLabel,
+                    },
+                    {
+                      label: "Account Status",
+                      value: (
+                        <span
+                          className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusClass(account.accountStatus)}`}
+                        >
+                          {account.accountStatusLabel}
+                        </span>
+                      ),
+                    },
+                    { label: "Work Locations", value: account.locationAssignment },
+                    { label: "Department", value: account.department },
+                    {
+                      label: "Last Login",
+                      value: formatOptionalTimestamp(account.lastLoginAt),
+                    },
+                  ]}
+                  detailFields={[
+                    {
+                      label: "Last Edited",
+                      value: formatOptionalTimestamp(account.lastEditedAt),
+                    },
+                    { label: "Edited By", value: account.editedBy ?? "—" },
+                  ]}
+                  actions={renderAccountActions(account)}
+                />
+              ))}
+            </MobileCardStack>
+            </>
           )}
         </div>
       </div>

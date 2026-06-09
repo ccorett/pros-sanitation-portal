@@ -1,6 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import {
+  DesktopTableView,
+  MobileCardStack,
+  MobileRecordCard,
+} from "@/components/ui/MobileRecordCard";
 import { formatEditTimestamp } from "@/lib/admin-format";
 import {
   inventoryImportCategoryHint,
@@ -194,41 +199,65 @@ export function InventoryImportSection() {
             ))}
           </div>
 
-          <div className="glass-card portal-table-scroll rounded-2xl">
-            <table className="min-w-[900px] w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
-                  <th className="px-4 py-4 font-semibold sm:px-6">Item Name</th>
-                  <th className="px-4 py-4 font-semibold">Action</th>
-                  <th className="px-4 py-4 font-semibold">Current Quantity</th>
-                  <th className="px-4 py-4 font-semibold">New Quantity</th>
-                  <th className="px-4 py-4 font-semibold sm:px-6">Notes/Error</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.rows.map((row) => (
-                  <tr
-                    key={`${row.rowNumber}-${row.itemName}`}
-                    className="border-b border-[#ebfbff]/5 last:border-b-0"
-                  >
-                    <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
-                      {row.itemName}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">{row.action}</td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {row.currentQuantity ?? "—"}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {row.newQuantity ?? "—"}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70 sm:px-6">
-                      {row.notes ?? "—"}
-                    </td>
+          <DesktopTableView>
+            <div className="glass-card portal-table-scroll rounded-2xl">
+              <table className="min-w-[900px] w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
+                    <th className="px-4 py-4 font-semibold sm:px-6">Item Name</th>
+                    <th className="px-4 py-4 font-semibold">Action</th>
+                    <th className="px-4 py-4 font-semibold">Current Quantity</th>
+                    <th className="px-4 py-4 font-semibold">New Quantity</th>
+                    <th className="px-4 py-4 font-semibold sm:px-6">Notes/Error</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {preview.rows.map((row) => (
+                    <tr
+                      key={`${row.rowNumber}-${row.itemName}`}
+                      className="border-b border-[#ebfbff]/5 last:border-b-0"
+                    >
+                      <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
+                        {row.itemName}
+                      </td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70">{row.action}</td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70">
+                        {row.currentQuantity ?? "—"}
+                      </td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70">
+                        {row.newQuantity ?? "—"}
+                      </td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70 sm:px-6">
+                        {row.notes ?? "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </DesktopTableView>
+
+          <MobileCardStack>
+            {preview.rows.map((row) => (
+              <MobileRecordCard
+                key={`${row.rowNumber}-${row.itemName}`}
+                title={row.itemName}
+                subtitle={row.action}
+                fields={[
+                  {
+                    label: "Current Quantity",
+                    value: row.currentQuantity ?? "—",
+                  },
+                  { label: "New Quantity", value: row.newQuantity ?? "—" },
+                ]}
+                detailFields={
+                  row.notes?.trim()
+                    ? [{ label: "Notes/Error", value: row.notes }]
+                    : undefined
+                }
+              />
+            ))}
+          </MobileCardStack>
 
           <Button
             type="button"
@@ -251,39 +280,65 @@ export function InventoryImportSection() {
         ) : auditLogs.length === 0 ? (
           <p className="mt-3 text-sm text-[#ebfbff]/55">No inventory imports yet.</p>
         ) : (
-          <div className="mt-4 portal-table-scroll overflow-x-auto">
-            <table className="min-w-[800px] w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
-                  <th className="px-3 py-3 font-semibold">File</th>
-                  <th className="px-3 py-3 font-semibold">Imported By</th>
-                  <th className="px-3 py-3 font-semibold">Imported At</th>
-                  <th className="px-3 py-3 font-semibold">Created</th>
-                  <th className="px-3 py-3 font-semibold">Updated</th>
-                  <th className="px-3 py-3 font-semibold">Skipped</th>
-                  <th className="px-3 py-3 font-semibold">Errors</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditLogs.map((log) => (
-                  <tr
-                    key={log.id}
-                    className="border-b border-[#ebfbff]/5 last:border-b-0"
-                  >
-                    <td className="px-3 py-3 text-[#ebfbff]">{log.fileName}</td>
-                    <td className="px-3 py-3 text-[#ebfbff]/70">{log.importedBy}</td>
-                    <td className="px-3 py-3 text-[#ebfbff]/70">
-                      {formatEditTimestamp(log.importedAt)}
-                    </td>
-                    <td className="px-3 py-3 text-[#ebfbff]/70">{log.createdCount}</td>
-                    <td className="px-3 py-3 text-[#ebfbff]/70">{log.updatedCount}</td>
-                    <td className="px-3 py-3 text-[#ebfbff]/70">{log.skippedCount}</td>
-                    <td className="px-3 py-3 text-[#ebfbff]/70">{log.errorCount}</td>
+          <>
+          <DesktopTableView className="mt-4">
+            <div className="portal-table-scroll overflow-x-auto">
+              <table className="min-w-[800px] w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
+                    <th className="px-3 py-3 font-semibold">File</th>
+                    <th className="px-3 py-3 font-semibold">Imported By</th>
+                    <th className="px-3 py-3 font-semibold">Imported At</th>
+                    <th className="px-3 py-3 font-semibold">Created</th>
+                    <th className="px-3 py-3 font-semibold">Updated</th>
+                    <th className="px-3 py-3 font-semibold">Skipped</th>
+                    <th className="px-3 py-3 font-semibold">Errors</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {auditLogs.map((log) => (
+                    <tr
+                      key={log.id}
+                      className="border-b border-[#ebfbff]/5 last:border-b-0"
+                    >
+                      <td className="px-3 py-3 text-[#ebfbff]">{log.fileName}</td>
+                      <td className="px-3 py-3 text-[#ebfbff]/70">{log.importedBy}</td>
+                      <td className="px-3 py-3 text-[#ebfbff]/70">
+                        {formatEditTimestamp(log.importedAt)}
+                      </td>
+                      <td className="px-3 py-3 text-[#ebfbff]/70">{log.createdCount}</td>
+                      <td className="px-3 py-3 text-[#ebfbff]/70">{log.updatedCount}</td>
+                      <td className="px-3 py-3 text-[#ebfbff]/70">{log.skippedCount}</td>
+                      <td className="px-3 py-3 text-[#ebfbff]/70">{log.errorCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </DesktopTableView>
+
+          <MobileCardStack className="mt-4">
+            {auditLogs.map((log) => (
+              <MobileRecordCard
+                key={log.id}
+                title={log.fileName}
+                subtitle={log.importedBy}
+                fields={[
+                  { label: "Created", value: log.createdCount },
+                  { label: "Updated", value: log.updatedCount },
+                  { label: "Skipped", value: log.skippedCount },
+                  { label: "Errors", value: log.errorCount },
+                ]}
+                detailFields={[
+                  {
+                    label: "Imported At",
+                    value: formatEditTimestamp(log.importedAt),
+                  },
+                ]}
+              />
+            ))}
+          </MobileCardStack>
+          </>
         )}
       </div>
     </div>

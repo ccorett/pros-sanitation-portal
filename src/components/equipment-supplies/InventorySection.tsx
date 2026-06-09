@@ -2,6 +2,11 @@
 
 import { Button } from "@/components/ui/Button";
 import {
+  DesktopTableView,
+  MobileCardStack,
+  MobileRecordCard,
+} from "@/components/ui/MobileRecordCard";
+import {
   inventoryStatusClass,
   urgencyClass,
   urgencyOptions,
@@ -251,67 +256,117 @@ export function InventorySection() {
           No inventory items match your search.
         </div>
       ) : (
-        <div className="glass-card portal-table-scroll rounded-2xl">
-          <table className="min-w-[1100px] w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
-                <th className="px-4 py-4 font-semibold sm:px-6">Item Name</th>
-                <th className="px-4 py-4 font-semibold">Category</th>
-                <th className="px-4 py-4 font-semibold">Available Quantity</th>
-                <th className="px-4 py-4 font-semibold">Unit</th>
-                <th className="px-4 py-4 font-semibold">Stock Status</th>
-                <th className="px-4 py-4 font-semibold">Storage Area</th>
-                <th className="px-4 py-4 font-semibold">Supplier</th>
-                <th className="px-4 py-4 font-semibold">Last Updated</th>
-                <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredItems.map((item) => {
-                const outOfStock = item.stockStatus === "Out of Stock";
-
-                return (
-                  <tr
-                    key={item.id}
-                    className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
-                  >
-                    <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
-                      {item.itemName}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">{item.categoryLabel}</td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {item.availableQuantity}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">{item.unit}</td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${inventoryStatusClass(item.stockStatus as InventoryStatus)}`}
-                      >
-                        {item.stockStatus}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">{item.storageArea}</td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {item.supplier ?? "—"}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">
-                      {formatEditTimestamp(item.lastEditedAt ?? item.updatedAt)}
-                    </td>
-                    <td className="px-4 py-4 sm:px-6">
-                      <button
-                        type="button"
-                        onClick={() => openRequestForm(item, outOfStock)}
-                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] transition-colors hover:bg-[#6cc801]/20"
-                      >
-                        {outOfStock ? "Request Restock" : "Request Item"}
-                      </button>
-                    </td>
+        <>
+          <DesktopTableView>
+            <div className="glass-card portal-table-scroll rounded-2xl">
+              <table className="min-w-[1100px] w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
+                    <th className="px-4 py-4 font-semibold sm:px-6">Item Name</th>
+                    <th className="px-4 py-4 font-semibold">Category</th>
+                    <th className="px-4 py-4 font-semibold">Available Quantity</th>
+                    <th className="px-4 py-4 font-semibold">Unit</th>
+                    <th className="px-4 py-4 font-semibold">Stock Status</th>
+                    <th className="px-4 py-4 font-semibold">Storage Area</th>
+                    <th className="px-4 py-4 font-semibold">Supplier</th>
+                    <th className="px-4 py-4 font-semibold">Last Updated</th>
+                    <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {filteredItems.map((item) => {
+                    const outOfStock = item.stockStatus === "Out of Stock";
+
+                    return (
+                      <tr
+                        key={item.id}
+                        className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
+                      >
+                        <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
+                          {item.itemName}
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">{item.categoryLabel}</td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">
+                          {item.availableQuantity}
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">{item.unit}</td>
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${inventoryStatusClass(item.stockStatus as InventoryStatus)}`}
+                          >
+                            {item.stockStatus}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">{item.storageArea}</td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">
+                          {item.supplier ?? "—"}
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">
+                          {formatEditTimestamp(item.lastEditedAt ?? item.updatedAt)}
+                        </td>
+                        <td className="px-4 py-4 sm:px-6">
+                          <button
+                            type="button"
+                            onClick={() => openRequestForm(item, outOfStock)}
+                            className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] transition-colors hover:bg-[#6cc801]/20"
+                          >
+                            {outOfStock ? "Request Restock" : "Request Item"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </DesktopTableView>
+
+          <MobileCardStack>
+            {filteredItems.map((item) => {
+              const outOfStock = item.stockStatus === "Out of Stock";
+
+              return (
+                <MobileRecordCard
+                  key={item.id}
+                  title={item.itemName}
+                  subtitle={item.categoryLabel}
+                  fields={[
+                    { label: "Available Quantity", value: item.availableQuantity },
+                    { label: "Unit", value: item.unit },
+                    {
+                      label: "Stock Status",
+                      value: (
+                        <span
+                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${inventoryStatusClass(item.stockStatus as InventoryStatus)}`}
+                        >
+                          {item.stockStatus}
+                        </span>
+                      ),
+                    },
+                    { label: "Storage Area", value: item.storageArea },
+                    { label: "Supplier", value: item.supplier ?? "—" },
+                  ]}
+                  detailFields={[
+                    {
+                      label: "Last Updated",
+                      value: formatEditTimestamp(item.lastEditedAt ?? item.updatedAt),
+                    },
+                    { label: "Item ID", value: item.id },
+                  ]}
+                  actions={
+                    <button
+                      type="button"
+                      onClick={() => openRequestForm(item, outOfStock)}
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] transition-colors hover:bg-[#6cc801]/20"
+                    >
+                      {outOfStock ? "Request Restock" : "Request Item"}
+                    </button>
+                  }
+                />
+              );
+            })}
+          </MobileCardStack>
+        </>
       )}
 
       {!requestsLoading && requests.length > 0 ? (

@@ -2,6 +2,11 @@
 
 import { BinServiceUpdateModal } from "@/components/bin-service/BinServiceUpdateModal";
 import {
+  DesktopTableView,
+  MobileCardStack,
+  MobileRecordCard,
+} from "@/components/ui/MobileRecordCard";
+import {
   formatBinDate,
   formatBinDateTime,
   serviceStatusLabel,
@@ -45,81 +50,146 @@ export function AdminBinRouteLocationsTable() {
           Loading route activity…
         </div>
       ) : (
-        <div className="glass-card portal-table-scroll rounded-2xl">
-          <table className="min-w-[1500px] w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
-                <th className="px-4 py-4 font-semibold sm:px-6">Location</th>
-                <th className="px-4 py-4 font-semibold">Last Updated By</th>
-                <th className="px-4 py-4 font-semibold">Last Updated</th>
-                <th className="px-4 py-4 font-semibold">Service Status</th>
-                <th className="px-4 py-4 font-semibold">Notes</th>
-                <th className="px-4 py-4 font-semibold">Issue / Access</th>
-                <th className="px-4 py-4 font-semibold">Last Service</th>
-                <th className="px-4 py-4 font-semibold">Next Service</th>
-                <th className="px-4 py-4 font-semibold">Rotation Status</th>
-                <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {locations.map((location) => (
-                <tr
-                  key={location.siteId}
-                  className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
-                >
-                  <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
-                    {location.location}
-                  </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {location.lastUpdatedBy ?? "—"}
-                  </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {location.lastUpdatedAt
-                      ? formatBinDateTime(location.lastUpdatedAt)
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {location.serviceStatus
+        <>
+          <DesktopTableView>
+            <div className="glass-card portal-table-scroll rounded-2xl">
+              <table className="min-w-[1500px] w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
+                    <th className="px-4 py-4 font-semibold sm:px-6">Location</th>
+                    <th className="px-4 py-4 font-semibold">Last Updated By</th>
+                    <th className="px-4 py-4 font-semibold">Last Updated</th>
+                    <th className="px-4 py-4 font-semibold">Service Status</th>
+                    <th className="px-4 py-4 font-semibold">Notes</th>
+                    <th className="px-4 py-4 font-semibold">Issue / Access</th>
+                    <th className="px-4 py-4 font-semibold">Last Service</th>
+                    <th className="px-4 py-4 font-semibold">Next Service</th>
+                    <th className="px-4 py-4 font-semibold">Rotation Status</th>
+                    <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {locations.map((location) => (
+                    <tr
+                      key={location.siteId}
+                      className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
+                    >
+                      <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
+                        {location.location}
+                      </td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70">
+                        {location.lastUpdatedBy ?? "—"}
+                      </td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70">
+                        {location.lastUpdatedAt
+                          ? formatBinDateTime(location.lastUpdatedAt)
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70">
+                        {location.serviceStatus
+                          ? serviceStatusLabel(location.serviceStatus)
+                          : "—"}
+                      </td>
+                      <td className="max-w-[200px] px-4 py-4 text-[#ebfbff]/70">
+                        {location.serviceNotes || location.displayNotes || "—"}
+                      </td>
+                      <td className="max-w-[200px] px-4 py-4 text-[#ebfbff]/70">
+                        {location.cannotAccessReason ??
+                          location.issueNotes ??
+                          "—"}
+                      </td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70">
+                        {location.lastServiceDate
+                          ? formatBinDate(location.lastServiceDate)
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-4 text-[#ebfbff]/70">
+                        {formatBinFieldDate(location.nextServiceDate)}
+                      </td>
+                      <td className="px-4 py-4">
+                        <span
+                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusColorClass(location.rotation.color)}`}
+                        >
+                          {location.rotation.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 sm:px-6">
+                        <button
+                          type="button"
+                          onClick={() => setActiveLocation(location)}
+                          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] hover:bg-[#00c6ff]/20"
+                        >
+                          Update Service
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </DesktopTableView>
+
+          <MobileCardStack>
+            {locations.map((location) => (
+              <MobileRecordCard
+                key={location.siteId}
+                title={location.location}
+                headerExtra={
+                  <span
+                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusColorClass(location.rotation.color)}`}
+                  >
+                    {location.rotation.label}
+                  </span>
+                }
+                fields={[
+                  {
+                    label: "Service Status",
+                    value: location.serviceStatus
                       ? serviceStatusLabel(location.serviceStatus)
-                      : "—"}
-                  </td>
-                  <td className="max-w-[200px] px-4 py-4 text-[#ebfbff]/70">
-                    {location.serviceNotes || location.displayNotes || "—"}
-                  </td>
-                  <td className="max-w-[200px] px-4 py-4 text-[#ebfbff]/70">
-                    {location.cannotAccessReason ??
-                      location.issueNotes ??
-                      "—"}
-                  </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {location.lastServiceDate
+                      : "—",
+                  },
+                  {
+                    label: "Last Service",
+                    value: location.lastServiceDate
                       ? formatBinDate(location.lastServiceDate)
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {formatBinFieldDate(location.nextServiceDate)}
-                  </td>
-                  <td className="px-4 py-4">
-                    <span
-                      className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusColorClass(location.rotation.color)}`}
-                    >
-                      {location.rotation.label}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 sm:px-6">
-                    <button
-                      type="button"
-                      onClick={() => setActiveLocation(location)}
-                      className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] hover:bg-[#00c6ff]/20"
-                    >
-                      Update Service
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      : "—",
+                  },
+                  {
+                    label: "Next Service",
+                    value: formatBinFieldDate(location.nextServiceDate),
+                  },
+                ]}
+                detailFields={[
+                  { label: "Last Updated By", value: location.lastUpdatedBy ?? "—" },
+                  {
+                    label: "Last Updated",
+                    value: location.lastUpdatedAt
+                      ? formatBinDateTime(location.lastUpdatedAt)
+                      : "—",
+                  },
+                  {
+                    label: "Notes",
+                    value: location.serviceNotes || location.displayNotes || "—",
+                  },
+                  {
+                    label: "Issue / Access",
+                    value:
+                      location.cannotAccessReason ?? location.issueNotes ?? "—",
+                  },
+                ]}
+                actions={
+                  <button
+                    type="button"
+                    onClick={() => setActiveLocation(location)}
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] hover:bg-[#00c6ff]/20"
+                  >
+                    Update Service
+                  </button>
+                }
+              />
+            ))}
+          </MobileCardStack>
+        </>
       )}
 
       <button

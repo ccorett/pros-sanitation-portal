@@ -1,5 +1,5 @@
 import { SessionInactivityGuard } from "@/components/auth/SessionInactivityGuard";
-import { StaffDashboardMetrics } from "@/components/staff/StaffDashboardMetrics";
+import { StaffActivityFloatingMenu } from "@/components/staff/StaffActivityFloatingMenu";
 import { StaffTopNav } from "@/components/layout/StaffTopNav";
 import { COMPANY } from "@/lib/constants";
 import { WORKSPACE_SHELL_MAX_WIDTH } from "@/lib/workspace-layout";
@@ -12,15 +12,6 @@ import { requireStaffAccess } from "@/lib/require-staff-access";
 import { Briefcase, FileText, Package, Recycle, Truck, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-
-const PRIMARY_MODULE_SLOT_COUNT = 4;
-
-const PRIMARY_MODULE_PLACEMENTS = [
-  "lg:col-start-2 lg:row-start-1",
-  "lg:col-start-3 lg:row-start-1",
-  "lg:col-start-2 lg:row-start-2",
-  "lg:col-start-3 lg:row-start-2",
-] as const;
 
 type DashboardCard = {
   title: string;
@@ -134,11 +125,6 @@ export default async function StaffDashboardPage() {
     canAccessPortalFeature(accessContext, card.feature),
   );
 
-  const primaryModuleCards = visibleCards.slice(0, PRIMARY_MODULE_SLOT_COUNT);
-  const secondaryModuleCards = visibleCards.slice(PRIMARY_MODULE_SLOT_COUNT);
-  const activityRowSpan = Math.max(1, Math.ceil(primaryModuleCards.length / 2));
-  const secondaryRowStart = activityRowSpan + 1;
-
   return (
     <main className="relative min-h-dvh">
       <SessionInactivityGuard />
@@ -179,38 +165,14 @@ export default async function StaffDashboardPage() {
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(260px,320px)_1fr_1fr]">
-          <div
-            className={`sm:col-span-2 lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:flex lg:min-h-0 lg:self-stretch ${
-              activityRowSpan === 1 ? "lg:row-span-1" : "lg:row-span-2"
-            }`}
-          >
-            <div className="lg:flex lg:h-full lg:w-full lg:flex-col [&>*]:lg:h-full">
-              <StaffDashboardMetrics />
-            </div>
-          </div>
-
-          {primaryModuleCards.map((card, index) => (
-            <DashboardModuleCard
-              key={card.title}
-              card={card}
-              className={PRIMARY_MODULE_PLACEMENTS[index] ?? ""}
-            />
+        <div className="grid auto-rows-fr gap-4 pb-24 sm:grid-cols-2 lg:grid-cols-3">
+          {visibleCards.map((card) => (
+            <DashboardModuleCard key={card.title} card={card} />
           ))}
-
-          {secondaryModuleCards.length > 0 ? (
-            <div
-              className={`grid gap-4 sm:col-span-2 sm:grid-cols-2 lg:col-span-2 lg:col-start-2 ${
-                secondaryRowStart === 2 ? "lg:row-start-2" : "lg:row-start-3"
-              }`}
-            >
-              {secondaryModuleCards.map((card) => (
-                <DashboardModuleCard key={card.title} card={card} />
-              ))}
-            </div>
-          ) : null}
         </div>
       </div>
+
+      <StaffActivityFloatingMenu />
     </main>
   );
 }

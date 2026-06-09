@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  DesktopTableView,
+  MobileCardStack,
+  MobileRecordCard,
+} from "@/components/ui/MobileRecordCard";
 import type { ApprovalInboxItem } from "@/lib/approval-inbox-service";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -87,8 +92,9 @@ export function ApprovalInboxSection() {
 
   return (
     <section className="space-y-4">
-      <div className="glass-card portal-table-scroll w-full rounded-2xl">
-        <table className="w-full min-w-[900px] text-left text-sm">
+      <DesktopTableView>
+        <div className="glass-card portal-table-scroll w-full rounded-2xl">
+          <table className="w-full min-w-[900px] text-left text-sm">
           <thead>
             <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
               <th className="px-4 py-4 font-semibold sm:px-6">Type</th>
@@ -129,8 +135,41 @@ export function ApprovalInboxSection() {
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
+          </table>
+        </div>
+      </DesktopTableView>
+
+      <MobileCardStack>
+        {items.map((item) => (
+          <MobileRecordCard
+            key={`${item.type}-${item.id}`}
+            title={item.typeLabel}
+            subtitle={item.submittedBy}
+            fields={[
+              { label: "Location", value: item.location },
+              {
+                label: "Status",
+                value: (
+                  <span
+                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClass(item.status)}`}
+                  >
+                    {item.status}
+                  </span>
+                ),
+              },
+            ]}
+            detailFields={[{ label: "Date Submitted", value: item.dateSubmitted }]}
+            actions={
+              <Link
+                href={item.actionHref}
+                className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] hover:bg-[#00c6ff]/20"
+              >
+                Open Record
+              </Link>
+            }
+          />
+        ))}
+      </MobileCardStack>
 
       <button
         type="button"

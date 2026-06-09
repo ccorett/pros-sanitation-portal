@@ -1,6 +1,11 @@
 "use client";
 
 import {
+  DesktopTableView,
+  MobileCardStack,
+  MobileRecordCard,
+} from "@/components/ui/MobileRecordCard";
+import {
   formatPayslipMoney,
   type PayslipArchiveDto,
 } from "@/lib/payslip-archive-service";
@@ -77,6 +82,20 @@ function RecentPayslipCard({ payslip }: { payslip: PayslipArchiveDto }) {
   );
 }
 
+function payslipStatusBadge(payslip: PayslipArchiveDto) {
+  return (
+    <span
+      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+        payslip.archived
+          ? "border-[#ebfbff]/20 bg-[#ebfbff]/10 text-[#ebfbff]/70"
+          : "border-[#6cc801]/30 bg-[#6cc801]/10 text-[#6cc801]"
+      }`}
+    >
+      {payslip.statusLabel}
+    </span>
+  );
+}
+
 function PayslipHistoryTable({
   payslips,
   canManagePayslips,
@@ -87,70 +106,87 @@ function PayslipHistoryTable({
   scrollable?: boolean;
 }) {
   return (
-    <div className="glass-card overflow-hidden rounded-2xl">
-      <div
-        className={
-          scrollable
-            ? "max-h-[320px] overflow-x-auto overflow-y-auto sm:max-h-[500px] lg:max-h-[560px]"
-            : "overflow-x-auto"
-        }
-      >
-        <table className="min-w-full text-left text-sm">
-          <thead className="sticky top-0 z-10 border-b border-[#ebfbff]/10 bg-[#0c151d]">
-            <tr>
-              {canManagePayslips ? (
-                <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Employee</th>
-              ) : null}
-              <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Pay Period</th>
-              <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Gross Pay</th>
-              <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Net Pay</th>
-              <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Status</th>
-              <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {payslips.map((payslip) => (
-              <tr
-                key={payslip.id}
-                className="border-b border-[#ebfbff]/10 last:border-0"
+    <>
+      <DesktopTableView>
+        <div className="glass-card overflow-hidden rounded-2xl">
+          <div
+            className={
+              scrollable
+                ? "max-h-[320px] overflow-x-auto overflow-y-auto sm:max-h-[500px] lg:max-h-[560px]"
+                : "overflow-x-auto"
+            }
+          >
+            <table className="min-w-full text-left text-sm">
+              <thead className="sticky top-0 z-10 border-b border-[#ebfbff]/10 bg-[#0c151d]">
+                <tr>
+                  {canManagePayslips ? (
+                    <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Employee</th>
+                  ) : null}
+                  <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Pay Period</th>
+                  <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Gross Pay</th>
+                  <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Net Pay</th>
+                  <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Status</th>
+                  <th className="px-4 py-3 font-semibold text-[#ebfbff]/70">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payslips.map((payslip) => (
+                  <tr
+                    key={payslip.id}
+                    className="border-b border-[#ebfbff]/10 last:border-0"
+                  >
+                    {canManagePayslips ? (
+                      <td className="px-4 py-3 text-[#ebfbff]/80">{payslip.employeeName}</td>
+                    ) : null}
+                    <td className="px-4 py-3 font-medium text-[#ebfbff]">
+                      {payslip.payPeriod}
+                    </td>
+                    <td className="px-4 py-3 text-[#ebfbff]/80">
+                      {formatPayslipMoney(payslip.grossPay)}
+                    </td>
+                    <td className="px-4 py-3 text-[#ebfbff]/80">
+                      {formatPayslipMoney(payslip.netPay)}
+                    </td>
+                    <td className="px-4 py-3">{payslipStatusBadge(payslip)}</td>
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/hr/payslips/${payslip.id}`}
+                        className="text-sm font-medium text-[#00c6ff] hover:text-[#6cc801]"
+                      >
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </DesktopTableView>
+
+      <MobileCardStack>
+        {payslips.map((payslip) => (
+          <MobileRecordCard
+            key={payslip.id}
+            title={payslip.payPeriod}
+            subtitle={canManagePayslips ? payslip.employeeName : undefined}
+            fields={[
+              { label: "Gross Pay", value: formatPayslipMoney(payslip.grossPay) },
+              { label: "Net Pay", value: formatPayslipMoney(payslip.netPay) },
+              { label: "Status", value: payslipStatusBadge(payslip) },
+            ]}
+            actions={
+              <Link
+                href={`/hr/payslips/${payslip.id}`}
+                className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-2 text-sm font-semibold text-[#ebfbff] transition-colors hover:bg-[#00c6ff]/20"
               >
-                {canManagePayslips ? (
-                  <td className="px-4 py-3 text-[#ebfbff]/80">{payslip.employeeName}</td>
-                ) : null}
-                <td className="px-4 py-3 font-medium text-[#ebfbff]">
-                  {payslip.payPeriod}
-                </td>
-                <td className="px-4 py-3 text-[#ebfbff]/80">
-                  {formatPayslipMoney(payslip.grossPay)}
-                </td>
-                <td className="px-4 py-3 text-[#ebfbff]/80">
-                  {formatPayslipMoney(payslip.netPay)}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                      payslip.archived
-                        ? "border-[#ebfbff]/20 bg-[#ebfbff]/10 text-[#ebfbff]/70"
-                        : "border-[#6cc801]/30 bg-[#6cc801]/10 text-[#6cc801]"
-                    }`}
-                  >
-                    {payslip.statusLabel}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/hr/payslips/${payslip.id}`}
-                    className="text-sm font-medium text-[#00c6ff] hover:text-[#6cc801]"
-                  >
-                    View
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+                View Payslip
+              </Link>
+            }
+          />
+        ))}
+      </MobileCardStack>
+    </>
   );
 }
 

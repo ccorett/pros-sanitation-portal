@@ -1,6 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import {
+  DesktopTableView,
+  MobileCardStack,
+  MobileRecordCard,
+} from "@/components/ui/MobileRecordCard";
 import { formatDisplayDate } from "@/lib/hr-mock-data";
 import type { VacationRequestDto } from "@/lib/vacation-request-service";
 import { workflowStatusClass } from "@/lib/vacation-workflow";
@@ -204,61 +209,113 @@ export function VacationRequestsSection({
             No vacation requests yet.
           </div>
         ) : (
-          <div className="glass-card portal-table-scroll rounded-2xl">
-            <table className="min-w-[900px] w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
-                  <th className="px-4 py-4 font-semibold sm:px-6">Start Date</th>
-                  <th className="px-4 py-4 font-semibold">End Date</th>
-                  <th className="px-4 py-4 font-semibold">Reason</th>
-                  <th className="px-4 py-4 font-semibold">Supervisor Status</th>
-                  <th className="px-4 py-4 font-semibold">Manager Status</th>
-                  <th className="px-4 py-4 font-semibold">Final Status</th>
-                  <th className="px-4 py-4 font-semibold sm:px-6">Date Submitted</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map((request) => (
-                  <tr
-                    key={request.id}
-                    className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
-                  >
-                    <td className="px-4 py-4 text-[#ebfbff]/80 sm:px-6">
-                      {formatDisplayDate(request.startDate)}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/80">
-                      {formatDisplayDate(request.endDate)}
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70">{request.reason}</td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${supervisorStatusClass(request.supervisorStatusLabel)}`}
+          <>
+            <DesktopTableView>
+              <div className="glass-card portal-table-scroll rounded-2xl">
+                <table className="min-w-[900px] w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
+                      <th className="px-4 py-4 font-semibold sm:px-6">Start Date</th>
+                      <th className="px-4 py-4 font-semibold">End Date</th>
+                      <th className="px-4 py-4 font-semibold">Reason</th>
+                      <th className="px-4 py-4 font-semibold">Supervisor Status</th>
+                      <th className="px-4 py-4 font-semibold">Manager Status</th>
+                      <th className="px-4 py-4 font-semibold">Final Status</th>
+                      <th className="px-4 py-4 font-semibold sm:px-6">Date Submitted</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {requests.map((request) => (
+                      <tr
+                        key={request.id}
+                        className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
                       >
-                        {request.supervisorStatusLabel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${managerStatusClass(request.managerStatusLabel)}`}
-                      >
-                        {request.managerStatusLabel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${workflowStatusClass(request.finalStatusLabel)}`}
-                      >
-                        {request.finalStatusLabel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-[#ebfbff]/70 sm:px-6">
-                      {formatDisplayDate(request.createdAt)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        <td className="px-4 py-4 text-[#ebfbff]/80 sm:px-6">
+                          {formatDisplayDate(request.startDate)}
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/80">
+                          {formatDisplayDate(request.endDate)}
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70">{request.reason}</td>
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${supervisorStatusClass(request.supervisorStatusLabel)}`}
+                          >
+                            {request.supervisorStatusLabel}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${managerStatusClass(request.managerStatusLabel)}`}
+                          >
+                            {request.managerStatusLabel}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${workflowStatusClass(request.finalStatusLabel)}`}
+                          >
+                            {request.finalStatusLabel}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-[#ebfbff]/70 sm:px-6">
+                          {formatDisplayDate(request.createdAt)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </DesktopTableView>
+
+            <MobileCardStack>
+              {requests.map((request) => (
+                <MobileRecordCard
+                  key={request.id}
+                  title={`${formatDisplayDate(request.startDate)} – ${formatDisplayDate(request.endDate)}`}
+                  fields={[
+                    {
+                      label: "Supervisor Status",
+                      value: (
+                        <span
+                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${supervisorStatusClass(request.supervisorStatusLabel)}`}
+                        >
+                          {request.supervisorStatusLabel}
+                        </span>
+                      ),
+                    },
+                    {
+                      label: "Manager Status",
+                      value: (
+                        <span
+                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${managerStatusClass(request.managerStatusLabel)}`}
+                        >
+                          {request.managerStatusLabel}
+                        </span>
+                      ),
+                    },
+                    {
+                      label: "Final Status",
+                      value: (
+                        <span
+                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${workflowStatusClass(request.finalStatusLabel)}`}
+                        >
+                          {request.finalStatusLabel}
+                        </span>
+                      ),
+                    },
+                  ]}
+                  detailFields={[
+                    { label: "Reason", value: request.reason },
+                    {
+                      label: "Date Submitted",
+                      value: formatDisplayDate(request.createdAt),
+                    },
+                  ]}
+                />
+              ))}
+            </MobileCardStack>
+          </>
         )}
       </div>
     </div>

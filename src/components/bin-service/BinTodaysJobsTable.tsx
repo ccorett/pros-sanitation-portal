@@ -1,6 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import {
+  DesktopTableView,
+  MobileCardStack,
+  MobileRecordCard,
+} from "@/components/ui/MobileRecordCard";
 import { CounterField } from "@/components/bin-service/CounterField";
 import {
   computeDaysSinceLastService,
@@ -216,96 +221,168 @@ export function BinTodaysJobsTable() {
         </p>
       ) : null}
 
-      <div className="glass-card portal-table-scroll rounded-2xl">
-        <table className="min-w-[1200px] w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
-              <th className="px-4 py-4 font-semibold sm:px-6">Location</th>
-              <th className="px-4 py-4 font-semibold">New Bins</th>
-              <th className="px-4 py-4 font-semibold">Regular Bins</th>
-              <th className="px-4 py-4 font-semibold">Total Bins</th>
-              <th className="px-4 py-4 font-semibold">Last Service Date</th>
-              <th className="px-4 py-4 font-semibold">Days Since Last Service</th>
-              <th className="px-4 py-4 font-semibold">Status</th>
-              <th className="px-4 py-4 font-semibold">Notes</th>
-              <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {jobs.map((job) => {
-              const styles = getRotationStatusStyles(job.rotation.color);
-              const daysSince = job.lastServiceDate
-                ? computeDaysSinceLastService(job.lastServiceDate)
-                : "—";
+      <DesktopTableView>
+        <div className="glass-card portal-table-scroll rounded-2xl">
+          <table className="min-w-[1200px] w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
+                <th className="px-4 py-4 font-semibold sm:px-6">Location</th>
+                <th className="px-4 py-4 font-semibold">New Bins</th>
+                <th className="px-4 py-4 font-semibold">Regular Bins</th>
+                <th className="px-4 py-4 font-semibold">Total Bins</th>
+                <th className="px-4 py-4 font-semibold">Last Service Date</th>
+                <th className="px-4 py-4 font-semibold">Days Since Last Service</th>
+                <th className="px-4 py-4 font-semibold">Status</th>
+                <th className="px-4 py-4 font-semibold">Notes</th>
+                <th className="px-4 py-4 font-semibold sm:px-6">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {jobs.map((job) => {
+                const styles = getRotationStatusStyles(job.rotation.color);
+                const daysSince = job.lastServiceDate
+                  ? computeDaysSinceLastService(job.lastServiceDate)
+                  : "—";
 
-              return (
-                <tr
-                  key={job.id}
-                  className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
+                return (
+                  <tr
+                    key={job.id}
+                    className="border-b border-[#ebfbff]/5 last:border-b-0 hover:bg-[#ebfbff]/[0.03]"
+                  >
+                    <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
+                      {job.siteName}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {job.setup.expectedNewBins}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {job.setup.expectedRegularBins}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {job.setup.expectedNewBins + job.setup.expectedRegularBins}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">
+                      {job.lastServiceDate ? formatBinDate(job.lastServiceDate) : "—"}
+                    </td>
+                    <td className="px-4 py-4 text-[#ebfbff]/70">{daysSince}</td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${styles.badge}`}
+                      >
+                        {job.rotation.label}
+                      </span>
+                    </td>
+                    <td className="max-w-[200px] px-4 py-4 text-[#ebfbff]/70">
+                      {job.displayNotes || "—"}
+                    </td>
+                    <td className="px-4 py-4 sm:px-6">
+                      <div className="flex min-w-[320px] flex-wrap gap-2">
+                        <Link
+                          href={`/jobs/bin-management/job/${job.id}`}
+                          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                        >
+                          Start Job
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => openComplete(job)}
+                          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                        >
+                          Complete Service
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openCannotAccess(job)}
+                          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#f5c542]/40 bg-[#f5c542]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                        >
+                          Cannot Access
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openIssue(job)}
+                          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                        >
+                          Report Issue
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </DesktopTableView>
+
+      <MobileCardStack>
+        {jobs.map((job) => {
+          const styles = getRotationStatusStyles(job.rotation.color);
+          const daysSince = job.lastServiceDate
+            ? computeDaysSinceLastService(job.lastServiceDate)
+            : "—";
+
+          return (
+            <MobileRecordCard
+              key={job.id}
+              title={job.siteName}
+              headerExtra={
+                <span
+                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${styles.badge}`}
                 >
-                  <td className="px-4 py-4 font-medium text-[#ebfbff] sm:px-6">
-                    {job.siteName}
-                  </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {job.setup.expectedNewBins}
-                  </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {job.setup.expectedRegularBins}
-                  </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {job.setup.expectedNewBins + job.setup.expectedRegularBins}
-                  </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">
-                    {job.lastServiceDate ? formatBinDate(job.lastServiceDate) : "—"}
-                  </td>
-                  <td className="px-4 py-4 text-[#ebfbff]/70">{daysSince}</td>
-                  <td className="px-4 py-4">
-                    <span
-                      className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${styles.badge}`}
-                    >
-                      {job.rotation.label}
-                    </span>
-                  </td>
-                  <td className="max-w-[200px] px-4 py-4 text-[#ebfbff]/70">
-                    {job.displayNotes || "—"}
-                  </td>
-                  <td className="px-4 py-4 sm:px-6">
-                    <div className="flex min-w-[320px] flex-wrap gap-2">
-                      <Link
-                        href={`/jobs/bin-management/job/${job.id}`}
-                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
-                      >
-                        Start Job
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => openComplete(job)}
-                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
-                      >
-                        Complete Service
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openCannotAccess(job)}
-                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#f5c542]/40 bg-[#f5c542]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
-                      >
-                        Cannot Access
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openIssue(job)}
-                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
-                      >
-                        Report Issue
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                  {job.rotation.label}
+                </span>
+              }
+              fields={[
+                {
+                  label: "Total Bins",
+                  value: job.setup.expectedNewBins + job.setup.expectedRegularBins,
+                },
+                {
+                  label: "Last Service",
+                  value: job.lastServiceDate ? formatBinDate(job.lastServiceDate) : "—",
+                },
+                { label: "Days Since", value: daysSince },
+              ]}
+              detailFields={[
+                { label: "New Bins", value: job.setup.expectedNewBins },
+                { label: "Regular Bins", value: job.setup.expectedRegularBins },
+                { label: "Notes", value: job.displayNotes || "—" },
+              ]}
+              actions={
+                <>
+                  <Link
+                    href={`/jobs/bin-management/job/${job.id}`}
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#6cc801]/40 bg-[#6cc801]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                  >
+                    Start Job
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => openComplete(job)}
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                  >
+                    Complete Service
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openCannotAccess(job)}
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#f5c542]/40 bg-[#f5c542]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                  >
+                    Cannot Access
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openIssue(job)}
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/10 px-3 py-2 text-xs font-semibold text-[#ebfbff]"
+                  >
+                    Report Issue
+                  </button>
+                </>
+              }
+            />
+          );
+        })}
+      </MobileCardStack>
 
       <button
         type="button"
