@@ -594,6 +594,22 @@ model BinServiceLog {
   @@map("bin_service_logs")
 }
 
+model BinLocationImportLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  fileName      String
+  importedById  String?  @db.Uuid
+  importedBy    String
+  importedAt    DateTime @default(now())
+  totalRows     Int
+  createdCount  Int
+  updatedCount  Int
+  skippedCount  Int
+  errorCount    Int
+
+  @@index([importedAt])
+  @@map("bin_location_import_logs")
+}
+
 enum InventoryCategory {
   EQUIPMENT
   CHEMICALS

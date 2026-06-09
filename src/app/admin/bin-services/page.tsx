@@ -1,6 +1,7 @@
 import { AdminBinAttentionSection } from "@/components/admin/AdminBinAttentionSection";
 import { AdminBinDueOverdueTable } from "@/components/admin/AdminBinDueOverdueTable";
 import { AdminBinManagementSection } from "@/components/admin/AdminBinManagementSection";
+import { BinLocationImportSection } from "@/components/admin/BinLocationImportSection";
 import { AdminBinRouteLocationsTable } from "@/components/admin/AdminBinRouteLocationsTable";
 import { AdminBackLink } from "@/components/admin/AdminBackLink";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
@@ -22,6 +23,7 @@ export default async function AdminBinServicesPage() {
       <div className="space-y-12">
         <AdminBackLink />
         <AdminBinManagementSection />
+        <BinLocationImportSection />
         <section className="space-y-4">
           <div>
             <h2 className="text-xl font-bold text-[#ebfbff]">Needs Attention</h2>
