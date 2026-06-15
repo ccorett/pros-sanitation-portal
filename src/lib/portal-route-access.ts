@@ -8,6 +8,7 @@ import { getDefaultResponsibilitiesForLevel } from "@/lib/employee-responsibilit
 import { canAccessGeneralJobs } from "@/lib/job-assignment-access";
 import { resolveEmployeeJobAssignments } from "@/lib/job-assignment-service";
 import { canAccessAdminModule } from "@/lib/access-levels";
+import { hasAdminAssistantResponsibility } from "@/lib/invoice-access";
 import {
   canAccessBinManagement,
   canAccessDelivery,
@@ -31,7 +32,9 @@ export type PortalFeature =
   | "managerApprovals"
   | "payslipAdministration"
   | "stockManagement"
-  | "teamCheckIn";
+  | "teamCheckIn"
+  | "invoiceManagement"
+  | "adminHub";
 
 export type PortalNavItem = {
   label: string;
@@ -91,6 +94,10 @@ const FEATURE_ACCESS: Record<
   admin: (ctx) =>
     ctx.accessLevel === AccessLevel.ADMIN ||
     ctx.accessLevel === AccessLevel.SUPER_ADMIN,
+  adminHub: (ctx) =>
+    canAccessAdminModule(ctx.accessLevel) || hasAdminAssistantResponsibility(ctx),
+  invoiceManagement: (ctx) =>
+    canAccessAdminModule(ctx.accessLevel) || hasAdminAssistantResponsibility(ctx),
   managerApprovals: (ctx) => isManagerOrAbove(ctx.accessLevel),
   payslipAdministration: (ctx) => isManagerOrAbove(ctx.accessLevel),
   stockManagement: (ctx) => isManagerOrAbove(ctx.accessLevel),
@@ -113,14 +120,20 @@ const NAV_CATALOG: PortalNavItem[] = [
     href: "/manager/approvals",
     feature: "managerApprovals",
   },
-  { label: "Admin", href: "/admin", feature: "admin" },
+  { label: "Admin", href: "/admin", feature: "adminHub" },
   { label: "My Profile", href: "/my-profile", feature: "myProfile" },
 ];
 
 const PATH_RULES: { prefix: string; feature: PortalFeature }[] = [
+  { prefix: "/admin/invoices", feature: "invoiceManagement" },
+  { prefix: "/admin/accounts", feature: "admin" },
+  { prefix: "/admin/approvals", feature: "admin" },
+  { prefix: "/admin/bin-services", feature: "admin" },
+  { prefix: "/admin/human-resources", feature: "admin" },
+  { prefix: "/admin/policies", feature: "admin" },
+  { prefix: "/admin", feature: "adminHub" },
   { prefix: "/manager", feature: "managerApprovals" },
   { prefix: "/admin/stock-management", feature: "stockManagement" },
-  { prefix: "/admin", feature: "admin" },
   { prefix: "/jobs/bin-management", feature: "binManagement" },
   { prefix: "/jobs/team-check-in", feature: "teamCheckIn" },
   { prefix: "/jobs/delivery", feature: "delivery" },

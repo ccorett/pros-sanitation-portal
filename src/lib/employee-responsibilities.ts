@@ -13,6 +13,7 @@ export const ALL_EMPLOYEE_RESPONSIBILITIES: EmployeeResponsibility[] = [
   EmployeeResponsibility.STOCK_ACCESS,
   EmployeeResponsibility.HR_REVIEW,
   EmployeeResponsibility.ADMIN_SUPPORT,
+  EmployeeResponsibility.ADMIN_ASSISTANT,
 ];
 
 export const RESPONSIBILITY_LABELS: Record<EmployeeResponsibility, string> = {
@@ -24,6 +25,7 @@ export const RESPONSIBILITY_LABELS: Record<EmployeeResponsibility, string> = {
   [EmployeeResponsibility.STOCK_ACCESS]: "Stock Access",
   [EmployeeResponsibility.HR_REVIEW]: "HR Review",
   [EmployeeResponsibility.ADMIN_SUPPORT]: "Admin Support",
+  [EmployeeResponsibility.ADMIN_ASSISTANT]: "Admin Assistant",
 };
 
 export function formatResponsibilityLabel(

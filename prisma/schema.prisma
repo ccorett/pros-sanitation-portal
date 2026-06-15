@@ -119,6 +119,7 @@ enum EmployeeResponsibility {
   STOCK_ACCESS
   HR_REVIEW
   ADMIN_SUPPORT
+  ADMIN_ASSISTANT
 
   @@map("EmployeeResponsibility")
 }
@@ -982,4 +983,133 @@ model AttendanceLog {
   @@index([supervisorId])
   @@index([employeeId])
   @@map("attendance_logs")
+}
+
+enum InvoiceBillingCycle {
+  MONTHLY
+  ANNUALLY
+
+  @@map("InvoiceBillingCycle")
+}
+
+enum InvoiceServiceType {
+  CLEANING_SERVICES
+  BIN_SERVICES
+  OTHER
+
+  @@map("InvoiceServiceType")
+}
+
+enum InvoiceClientStatus {
+  ACTIVE
+  INACTIVE
+  REMOVED
+
+  @@map("InvoiceClientStatus")
+}
+
+enum InvoiceScheduleStatus {
+  UPCOMING
+  DUE_SOON
+  DUE
+  GENERATED
+  SUBMITTED
+  SNOOZED
+  OVERDUE
+
+  @@map("InvoiceScheduleStatus")
+}
+
+enum InvoiceAlertType {
+  INVOICE_REMINDER
+
+  @@map("InvoiceAlertType")
+}
+
+enum InvoiceAlertLogType {
+  FIVE_DAY_REMINDER
+  DUE_DATE_REMINDER
+
+  @@map("InvoiceAlertLogType")
+}
+
+enum InvoiceAlertLogStatus {
+  SENT
+  FAILED
+  SKIPPED
+
+  @@map("InvoiceAlertLogStatus")
+}
+
+model InvoiceClient {
+  id                   String              @id @default(uuid()) @db.Uuid
+  clientName           String
+  serviceType          InvoiceServiceType  @default(CLEANING_SERVICES)
+  billingCycle         InvoiceBillingCycle
+  invoiceCountPerCycle Int                 @default(1)
+  usualDueDay          Int                 @default(1)
+  annualDueMonth       Int?
+  status               InvoiceClientStatus @default(ACTIVE)
+  remarks              String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  schedules InvoiceSchedule[]
+
+  @@index([status])
+  @@index([clientName, serviceType, billingCycle])
+  @@map("invoice_clients")
+}
+
+model InvoiceSchedule {
+  id           String                @id @default(uuid()) @db.Uuid
+  clientId     String                @db.Uuid
+  cycleMonth   Int
+  cycleYear    Int
+  dueDate      DateTime              @db.Date
+  reminderDate DateTime              @db.Date
+  status       InvoiceScheduleStatus @default(UPCOMING)
+  generatedAt  DateTime?
+  submittedAt  DateTime?
+  snoozedUntil DateTime?             @db.Date
+  remarks      String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  client InvoiceClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, cycleMonth, cycleYear])
+  @@index([dueDate])
+  @@index([status])
+  @@map("invoice_schedules")
+}
+
+model InvoiceAlertRecipient {
+  id        String           @id @default(uuid()) @db.Uuid
+  email     String
+  name      String
+  roleLabel String?
+  isActive  Boolean          @default(true)
+  alertType InvoiceAlertType @default(INVOICE_REMINDER)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([email, alertType])
+  @@map("invoice_alert_recipients")
+}
+
+model InvoiceAlertLog {
+  id             String                @id @default(uuid()) @db.Uuid
+  alertDate      DateTime              @db.Date
+  alertType      InvoiceAlertLogType
+  recipientEmail String
+  invoiceCount   Int
+  sentAt         DateTime?
+  status         InvoiceAlertLogStatus
+  errorMessage   String?
+  createdAt      DateTime              @default(now())
+
+  @@unique([alertDate, alertType, recipientEmail])
+  @@index([alertDate])
+  @@map("invoice_alert_logs")
 }

@@ -14,6 +14,14 @@ import {
   listPurchasingListItems,
 } from "@/lib/inventory-service";
 import { countActivePolicies } from "@/lib/policy-service";
+import { countOpenInvoiceSchedules } from "@/lib/invoice-service";
+import {
+  buildInvoiceAccessContext,
+  canAccessInvoiceManagement,
+  hasAdminAssistantResponsibility,
+  resolveEmployeeResponsibilitiesForActor,
+} from "@/lib/invoice-access";
+import { canAccessAdminModule } from "@/lib/access-levels";
 import { formatEditTimestamp } from "@/lib/admin-format";
 import { prisma } from "@/lib/prisma";
 
@@ -36,6 +44,7 @@ export type AdminHubSummaryCounts = {
   binAttentionItems: number;
   purchasingListItems: number;
   activePolicies: number;
+  openInvoiceSchedules: number;
 };
 
 export type AdminHubSummary = {
@@ -62,6 +71,7 @@ export async function getAdminHubSummaryCounts(
     binSites,
     purchasingListItems,
     activePolicies,
+    openInvoiceSchedules,
   ] = await Promise.all([
     prisma.equipmentRequest.count({
       where: { status: EquipmentRequestStatus.PENDING },
@@ -82,6 +92,7 @@ export async function getAdminHubSummaryCounts(
     listBinFieldSitesForActor(actor),
     listPurchasingListItems(),
     countActivePolicies(),
+    countOpenInvoiceSchedules(),
   ]);
 
   return {
@@ -94,6 +105,7 @@ export async function getAdminHubSummaryCounts(
     binAttentionItems: filterAttentionSites(binSites).length,
     purchasingListItems: purchasingListItems.length,
     activePolicies,
+    openInvoiceSchedules,
   };
 }
 
@@ -111,7 +123,8 @@ function humanResourcesCount(counts: AdminHubSummaryCounts): number {
   return (
     counts.pendingVacationRequests +
     counts.pendingJobLetterRequests +
-    counts.pendingPayslipRequests
+    counts.pendingPayslipRequests +
+    counts.activePolicies
   );
 }
 
@@ -198,15 +211,13 @@ export async function buildAdminHubCards(
       lastEditedLabel: inventoryLastEdited,
     },
     {
-      id: "policies",
-      title: "Policy Management",
+      id: "invoices",
+      title: "Invoice Management",
       description:
-        "Add, edit, and archive company policies. Staff see active policies only.",
-      href: "/admin/policies",
-      count: counts.activePolicies,
-      lastEditedLabel: latestPolicy
-        ? formatEditTimestamp(latestPolicy.updatedAt.toISOString())
-        : null,
+        "Track recurring client invoices, due dates, reminders and submission status.",
+      href: "/admin/invoices",
+      count: counts.openInvoiceSchedules,
+      lastEditedLabel: null,
     },
     {
       id: "bin-services",
@@ -222,18 +233,47 @@ export async function buildAdminHubCards(
     {
       id: "human-resources",
       title: "Human Resources",
-      description: "Vacation, job letter, and payslip request approvals.",
+      description:
+        "Vacation, job letter, payslip requests, payslip archive, and policy management.",
       href: "/admin/human-resources",
       count: humanResourcesCount(counts),
       lastEditedLabel: latestHrActivity
         ? formatEditTimestamp(latestHrActivity.updatedAt.toISOString())
-        : null,
+        : latestPolicy
+          ? formatEditTimestamp(latestPolicy.updatedAt.toISOString())
+          : null,
     },
   ];
+}
+
+function filterAdminHubCardsForActor(
+  cards: AdminHubCard[],
+  actor: Employee,
+  responsibilities: Awaited<ReturnType<typeof resolveEmployeeResponsibilitiesForActor>>,
+): AdminHubCard[] {
+  const accessContext = buildInvoiceAccessContext(actor, responsibilities);
+  const isFullAdmin = canAccessAdminModule(actor.accessLevel);
+  const isAdminAssistantOnly =
+    !isFullAdmin && hasAdminAssistantResponsibility(accessContext);
+
+  if (isAdminAssistantOnly) {
+    return cards.filter((card) => card.id === "invoices");
+  }
+
+  return cards.filter((card) => {
+    if (card.id === "invoices") {
+      return canAccessInvoiceManagement(accessContext);
+    }
+    return isFullAdmin;
+  });
 }
 
 export async function getAdminHubSummary(actor: Employee): Promise<AdminHubSummary> {
   const counts = await getAdminHubSummaryCounts(actor);
   const cards = await buildAdminHubCards(actor, counts);
-  return { counts, cards };
+  const responsibilities = await resolveEmployeeResponsibilitiesForActor(actor);
+  return {
+    counts,
+    cards: filterAdminHubCardsForActor(cards, actor, responsibilities),
+  };
 }
