@@ -16,7 +16,9 @@ import {
   canManageInvoiceAlertRecipients,
   canManageInvoiceClients,
   canProcessInvoiceSchedules,
+  canSendInvoiceStatusEmail,
 } from "../src/lib/invoice-access";
+import { buildManualStatusUpdateEmailBody } from "../src/lib/invoice-email";
 import {
   computeDueDateForCycle,
   computeNextCycle,
@@ -24,13 +26,16 @@ import {
   createInvoiceAlertRecipient,
   createInvoiceClient,
   deriveScheduleStatus,
+  getInvoiceStatusEmailSummary,
   listInvoiceClients,
   markInvoiceScheduleGenerated,
   markInvoiceScheduleSubmitted,
   sendInvoiceReminders,
+  sendManualInvoiceStatusUpdate,
   snoozeInvoiceSchedule,
   softRemoveInvoiceClient,
 } from "../src/lib/invoice-service";
+import { InvoiceAlertLogType } from "@prisma/client";
 import { getInvoiceStatusColor } from "../src/lib/invoice-status";
 
 const prisma = new PrismaClient();
@@ -84,6 +89,53 @@ async function main() {
     "Admin assistant should not manage recipients",
   );
   assert(canProcessInvoiceSchedules(assistantCtx), "Admin assistant should process schedules");
+  assert(canSendInvoiceStatusEmail(adminCtx), "Admin should send status emails");
+  assert(canSendInvoiceStatusEmail(assistantCtx), "Admin assistant should send status emails");
+  assert(!canSendInvoiceStatusEmail(memberCtx), "Team member should not send status emails");
+
+  const statusEmailBody = buildManualStatusUpdateEmailBody({
+    sentAt: "2026-06-03",
+    sentBy: "Test Admin",
+    summary: {
+      dueSoon: 1,
+      dueToday: 2,
+      overdue: 0,
+      generated: 3,
+      submitted: 4,
+      snoozed: 1,
+    },
+    schedules: [
+      {
+        clientName: "Sample Client",
+        serviceTypeLabel: "Cleaning Services",
+        billingCycleLabel: "Monthly",
+        dueDate: "2026-06-01",
+        statusLabel: "Due Soon",
+        remarks: "Test remark",
+      },
+    ],
+  });
+  assert(statusEmailBody.includes("Invoice Status Update"), "Status email should include title");
+  assert(statusEmailBody.includes("Due Soon: 1"), "Status email should include summary counts");
+  assert(statusEmailBody.includes("Sample Client"), "Status email should include schedule rows");
+
+  const summary = await getInvoiceStatusEmailSummary();
+  assert(
+    typeof summary.generated === "number" && typeof summary.submitted === "number",
+    "Status summary should include generated and submitted counts",
+  );
+
+  const manualStatusWithoutRecipients = await sendManualInvoiceStatusUpdate({
+    sentBy: "Invoice Test",
+  });
+  assert(!manualStatusWithoutRecipients.ok, "Manual status send should fail without recipients");
+
+  const manualStatusLog = await prisma.invoiceAlertLog.findFirst({
+    where: { alertType: InvoiceAlertLogType.MANUAL_STATUS_UPDATE },
+    orderBy: { createdAt: "desc" },
+  });
+  assert(manualStatusLog !== null, "Manual status send should create InvoiceAlertLog entry");
+  assert(manualStatusLog?.sentBy === "Invoice Test", "Manual status log should record sentBy");
 
   const nextCycle = computeNextCycle({ billingCycle: InvoiceBillingCycle.MONTHLY });
   const dueDate = computeDueDateForCycle({

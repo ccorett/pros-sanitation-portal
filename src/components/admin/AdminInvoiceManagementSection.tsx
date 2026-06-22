@@ -31,6 +31,7 @@ type InvoicePermissions = {
   canManageClients: boolean;
   canManageRecipients: boolean;
   canProcessSchedules: boolean;
+  canSendStatusEmail: boolean;
 };
 
 const BILLING_CYCLES: Array<{ value: InvoiceBillingCycle; label: string }> = [
@@ -56,11 +57,13 @@ export function AdminInvoiceManagementSection() {
     canManageClients: false,
     canManageRecipients: false,
     canProcessSchedules: false,
+    canSendStatusEmail: false,
   });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [sendingStatusEmail, setSendingStatusEmail] = useState(false);
   const [showAddClient, setShowAddClient] = useState(false);
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [clientForm, setClientForm] = useState({
@@ -116,6 +119,7 @@ export function AdminInvoiceManagementSection() {
           canManageClients: false,
           canManageRecipients: false,
           canProcessSchedules: false,
+          canSendStatusEmail: false,
         },
       );
     } catch (cause) {
@@ -239,6 +243,27 @@ export function AdminInvoiceManagementSection() {
       setError(cause instanceof Error ? cause.message : "Unable to update schedule.");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function handleSendStatusEmail() {
+    setSendingStatusEmail(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const response = await fetch("/api/admin/invoices/send-status", {
+        method: "POST",
+      });
+      const data = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !data.ok) {
+        setError("Status email failed. Check email configuration.");
+        return;
+      }
+      setMessage("Status email sent successfully.");
+    } catch {
+      setError("Status email failed. Check email configuration.");
+    } finally {
+      setSendingStatusEmail(false);
     }
   }
 
@@ -798,7 +823,18 @@ export function AdminInvoiceManagementSection() {
       </section>
 
       <section className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">
-        <h2 className="text-lg font-bold text-[#ebfbff]">Invoice Schedule</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-[#ebfbff]">Invoice Schedule</h2>
+          {permissions.canSendStatusEmail ? (
+            <Button
+              type="button"
+              disabled={sendingStatusEmail}
+              onClick={() => void handleSendStatusEmail()}
+            >
+              {sendingStatusEmail ? "Sending..." : "Send Status"}
+            </Button>
+          ) : null}
+        </div>
         {schedules.length === 0 ? (
           <p className="text-sm text-[#ebfbff]/55">No invoice schedules yet.</p>
         ) : (

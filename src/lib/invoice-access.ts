@@ -37,6 +37,12 @@ export function canProcessInvoiceSchedules(
   return canAccessInvoiceManagement(ctx);
 }
 
+export function canSendInvoiceStatusEmail(
+  ctx: Pick<EmployeeAccessContext, "accessLevel" | "responsibilities">,
+): boolean {
+  return canAccessInvoiceManagement(ctx);
+}
+
 export async function resolveEmployeeResponsibilitiesForActor(
   employee: Pick<Employee, "id" | "accessLevel" | "operationalGroup">,
 ): Promise<EmployeeResponsibility[]> {

@@ -9,6 +9,8 @@ import {
   buildInvoiceAccessContext,
   canManageInvoiceAlertRecipients,
   canManageInvoiceClients,
+  canProcessInvoiceSchedules,
+  canSendInvoiceStatusEmail,
   resolveEmployeeResponsibilitiesForActor,
 } from "@/lib/invoice-access";
 import { requireInvoiceApiActor } from "@/lib/require-invoice-api";
@@ -42,7 +44,8 @@ export async function GET() {
     permissions: {
       canManageClients: canManageInvoiceClients(accessContext),
       canManageRecipients: canManageInvoiceAlertRecipients(accessContext),
-      canProcessSchedules: true,
+      canProcessSchedules: canProcessInvoiceSchedules(accessContext),
+      canSendStatusEmail: canSendInvoiceStatusEmail(accessContext),
     },
   });
 }

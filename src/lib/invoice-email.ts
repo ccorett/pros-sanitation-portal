@@ -110,3 +110,57 @@ export function buildOverdueReminderEmailBody(
     `Log in to the ${COMPANY.shortName} portal to update invoice status.`,
   ].join("\n");
 }
+
+export function buildManualStatusUpdateEmailBody(input: {
+  sentAt: string;
+  sentBy: string;
+  summary: {
+    dueSoon: number;
+    dueToday: number;
+    overdue: number;
+    generated: number;
+    submitted: number;
+    snoozed: number;
+  };
+  schedules: Array<{
+    clientName: string;
+    serviceTypeLabel: string;
+    billingCycleLabel: string;
+    dueDate: string;
+    statusLabel: string;
+    remarks: string | null;
+  }>;
+}): string {
+  const tableHeader =
+    "Client Name | Service Type | Billing Cycle | Due Date | Status | Remarks";
+  const tableRows = input.schedules.map((schedule) =>
+    [
+      schedule.clientName,
+      schedule.serviceTypeLabel,
+      schedule.billingCycleLabel,
+      schedule.dueDate,
+      schedule.statusLabel,
+      schedule.remarks?.trim() || "—",
+    ].join(" | "),
+  );
+
+  return [
+    "Invoice Status Update",
+    "",
+    `Date sent: ${input.sentAt}`,
+    `Sent by: ${input.sentBy}`,
+    "",
+    "Summary counts:",
+    `- Due Soon: ${input.summary.dueSoon}`,
+    `- Due Today: ${input.summary.dueToday}`,
+    `- Overdue: ${input.summary.overdue}`,
+    `- Generated: ${input.summary.generated}`,
+    `- Submitted: ${input.summary.submitted}`,
+    `- Snoozed: ${input.summary.snoozed}`,
+    "",
+    tableHeader,
+    ...tableRows,
+    "",
+    `Log in to the ${COMPANY.shortName} portal to review invoice schedules.`,
+  ].join("\n");
+}

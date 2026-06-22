@@ -5,6 +5,7 @@ import {
   canManageInvoiceAlertRecipients,
   canManageInvoiceClients,
   canProcessInvoiceSchedules,
+  canSendInvoiceStatusEmail,
   resolveEmployeeResponsibilitiesForActor,
 } from "@/lib/invoice-access";
 import {
@@ -85,6 +86,21 @@ export async function requireInvoiceProcessApiActor() {
   }
 
   if (!canProcessInvoiceSchedules(result.accessContext)) {
+    return {
+      error: NextResponse.json({ error: "Forbidden." }, { status: 403 }),
+    } as const;
+  }
+
+  return result;
+}
+
+export async function requireInvoiceStatusEmailApiActor() {
+  const result = await requireInvoiceApiActor();
+  if ("error" in result) {
+    return result;
+  }
+
+  if (!canSendInvoiceStatusEmail(result.accessContext)) {
     return {
       error: NextResponse.json({ error: "Forbidden." }, { status: 403 }),
     } as const;

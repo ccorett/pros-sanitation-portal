@@ -1080,6 +1080,7 @@ enum InvoiceAlertLogType {
   FIVE_DAY_REMINDER
   DUE_DATE_REMINDER
   OVERDUE_REMINDER
+  MANUAL_STATUS_UPDATE
 
   @@map("InvoiceAlertLogType")
 }
@@ -1155,6 +1156,7 @@ model InvoiceAlertLog {
   alertType      InvoiceAlertLogType
   recipientEmail String
   invoiceCount   Int
+  sentBy         String?
   sentAt         DateTime?
   status         InvoiceAlertLogStatus
   errorMessage   String?
