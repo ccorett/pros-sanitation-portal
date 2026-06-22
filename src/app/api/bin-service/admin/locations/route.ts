@@ -2,7 +2,7 @@ import { listAdminBinLocationRows } from "@/lib/admin-bin-locations-service";
 import { requireAdminApiActor } from "@/lib/require-admin-api";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request: Request) {
   const authResult = await requireAdminApiActor();
   if ("error" in authResult) {
     return authResult.error;

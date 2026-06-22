@@ -16,6 +16,10 @@ import { NextResponse } from "next/server";
  * Protect with Authorization: Bearer $ADMIN_API_SECRET
  * or ?secret=$ADMIN_API_SECRET when invoking manually.
  */
+export async function GET(request: Request) {
+  return POST(request);
+}
+
 export async function POST(request: Request) {
   if (!verifyInvoiceCronSecret(request)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });

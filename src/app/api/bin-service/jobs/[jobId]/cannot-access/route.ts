@@ -1,4 +1,4 @@
-import { requireBinApiAccess } from "@/lib/bin-service/api-auth";
+import { requireBinFieldApiAccess } from "@/lib/bin-service/api-auth";
 import { assertBinJobAccess } from "@/lib/bin-service/field-service";
 import { markBinJobCannotAccess } from "@/lib/bin-service/service";
 import { NextResponse } from "next/server";
@@ -8,7 +8,7 @@ type RouteContext = {
 };
 
 export async function POST(request: Request, context: RouteContext) {
-  const access = await requireBinApiAccess();
+  const access = await requireBinFieldApiAccess(request, "bin-service/jobs/cannot-access");
   if ("error" in access) return access.error;
 
   const { jobId } = await context.params;

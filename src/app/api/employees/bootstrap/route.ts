@@ -1,4 +1,3 @@
-import { auth } from "@/lib/auth";
 import { createEmployeeWithAllocatedId } from "@/lib/employee-id";
 import {
   isEmployeeDepartment,
@@ -8,8 +7,12 @@ import {
 } from "@/lib/employee-signup-options";
 import { updateEmployeeProfile } from "@/lib/employee-profile-service";
 import { prisma } from "@/lib/prisma";
+import {
+  resolveAuthenticatedSession,
+  sessionExpiredApiResponse,
+  unauthorizedApiResponse,
+} from "@/lib/require-authenticated-session";
 import { validateEmployeeSignup } from "@/lib/signup-access";
-import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 const PROFILE_NOT_FOUND_MESSAGE =
@@ -30,13 +33,17 @@ type BootstrapBody = {
 };
 
 export async function POST(request: NextRequest) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const authResult = await resolveAuthenticatedSession({ touch: true });
 
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  if (authResult.status === "unauthenticated") {
+    return unauthorizedApiResponse();
   }
+
+  if (authResult.status === "expired") {
+    return sessionExpiredApiResponse();
+  }
+
+  const { session } = authResult;
 
   const body = (await request.json()) as BootstrapBody;
 

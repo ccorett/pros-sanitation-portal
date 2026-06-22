@@ -1,16 +1,11 @@
 import { AccountStatus } from "@prisma/client";
+import { verifyAdminApiSecret } from "@/lib/admin-api-secret";
 import { resetLoginAttempts } from "@/lib/login-attempts";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
 function isAuthorized(request: NextRequest): boolean {
-  const secret = process.env.ADMIN_API_SECRET;
-  if (!secret) return false;
-
-  const header = request.headers.get("authorization");
-  if (!header?.startsWith("Bearer ")) return false;
-
-  return header.slice("Bearer ".length) === secret;
+  return verifyAdminApiSecret(request);
 }
 
 export async function POST(request: NextRequest) {

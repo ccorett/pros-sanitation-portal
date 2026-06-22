@@ -3,20 +3,28 @@ import {
   updateEmployeeProfile,
 } from "@/lib/employee-profile-service";
 import { getEmployeePortalAccess } from "@/lib/employee-portal-access";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import {
+  resolveAuthenticatedSession,
+  sessionExpiredApiResponse,
+  unauthorizedApiResponse,
+} from "@/lib/require-authenticated-session";
 import { NextRequest, NextResponse } from "next/server";
 
 const PROFILE_NOT_FOUND_MESSAGE =
   "Employee profile not found. Contact admin.";
 
 export async function GET() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const authResult = await resolveAuthenticatedSession();
 
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  if (authResult.status === "unauthenticated") {
+    return unauthorizedApiResponse();
   }
 
+  if (authResult.status === "expired") {
+    return sessionExpiredApiResponse();
+  }
+
+  const { session } = authResult;
   const access = await getEmployeePortalAccess(session.user.id);
 
   if (!access.allowed) {
@@ -33,12 +41,17 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const authResult = await resolveAuthenticatedSession({ touch: true });
 
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  if (authResult.status === "unauthenticated") {
+    return unauthorizedApiResponse();
   }
 
+  if (authResult.status === "expired") {
+    return sessionExpiredApiResponse();
+  }
+
+  const { session } = authResult;
   const access = await getEmployeePortalAccess(session.user.id);
 
   if (!access.allowed) {

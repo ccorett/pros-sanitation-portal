@@ -1,16 +1,33 @@
 import {
   AccessLevel,
+  AccountAuditAction,
   AccountStatus,
   EmployeeResponsibility,
   EmploymentStatus,
   OperationalGroup,
+  SecurityAuditEventType,
   type Employee,
   type Prisma,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { recordSecurityAuditEvent } from "@/lib/security-audit-log";
 
 export const ACCOUNT_RETENTION_DAYS = 90;
 export const FORMER_EMPLOYEE_LABEL = "Former Employee";
+export const PURGE_SYSTEM_ACTOR = "SYSTEM";
+
+export const PURGE_PRESERVED_RECORD_TYPES = [
+  "job service logs (anonymized)",
+  "vacation requests (anonymized)",
+  "job letter requests (anonymized)",
+  "payslip requests (anonymized)",
+  "payslips (anonymized)",
+  "account audit logs (employee reference cleared)",
+  "assigned jobs (anonymized assignment)",
+  "attendance logs (anonymized)",
+  "equipment requests (anonymized)",
+  "bin service logs (anonymized)",
+] as const;
 
 export type AccountRestoreSnapshot = {
   accessLevel: AccessLevel;
@@ -100,6 +117,60 @@ export function parseAccountRestoreSnapshot(
   };
 }
 
+export function formatPurgeAuditNotes(input: {
+  employeeName: string;
+  purgedAt: Date;
+  recordsPreserved: readonly string[];
+}): string {
+  return [
+    `Account Purged: ${input.employeeName}`,
+    `Purged At: ${input.purgedAt.toISOString()}`,
+    `Purged By: ${PURGE_SYSTEM_ACTOR}`,
+    `Records Preserved: ${input.recordsPreserved.join(", ")}`,
+  ].join("\n");
+}
+
+export async function getRemovedAccountPurgeSkipReason(
+  employee: Pick<Employee, "accessLevel">,
+): Promise<string | null> {
+  if (employee.accessLevel === AccessLevel.SUPER_ADMIN) {
+    return "Super Admin accounts are never purged.";
+  }
+
+  if (employee.accessLevel === AccessLevel.ADMIN) {
+    const activeAdminCount = await prisma.employee.count({
+      where: {
+        accountStatus: { not: AccountStatus.REMOVED },
+        accessLevel: { in: [AccessLevel.ADMIN, AccessLevel.SUPER_ADMIN] },
+      },
+    });
+
+    if (activeAdminCount === 0) {
+      return "Last active admin protection: no active administrators remain.";
+    }
+  }
+
+  return null;
+}
+
+export type PurgeExpiredAccountEntry = {
+  employeeId: string;
+  employeeName: string;
+  status: "purged" | "skipped" | "error";
+  purgedAt?: string;
+  purgedBy?: typeof PURGE_SYSTEM_ACTOR;
+  recordsPreserved?: readonly string[];
+  skipReason?: string;
+  error?: string;
+};
+
+export type PurgeExpiredAccountsResult = {
+  purged: number;
+  skipped: number;
+  errors: number;
+  entries: PurgeExpiredAccountEntry[];
+};
+
 export function formatRetentionAuditNotes(input: {
   deletedBy: string;
   employeeName: string;
@@ -138,6 +209,9 @@ type RetentionDb = Pick<
   | "payslipRequest"
   | "payslip"
   | "accountAuditLog"
+  | "attendanceLog"
+  | "equipmentRequest"
+  | "binServiceLog"
 >;
 
 export async function anonymizeEmployeeHistoricalRecords(
@@ -185,13 +259,44 @@ export async function anonymizeEmployeeHistoricalRecords(
       where: { employeeId },
       data: { employeeId: null },
     }),
+    db.attendanceLog.updateMany({
+      where: { employeeId },
+      data: {
+        employeeId: null,
+        employeeDisplayName: FORMER_EMPLOYEE_LABEL,
+      },
+    }),
+    db.attendanceLog.updateMany({
+      where: { supervisorId: employeeId },
+      data: {
+        supervisorId: null,
+        supervisorDisplayName: FORMER_EMPLOYEE_LABEL,
+      },
+    }),
+    db.equipmentRequest.updateMany({
+      where: { requestedById: employeeId },
+      data: {
+        requestedByName: FORMER_EMPLOYEE_LABEL,
+        requestedByEmail: "",
+      },
+    }),
+    db.equipmentRequest.updateMany({
+      where: { reviewedById: employeeId },
+      data: {
+        reviewedByName: FORMER_EMPLOYEE_LABEL,
+      },
+    }),
+    db.binServiceLog.updateMany({
+      where: { technicianId: employeeId },
+      data: {
+        technicianId: null,
+        technicianDisplayName: FORMER_EMPLOYEE_LABEL,
+      },
+    }),
   ]);
 }
 
-export async function purgeExpiredRemovedAccounts(): Promise<{
-  purged: number;
-  employeeIds: string[];
-}> {
+export async function purgeExpiredRemovedAccounts(): Promise<PurgeExpiredAccountsResult> {
   const expired = await prisma.employee.findMany({
     where: {
       accountStatus: AccountStatus.REMOVED,
@@ -202,61 +307,118 @@ export async function purgeExpiredRemovedAccounts(): Promise<{
       userId: true,
       firstName: true,
       lastName: true,
+      accessLevel: true,
     },
   });
 
-  const purgedIds: string[] = [];
+  const entries: PurgeExpiredAccountEntry[] = [];
 
   for (const employee of expired) {
+    const employeeName = employeeDisplayName(employee);
+    const skipReason = await getRemovedAccountPurgeSkipReason(employee);
+
+    if (skipReason) {
+      entries.push({
+        employeeId: employee.id,
+        employeeName,
+        status: "skipped",
+        skipReason,
+      });
+      continue;
+    }
+
     try {
-    await prisma.$transaction(async (tx) => {
-      await anonymizeEmployeeHistoricalRecords(employee.id, tx);
+      const purgedAt = new Date();
 
-      await tx.employeeResponsibilityEntry.deleteMany({
-        where: { employeeId: employee.id },
-      });
-      await tx.jobAssignment.deleteMany({
-        where: { employeeId: employee.id },
-      });
-      await tx.session.deleteMany({
-        where: { userId: employee.userId },
-      });
-      await tx.account.deleteMany({
-        where: { userId: employee.userId },
+      await prisma.$transaction(async (tx) => {
+        await tx.accountAuditLog.create({
+          data: {
+            employeeId: employee.id,
+            employeeName,
+            action: AccountAuditAction.ACCOUNT_REMOVED,
+            previousValue: "Removed",
+            newValue: "Purged",
+            changedBy: PURGE_SYSTEM_ACTOR,
+            changedAt: purgedAt,
+            notes: formatPurgeAuditNotes({
+              employeeName,
+              purgedAt,
+              recordsPreserved: PURGE_PRESERVED_RECORD_TYPES,
+            }),
+          },
+        });
+
+        await anonymizeEmployeeHistoricalRecords(employee.id, tx);
+
+        await tx.employeeResponsibilityEntry.deleteMany({
+          where: { employeeId: employee.id },
+        });
+        await tx.jobAssignment.deleteMany({
+          where: { employeeId: employee.id },
+        });
+        await tx.session.deleteMany({
+          where: { userId: employee.userId },
+        });
+        await tx.account.deleteMany({
+          where: { userId: employee.userId },
+        });
+
+        await tx.job.updateMany({
+          where: { assignedEmployeeId: employee.id },
+          data: {
+            assignedEmployeeId: null,
+            assignedEmployeeName: FORMER_EMPLOYEE_LABEL,
+            assignedEmployeeEmail: null,
+          },
+        });
+
+        await tx.deliveryRequest.updateMany({
+          where: { assignedDriverId: employee.id },
+          data: {
+            assignedDriverId: null,
+            assignedDriverName: null,
+          },
+        });
+
+        await tx.employee.delete({
+          where: { id: employee.id },
+        });
       });
 
-      await tx.job.updateMany({
-        where: { assignedEmployeeId: employee.id },
-        data: {
-          assignedEmployeeId: null,
-          assignedEmployeeName: FORMER_EMPLOYEE_LABEL,
-          assignedEmployeeEmail: null,
-        },
+      entries.push({
+        employeeId: employee.id,
+        employeeName,
+        status: "purged",
+        purgedAt: purgedAt.toISOString(),
+        purgedBy: PURGE_SYSTEM_ACTOR,
+        recordsPreserved: PURGE_PRESERVED_RECORD_TYPES,
       });
 
-      await tx.deliveryRequest.updateMany({
-        where: { assignedDriverId: employee.id },
-        data: {
-          assignedDriverId: null,
-          assignedDriverName: null,
-        },
+      await recordSecurityAuditEvent({
+        eventType: SecurityAuditEventType.ACCOUNT_PURGED,
+        email: null,
+        accessLevel: employee.accessLevel,
+        message: `Account purged: ${employeeName}`,
+        result: "success",
       });
-
-      await tx.employee.delete({
-        where: { id: employee.id },
-      });
-    });
-
-    purgedIds.push(employee.id);
     } catch (error) {
-      console.warn(
-        `Skipped purge for employee ${employee.id}:`,
-        error instanceof Error ? error.message : error,
-      );
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`Skipped purge for employee ${employee.id}:`, message);
+      entries.push({
+        employeeId: employee.id,
+        employeeName,
+        status: "error",
+        error: message,
+      });
     }
   }
 
-  return { purged: purgedIds.length, employeeIds: purgedIds };
+  return {
+    purged: entries.filter((entry) => entry.status === "purged").length,
+    skipped: entries.filter((entry) => entry.status === "skipped").length,
+    errors: entries.filter((entry) => entry.status === "error").length,
+    entries,
+  };
 }
 
 export async function isRemovedEmployeeEmail(email: string): Promise<boolean> {

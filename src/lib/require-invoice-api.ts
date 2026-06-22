@@ -1,4 +1,3 @@
-import { auth } from "@/lib/auth";
 import { getEmployeePortalAccess } from "@/lib/employee-portal-access";
 import {
   buildInvoiceAccessContext,
@@ -8,20 +7,25 @@ import {
   canProcessInvoiceSchedules,
   resolveEmployeeResponsibilitiesForActor,
 } from "@/lib/invoice-access";
-import { headers } from "next/headers";
+import {
+  resolveAuthenticatedSession,
+  sessionExpiredApiResponse,
+  unauthorizedApiResponse,
+} from "@/lib/require-authenticated-session";
 import { NextResponse } from "next/server";
 
 export async function requireInvoiceApiActor() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const authResult = await resolveAuthenticatedSession();
 
-  if (!session) {
-    return {
-      error: NextResponse.json({ error: "Unauthorized." }, { status: 401 }),
-    } as const;
+  if (authResult.status === "unauthenticated") {
+    return { error: unauthorizedApiResponse() } as const;
   }
 
+  if (authResult.status === "expired") {
+    return { error: sessionExpiredApiResponse() } as const;
+  }
+
+  const { session } = authResult;
   const access = await getEmployeePortalAccess(session.user.id);
 
   if (!access.allowed || access.pendingVerification) {
@@ -89,13 +93,4 @@ export async function requireInvoiceProcessApiActor() {
   return result;
 }
 
-export function verifyInvoiceCronSecret(request: Request): boolean {
-  const configured = process.env.ADMIN_API_SECRET?.trim();
-  if (!configured) {
-    return process.env.NODE_ENV === "development";
-  }
-
-  const headerSecret = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  const querySecret = new URL(request.url).searchParams.get("secret");
-  return headerSecret === configured || querySecret === configured;
-}
+export { verifyAdminApiSecret as verifyInvoiceCronSecret } from "@/lib/admin-api-secret";

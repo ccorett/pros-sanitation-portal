@@ -33,6 +33,7 @@ import {
   parseAccountRestoreSnapshot,
   scheduledPurgeDateFrom,
 } from "@/lib/account-retention";
+import { recordSecurityAuditEvent } from "@/lib/security-audit-log";
 import { prisma } from "@/lib/prisma";
 import { verifyActorPin } from "@/lib/verify-actor-pin";
 import {
@@ -41,6 +42,7 @@ import {
   AccountStatus,
   EmployeeResponsibility,
   EmploymentStatus,
+  SecurityAuditEventType,
   Prisma,
   type AccessHistory,
   type Employee,
@@ -802,6 +804,14 @@ export async function mutateAdminAccount(
 
     await deactivateEmployeeAssignments(target.id);
     await revokeEmployeeSessions(target.userId);
+
+    await recordSecurityAuditEvent({
+      eventType: SecurityAuditEventType.ACCOUNT_REMOVED,
+      email: target.companyEmail,
+      accessLevel: target.accessLevel,
+      message: `Account removed by ${actorName}. Scheduled purge ${scheduledPurgeAt.toISOString().slice(0, 10)}.`,
+      result: "success",
+    });
   } else if (input.action === "restoreAccount") {
     if (
       !canPerformAccountAction(
@@ -836,6 +846,14 @@ export async function mutateAdminAccount(
       newValue: formatAccountStatusLabel(restoredStatus),
       changedBy: actorName,
       notes: `Employee Restored: ${targetName}\nRestored By: ${actorName}`,
+    });
+
+    await recordSecurityAuditEvent({
+      eventType: SecurityAuditEventType.ACCOUNT_RESTORED,
+      email: target.companyEmail,
+      accessLevel: target.accessLevel,
+      message: `Account restored by ${actorName}.`,
+      result: "success",
     });
 
     await replaceEmployeeResponsibilities(

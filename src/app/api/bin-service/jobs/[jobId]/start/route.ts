@@ -1,4 +1,4 @@
-import { requireBinApiAccess } from "@/lib/bin-service/api-auth";
+import { requireBinFieldApiAccess } from "@/lib/bin-service/api-auth";
 import { assertBinJobAccess } from "@/lib/bin-service/field-service";
 import { binJobInclude } from "@/lib/bin-service/service";
 import { prisma } from "@/lib/prisma";
@@ -9,8 +9,8 @@ type RouteContext = {
   params: Promise<{ jobId: string }>;
 };
 
-export async function POST(_request: Request, context: RouteContext) {
-  const access = await requireBinApiAccess();
+export async function POST(request: Request, context: RouteContext) {
+  const access = await requireBinFieldApiAccess(request, "bin-service/jobs/start");
   if ("error" in access) return access.error;
 
   const { jobId } = await context.params;

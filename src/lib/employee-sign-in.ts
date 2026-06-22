@@ -1,7 +1,10 @@
-import { DEV_APP_ORIGIN } from "@/lib/app-url";
 import { authClient } from "@/lib/auth-client";
 import { AUTH_POST_LOGIN_PATH } from "@/lib/auth-routes";
-import { LOGIN_LOCKOUT_MESSAGE, normalizeEmail } from "@/lib/login-attempts";
+import {
+  INVALID_CREDENTIALS_MESSAGE,
+  IP_RATE_LIMIT_MESSAGE,
+  normalizeEmail,
+} from "@/lib/login-attempts";
 import { resolvePostLoginRedirect } from "@/lib/portal-auth-redirect";
 
 export type EmployeeSignInResult =
@@ -28,7 +31,7 @@ export async function signInEmployee(input: {
     if (checkData.locked) {
       return {
         ok: false,
-        error: checkData.message ?? LOGIN_LOCKOUT_MESSAGE,
+        error: checkData.message ?? IP_RATE_LIMIT_MESSAGE,
       };
     }
 
@@ -45,28 +48,35 @@ export async function signInEmployee(input: {
         body: JSON.stringify({ email }),
       });
       const failData = (await fail.json()) as {
-        locked?: boolean;
+        rateLimited?: boolean;
         message?: string;
       };
 
-      if (failData.locked) {
+      if (failData.rateLimited) {
         return {
           ok: false,
-          error: failData.message ?? LOGIN_LOCKOUT_MESSAGE,
+          error: failData.message ?? IP_RATE_LIMIT_MESSAGE,
         };
       }
 
       const authMessage = result.error.message?.trim();
       const status = result.error.status;
 
+      if (status === 429 || status === 403) {
+        return {
+          ok: false,
+          error: authMessage ?? IP_RATE_LIMIT_MESSAGE,
+        };
+      }
+
       return {
         ok: false,
         error:
-          status === 403
-            ? `Sign-in was blocked for this address. Open the portal at ${DEV_APP_ORIGIN}.`
-            : authMessage && authMessage !== "Invalid email or password"
-              ? authMessage
-              : "Invalid email or PIN. Please try again.",
+          authMessage && authMessage !== "Invalid email or password"
+            ? authMessage === "Invalid credentials."
+              ? INVALID_CREDENTIALS_MESSAGE
+              : authMessage
+            : INVALID_CREDENTIALS_MESSAGE,
       };
     }
 
@@ -89,9 +99,7 @@ export async function signInEmployee(input: {
       await authClient.signOut();
       return {
         ok: false,
-        error:
-          accessData.message ??
-          "Your employee account is not active. Contact an administrator.",
+        error: INVALID_CREDENTIALS_MESSAGE,
       };
     }
 

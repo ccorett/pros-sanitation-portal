@@ -1,4 +1,8 @@
 import { COMPANY } from "@/lib/constants";
+import {
+  assertInvoiceEmailConfigured,
+  getInvoiceEmailFromAddress,
+} from "@/lib/invoice-email-config";
 
 type SendEmailInput = {
   to: string[];
@@ -16,42 +20,29 @@ export async function sendPlainEmail({
     return;
   }
 
-  const resendApiKey = process.env.RESEND_API_KEY;
-  const from =
-    process.env.INVOICE_EMAIL_FROM ??
-    process.env.PASSWORD_RESET_EMAIL_FROM ??
-    `${COMPANY.shortName} Portal <noreply@prossanitation.com>`;
+  assertInvoiceEmailConfigured();
 
-  if (resendApiKey) {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to: recipients,
-        subject,
-        text,
-      }),
-    });
+  const resendApiKey = process.env.RESEND_API_KEY!.trim();
+  const from = getInvoiceEmailFromAddress();
 
-    if (!response.ok) {
-      const detail = await response.text();
-      throw new Error(`Failed to send email: ${detail}`);
-    }
-    return;
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: recipients,
+      subject,
+      text,
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Failed to send email: ${detail}`);
   }
-
-  if (process.env.NODE_ENV === "development") {
-    console.info(`[email] To: ${recipients.join(", ")}\nSubject: ${subject}\n${text}`);
-    return;
-  }
-
-  console.warn(
-    `[email] RESEND_API_KEY is not set. Would send "${subject}" to ${recipients.join(", ")}`,
-  );
 }
 
 export function buildFiveDayReminderEmailBody(
@@ -95,5 +86,27 @@ export function buildDueDateReminderEmailBody(
     ...lines,
     "",
     `Log in to the ${COMPANY.shortName} portal to mark generated/submitted status.`,
+  ].join("\n");
+}
+
+export function buildOverdueReminderEmailBody(
+  invoices: Array<{
+    clientName: string;
+    serviceTypeLabel: string;
+    dueDate: string;
+    invoiceCount: number;
+  }>,
+): string {
+  const lines = invoices.map(
+    (item) =>
+      `- ${item.clientName} (${item.serviceTypeLabel}): ${item.invoiceCount} invoice(s) overdue since ${item.dueDate}`,
+  );
+
+  return [
+    "The following client invoices are overdue and have not been submitted:",
+    "",
+    ...lines,
+    "",
+    `Log in to the ${COMPANY.shortName} portal to update invoice status.`,
   ].join("\n");
 }

@@ -1,4 +1,4 @@
-import { requireBinApiAccess } from "@/lib/bin-service/api-auth";
+import { requireBinFieldApiAccess } from "@/lib/bin-service/api-auth";
 import type { BinFieldServiceStatus } from "@/lib/bin-service/field-types";
 import { applyBinFieldServiceUpdate } from "@/lib/bin-service/field-service";
 import { NextResponse } from "next/server";
@@ -8,7 +8,7 @@ type RouteContext = {
 };
 
 export async function POST(request: Request, context: RouteContext) {
-  const access = await requireBinApiAccess();
+  const access = await requireBinFieldApiAccess(request, "bin-service/sites/service-update");
   if ("error" in access) return access.error;
 
   const { siteId } = await context.params;

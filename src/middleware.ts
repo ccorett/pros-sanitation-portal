@@ -5,31 +5,16 @@ import {
   isDevCanonicalOrigin,
   isDevEnvironment,
 } from "@/lib/app-url";
+import {
+  isKnownPortalPathname,
+  isProtectedPortalPathname,
+  PORTAL_ACCESS_DENIED_REDIRECT,
+} from "@/lib/portal-route-access";
 import { getSessionCookie } from "better-auth/cookies";
 import { NextRequest, NextResponse } from "next/server";
 
-const PROTECTED_PATH_MATCHERS = [
-  "/pending-verification",
-  "/staff-dashboard",
-  "/staff/",
-  "/jobs",
-  "/hr",
-  "/human-resources",
-  "/equipment-supplies",
-  "/my-profile",
-  "/admin",
-  "/manager",
-  "/policies/",
-  "/notices/",
-] as const;
-
 function isProtectedPath(pathname: string): boolean {
-  return PROTECTED_PATH_MATCHERS.some((prefix) => {
-    if (prefix.endsWith("/")) {
-      return pathname.startsWith(prefix);
-    }
-    return pathname === prefix || pathname.startsWith(`${prefix}/`);
-  });
+  return isProtectedPortalPathname(pathname);
 }
 
 function redirectToDevCanonical(request: NextRequest): NextResponse | null {
@@ -65,6 +50,13 @@ export function middleware(request: NextRequest) {
     const returnTo = `${request.nextUrl.pathname}${request.nextUrl.search}`;
     return NextResponse.redirect(
       new URL(buildEmployeeLoginUrl(returnTo), request.nextUrl.origin),
+    );
+  }
+
+  const pathname = request.nextUrl.pathname;
+  if (isProtectedPath(pathname) && !isKnownPortalPathname(pathname)) {
+    return NextResponse.redirect(
+      new URL(PORTAL_ACCESS_DENIED_REDIRECT, request.nextUrl.origin),
     );
   }
 

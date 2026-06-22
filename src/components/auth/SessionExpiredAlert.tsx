@@ -11,7 +11,7 @@ export function SessionExpiredAlert({ reason }: SessionExpiredAlertProps) {
 
   return (
     <p className={authErrorClassName} role="alert">
-      Session expired due to inactivity.
+      Your session has expired due to inactivity. Please sign in again.
     </p>
   );
 }

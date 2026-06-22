@@ -1,17 +1,23 @@
-import { auth } from "@/lib/auth";
 import { getEmployeePortalAccess } from "@/lib/employee-portal-access";
-import { headers } from "next/headers";
+import {
+  resolveAuthenticatedSession,
+  sessionExpiredApiResponse,
+  unauthorizedApiResponse,
+} from "@/lib/require-authenticated-session";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const authResult = await resolveAuthenticatedSession();
 
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  if (authResult.status === "unauthenticated") {
+    return unauthorizedApiResponse();
   }
 
+  if (authResult.status === "expired") {
+    return sessionExpiredApiResponse();
+  }
+
+  const { session } = authResult;
   const access = await getEmployeePortalAccess(session.user.id);
 
   if (!access.allowed) {

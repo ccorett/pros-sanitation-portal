@@ -1,17 +1,16 @@
-import { isLoginLocked, LOGIN_LOCKOUT_MESSAGE } from "@/lib/login-attempts";
+import { isIpRateLimited, IP_RATE_LIMIT_MESSAGE } from "@/lib/login-attempts";
+import { getRequestIp } from "@/lib/request-ip";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
-  const email = request.nextUrl.searchParams.get("email");
+  const ip = getRequestIp(request);
 
-  if (!email) {
-    return NextResponse.json({ locked: false });
+  if (await isIpRateLimited(ip)) {
+    return NextResponse.json({
+      locked: true,
+      message: IP_RATE_LIMIT_MESSAGE,
+    });
   }
 
-  const locked = await isLoginLocked(email);
-
-  return NextResponse.json({
-    locked,
-    message: locked ? LOGIN_LOCKOUT_MESSAGE : null,
-  });
+  return NextResponse.json({ locked: false });
 }

@@ -25,17 +25,19 @@ model User {
 }
 
 model Session {
-  id        String   @id
-  expiresAt DateTime
-  token     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id
+  expiresAt      DateTime
+  token          String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  lastActivityAt DateTime @default(now())
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([lastActivityAt])
   @@map("session")
 }
 
@@ -71,11 +73,56 @@ model Verification {
 }
 
 model LoginAttempt {
-  email     String   @id
-  attempts  Int      @default(0)
-  updatedAt DateTime @updatedAt
+  email        String
+  ipAddress    String
+  attempts     Int       @default(0)
+  lastFailedAt DateTime?
+  updatedAt    DateTime  @updatedAt
 
+  @@id([email, ipAddress])
   @@map("login_attempts")
+}
+
+model LoginIpRateLimit {
+  ipAddress   String   @id
+  attempts    Int      @default(0)
+  windowStart DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("login_ip_rate_limits")
+}
+
+enum SecurityAuditEventType {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGIN_DELAY_APPLIED
+  ACCOUNT_LOCKOUT
+  PASSWORD_RESET
+  SESSION_EXPIRED
+  IP_RATE_LIMITED
+  UNAUTHORIZED_ROUTE_ACCESS
+  UNAUTHORIZED_API_ACCESS
+  ACCOUNT_REMOVED
+  ACCOUNT_RESTORED
+  ACCOUNT_PURGED
+
+  @@map("SecurityAuditEventType")
+}
+
+model SecurityAuditLog {
+  id          String                 @id @default(uuid()) @db.Uuid
+  eventType   SecurityAuditEventType
+  email       String?
+  accessLevel AccessLevel?
+  ipAddress   String?
+  message     String?
+  result      String?
+  createdAt   DateTime               @default(now())
+
+  @@index([eventType, createdAt])
+  @@index([email, createdAt])
+  @@index([ipAddress, createdAt])
+  @@map("security_audit_logs")
 }
 
 enum EmploymentStatus {
@@ -572,7 +619,8 @@ model BinServiceLog {
   id                  String               @id @default(uuid()) @db.Uuid
   jobId               String               @db.Uuid
   siteId              String               @db.Uuid
-  technicianId        String               @db.Uuid
+  technicianId        String?              @db.Uuid
+  technicianDisplayName String?
   regularBinsExpected Int
   regularBinsServiced Int
   newBinsExpected     Int
@@ -588,7 +636,7 @@ model BinServiceLog {
 
   job        BinServiceJob  @relation(fields: [jobId], references: [id], onDelete: Cascade)
   site       BinServiceSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  technician Employee       @relation("BinLogTechnician", fields: [technicianId], references: [id], onDelete: Restrict)
+  technician Employee?       @relation("BinLogTechnician", fields: [technicianId], references: [id], onDelete: SetNull)
 
   @@index([jobId])
   @@index([siteId])
@@ -964,18 +1012,20 @@ model PayslipImportLog {
 }
 
 model AttendanceLog {
-  id             String           @id @default(uuid()) @db.Uuid
-  attendanceDate DateTime         @db.Date
-  location       String
-  supervisorId   String           @db.Uuid
-  employeeId     String           @db.Uuid
-  status         AttendanceStatus
-  checkInTime    DateTime?
-  notes          String?
-  createdAt      DateTime         @default(now())
+  id                    String           @id @default(uuid()) @db.Uuid
+  attendanceDate        DateTime         @db.Date
+  location              String
+  supervisorId          String?          @db.Uuid
+  supervisorDisplayName String?
+  employeeId            String?          @db.Uuid
+  employeeDisplayName   String?
+  status                AttendanceStatus
+  checkInTime           DateTime?
+  notes                 String?
+  createdAt             DateTime         @default(now())
 
-  supervisor Employee @relation("AttendanceSupervisor", fields: [supervisorId], references: [id], onDelete: Restrict)
-  employee   Employee @relation("AttendanceEmployee", fields: [employeeId], references: [id], onDelete: Restrict)
+  supervisor Employee? @relation("AttendanceSupervisor", fields: [supervisorId], references: [id], onDelete: SetNull)
+  employee   Employee? @relation("AttendanceEmployee", fields: [employeeId], references: [id], onDelete: SetNull)
 
   @@unique([attendanceDate, employeeId, location])
   @@index([attendanceDate])
@@ -1029,6 +1079,7 @@ enum InvoiceAlertType {
 enum InvoiceAlertLogType {
   FIVE_DAY_REMINDER
   DUE_DATE_REMINDER
+  OVERDUE_REMINDER
 
   @@map("InvoiceAlertLogType")
 }

@@ -3,12 +3,22 @@ import { AccessLevel, OperationalGroup } from "@prisma/client";
 import { employeeCanAccessBinSite } from "@/lib/bin-service/location-access";
 import { isManagerOrAbove } from "@/lib/operational-access";
 
+function isBinServiceSupervisor(employee: Employee): boolean {
+  return (
+    employee.operationalGroup === OperationalGroup.BIN_SERVICE_SUPERVISOR
+  );
+}
+
+function isBinTechnician(employee: Employee): boolean {
+  return employee.operationalGroup === OperationalGroup.BIN_TECHNICIAN;
+}
+
 export function canViewAllBinFieldSites(employee: Employee): boolean {
   if (isManagerOrAbove(employee.accessLevel)) {
     return true;
   }
 
-  return employee.operationalGroup === OperationalGroup.BIN_SERVICE_SUPERVISOR;
+  return isBinServiceSupervisor(employee);
 }
 
 type BinJobAccessContext = {
@@ -26,13 +36,13 @@ export function canActOnBinJob(
     return true;
   }
 
-  if (employee.operationalGroup === OperationalGroup.BIN_SERVICE_SUPERVISOR) {
+  if (isBinServiceSupervisor(employee)) {
     return true;
   }
 
   if (
     employee.accessLevel === AccessLevel.TEAM_MEMBER &&
-    employee.operationalGroup === OperationalGroup.BIN_TECHNICIAN
+    isBinTechnician(employee)
   ) {
     if (employee.id === assignedTechnicianId) {
       return true;

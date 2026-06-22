@@ -8,16 +8,7 @@ config({ path: resolve(process.cwd(), ".env") });
 
 async function main() {
   const result = await purgeExpiredRemovedAccounts();
-  console.log(
-    JSON.stringify(
-      {
-        purged: result.purged,
-        employeeIds: result.employeeIds,
-      },
-      null,
-      2,
-    ),
-  );
+  console.log(JSON.stringify(result, null, 2));
 }
 
 main()

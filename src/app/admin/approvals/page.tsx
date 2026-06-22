@@ -4,7 +4,7 @@ import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 
 export default async function AdminApprovalsPage() {
-  const { employee } = await requireStaffAccess({ pathname: "/admin" });
+  const { employee } = await requireStaffAccess({ pathname: "/admin/approvals" });
 
   return (
     <StaffWorkspaceShell

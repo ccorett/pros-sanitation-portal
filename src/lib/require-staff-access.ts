@@ -1,10 +1,17 @@
-import { auth } from "@/lib/auth";
+import {
+  buildSessionExpiredLoginUrl,
+} from "@/lib/session-inactivity";
+import {
+  resolveAuthenticatedSession,
+} from "@/lib/require-authenticated-session";
 import { getEmployeePortalAccess } from "@/lib/employee-portal-access";
 import {
   canAccessPathname,
   PORTAL_ACCESS_DENIED_REDIRECT,
   toEmployeeAccessContext,
 } from "@/lib/portal-route-access";
+import { recordUnauthorizedRouteAccess } from "@/lib/security-audit-log";
+import { getRequestIp } from "@/lib/request-ip";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -14,15 +21,17 @@ type RequireStaffAccessOptions = {
 };
 
 export async function requireStaffAccess(options?: RequireStaffAccessOptions) {
-  const requestHeaders = await headers();
-  const session = await auth.api.getSession({
-    headers: requestHeaders,
-  });
+  const authResult = await resolveAuthenticatedSession({ touch: true });
 
-  if (!session) {
+  if (authResult.status === "unauthenticated") {
     redirect("/employee-login");
   }
 
+  if (authResult.status === "expired") {
+    redirect(buildSessionExpiredLoginUrl());
+  }
+
+  const { session } = authResult;
   const access = await getEmployeePortalAccess(session.user.id);
 
   if (!access.allowed) {
@@ -39,6 +48,13 @@ export async function requireStaffAccess(options?: RequireStaffAccessOptions) {
     options?.pathname &&
     !canAccessPathname(accessContext, options.pathname)
   ) {
+    const requestHeaders = await headers();
+    await recordUnauthorizedRouteAccess({
+      email: access.employee.companyEmail,
+      accessLevel: access.employee.accessLevel,
+      pathname: options.pathname,
+      ipAddress: getRequestIp(new Request("http://local", { headers: requestHeaders })),
+    });
     redirect(PORTAL_ACCESS_DENIED_REDIRECT);
   }
 
@@ -46,15 +62,17 @@ export async function requireStaffAccess(options?: RequireStaffAccessOptions) {
 }
 
 export async function requirePendingVerificationAccess() {
-  const requestHeaders = await headers();
-  const session = await auth.api.getSession({
-    headers: requestHeaders,
-  });
+  const authResult = await resolveAuthenticatedSession({ touch: true });
 
-  if (!session) {
+  if (authResult.status === "unauthenticated") {
     redirect("/employee-login");
   }
 
+  if (authResult.status === "expired") {
+    redirect(buildSessionExpiredLoginUrl());
+  }
+
+  const { session } = authResult;
   const access = await getEmployeePortalAccess(session.user.id);
 
   if (!access.allowed) {

@@ -1,4 +1,4 @@
-import { requireBinApiAccess } from "@/lib/bin-service/api-auth";
+import { requireBinOperationalApiAccess, requireBinSetupApiAccess } from "@/lib/bin-service/api-auth";
 import {
   enrichSiteWithStatus,
   getBinServiceSite,
@@ -11,8 +11,11 @@ type RouteContext = {
   params: Promise<{ siteId: string }>;
 };
 
-export async function GET(_request: Request, context: RouteContext) {
-  const access = await requireBinApiAccess();
+export async function GET(request: Request, context: RouteContext) {
+  const access = await requireBinOperationalApiAccess(
+    request,
+    "bin-service/sites/setup",
+  );
   if ("error" in access) return access.error;
 
   const { siteId } = await context.params;
@@ -33,7 +36,10 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
-  const access = await requireBinApiAccess();
+  const access = await requireBinSetupApiAccess(
+    request,
+    "bin-service/sites/setup",
+  );
   if ("error" in access) return access.error;
 
   const { siteId } = await context.params;

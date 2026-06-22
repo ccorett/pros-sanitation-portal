@@ -5,14 +5,21 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { getAppBaseUrl } from "@/lib/app-url";
 import { getAuthAdvancedOptions, resolveTrustedOrigins } from "@/lib/auth-config";
+import {
+  assertLoginAllowed,
+  INVALID_CREDENTIALS_MESSAGE,
+  LoginSecurityError,
+} from "@/lib/login-security";
 import { prisma } from "@/lib/prisma";
 import { PIN_REQUIREMENTS_MESSAGE, isPinValid } from "@/lib/pin";
 import { sendPasswordResetEmail } from "@/lib/password-reset-email";
 import { isRemovedEmployeeEmail } from "@/lib/account-retention";
+import { recordSecurityAuditEvent } from "@/lib/security-audit-log";
 import {
   getEmployeeSignupMode,
   validateEmployeeSignup,
 } from "@/lib/signup-access";
+import { SecurityAuditEventType } from "@prisma/client";
 
 const signupDisabled = getEmployeeSignupMode() === "disabled";
 
@@ -76,19 +83,41 @@ export const auth = betterAuth({
       if (ctx.path === "/sign-in/email") {
         assertPinCredential(ctx.body as Record<string, unknown>, ["password"]);
         const email = (ctx.body as { email?: string } | undefined)?.email?.trim();
-        if (email && (await isRemovedEmployeeEmail(email))) {
-          throw new APIError("BAD_REQUEST", {
-            message: "This account is no longer active. Contact an administrator.",
-          });
+        const ip =
+          ctx.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+          ctx.headers?.get("x-real-ip")?.trim() ??
+          "unknown";
+
+        if (email) {
+          try {
+            await assertLoginAllowed({ email, ipAddress: ip });
+          } catch (error) {
+            if (error instanceof LoginSecurityError) {
+              throw new APIError("TOO_MANY_REQUESTS", { message: error.message });
+            }
+            throw error;
+          }
+
+          if (await isRemovedEmployeeEmail(email)) {
+            throw new APIError("UNAUTHORIZED", {
+              message: INVALID_CREDENTIALS_MESSAGE,
+            });
+          }
         }
         return;
       }
 
       if (ctx.path === "/request-password-reset") {
         const email = (ctx.body as { email?: string } | undefined)?.email?.trim();
-        if (email && (await isRemovedEmployeeEmail(email))) {
-          throw new APIError("BAD_REQUEST", {
-            message: "This account is no longer active. Contact an administrator.",
+        if (email) {
+          if (await isRemovedEmployeeEmail(email)) {
+            return;
+          }
+
+          await recordSecurityAuditEvent({
+            eventType: SecurityAuditEventType.PASSWORD_RESET,
+            email,
+            message: "Password reset requested.",
           });
         }
         return;
@@ -97,9 +126,17 @@ export const auth = betterAuth({
       if (ctx.path === "/reset-password") {
         assertPinCredential(ctx.body as Record<string, unknown>, ["newPassword"]);
         const email = (ctx.body as { email?: string } | undefined)?.email?.trim();
-        if (email && (await isRemovedEmployeeEmail(email))) {
-          throw new APIError("BAD_REQUEST", {
-            message: "This account is no longer active. Contact an administrator.",
+        if (email) {
+          if (await isRemovedEmployeeEmail(email)) {
+            throw new APIError("UNAUTHORIZED", {
+              message: INVALID_CREDENTIALS_MESSAGE,
+            });
+          }
+
+          await recordSecurityAuditEvent({
+            eventType: SecurityAuditEventType.PASSWORD_RESET,
+            email,
+            message: "Password reset completed.",
           });
         }
         return;

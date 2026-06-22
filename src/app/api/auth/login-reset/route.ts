@@ -1,5 +1,7 @@
 import { updateEmployeeLastLogin } from "@/lib/admin-accounts-service";
+import { auth } from "@/lib/auth";
 import { resetLoginAttempts } from "@/lib/login-attempts";
+import { getRequestIp } from "@/lib/request-ip";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -11,7 +13,13 @@ export async function POST(request: NextRequest) {
   }
 
   const email = body.email.trim().toLowerCase();
-  await resetLoginAttempts(email);
+  const session = await auth.api.getSession({ headers: request.headers });
+
+  if (!session?.user?.email || session.user.email.toLowerCase() !== email) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  await resetLoginAttempts(email, getRequestIp(request));
 
   const user = await prisma.user.findUnique({
     where: { email },

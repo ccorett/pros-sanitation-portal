@@ -1,17 +1,16 @@
 import { config } from "dotenv";
 import { resolve } from "path";
-import { AccountStatus } from "@prisma/client";
+import { AccountStatus, AccessLevel } from "@prisma/client";
 import {
   canRestoreRemovedAccount,
+  getRemovedAccountPurgeSkipReason,
   scheduledPurgeDateFrom,
 } from "../src/lib/account-retention";
 import {
   getAdminAccountsSummary,
   listAdminAccounts,
-  mutateAdminAccount,
 } from "../src/lib/admin-accounts-service";
 import { canPerformAccountAction } from "../src/lib/admin-account-permissions";
-import { AccessLevel } from "@prisma/client";
 import { prisma } from "../src/lib/prisma";
 
 config({ path: resolve(process.cwd(), ".env.local") });
@@ -69,10 +68,30 @@ async function main() {
     throw new Error("Super admin should be able to delete team member in test setup.");
   }
 
-  console.log("Account retention policy checks passed (read-only verification).");
-  console.log(
-    "Delete/restore/purge flows are covered by service implementation and migration.",
+  const superAdminSkip = await getRemovedAccountPurgeSkipReason(superAdmin);
+  if (superAdminSkip !== "Super Admin accounts are never purged.") {
+    throw new Error("Super Admin purge protection missing.");
+  }
+
+  const purgeAt = scheduledPurgeDateFrom(new Date());
+  const daysDiff = Math.round(
+    (purgeAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
   );
+  if (daysDiff !== 90) {
+    throw new Error(`Expected 90-day retention window, got ${daysDiff} days.`);
+  }
+
+  const futurePurgeAt = scheduledPurgeDateFrom(new Date());
+  if (
+    !canRestoreRemovedAccount({
+      accountStatus: AccountStatus.REMOVED,
+      scheduledPurgeAt: futurePurgeAt,
+    })
+  ) {
+    throw new Error("Removed account with future purge date should be restorable.");
+  }
+
+  console.log("Account retention policy checks passed (read-only verification).");
 }
 
 main()

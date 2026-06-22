@@ -1,35 +1,34 @@
-import { prisma } from "@/lib/prisma";
+export {
+  INVALID_CREDENTIALS_MESSAGE,
+  IP_RATE_LIMIT_MESSAGE,
+  normalizeLoginEmail as normalizeEmail,
+  resetLoginAttempts as resetLoginAttemptsForEmail,
+  assertLoginAllowed,
+  isIpRateLimited,
+  recordIpLoginAttempt,
+  getProgressiveDelayMs,
+  PROGRESSIVE_DELAY_ATTEMPT_6_MS,
+  PROGRESSIVE_DELAY_ATTEMPT_7_MS,
+  PROGRESSIVE_DELAY_ATTEMPT_8_PLUS_MS,
+  MAX_IP_ATTEMPTS,
+  IP_RATE_LIMIT_WINDOW_MS,
+} from "@/lib/login-security";
 
-export const LOGIN_LOCKOUT_MESSAGE =
-  "Too many failed attempts. Please contact admin.";
+import {
+  recordLoginFailure as recordLoginFailureInternal,
+  resetLoginAttempts as resetLoginAttemptsInternal,
+} from "@/lib/login-security";
 
-const MAX_FAILED_ATTEMPTS = 3;
-
-export function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
+export async function recordLoginFailure(
+  email: string,
+  ipAddress = "unknown",
+) {
+  return recordLoginFailureInternal({ email, ipAddress });
 }
 
-export async function isLoginLocked(email: string): Promise<boolean> {
-  const record = await prisma.loginAttempt.findUnique({
-    where: { email: normalizeEmail(email) },
-  });
-  return (record?.attempts ?? 0) >= MAX_FAILED_ATTEMPTS;
-}
-
-export async function recordLoginFailure(email: string): Promise<boolean> {
-  const normalized = normalizeEmail(email);
-  const record = await prisma.loginAttempt.upsert({
-    where: { email: normalized },
-    create: { email: normalized, attempts: 1 },
-    update: { attempts: { increment: 1 } },
-  });
-
-  return record.attempts >= MAX_FAILED_ATTEMPTS;
-}
-
-export async function resetLoginAttempts(email: string): Promise<void> {
-  const normalized = normalizeEmail(email);
-  await prisma.loginAttempt.deleteMany({
-    where: { email: normalized },
-  });
+export async function resetLoginAttempts(
+  email: string,
+  ipAddress?: string | null,
+) {
+  return resetLoginAttemptsInternal({ email, ipAddress });
 }

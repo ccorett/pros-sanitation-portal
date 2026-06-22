@@ -14,8 +14,13 @@ import {
 import {
   buildDueDateReminderEmailBody,
   buildFiveDayReminderEmailBody,
+  buildOverdueReminderEmailBody,
   sendPlainEmail,
 } from "@/lib/invoice-email";
+import {
+  getInvoiceEmailConfigStatus,
+  INVOICE_EMAIL_CONFIG_WARNING,
+} from "@/lib/invoice-email-config";
 import { invoiceServiceTypeLabel } from "@/lib/invoice-format";
 import { invoiceStatusLabel } from "@/lib/invoice-status";
 import { prisma } from "@/lib/prisma";
@@ -742,22 +747,52 @@ export async function updateInvoiceScheduleRemarks(
 }
 
 export async function countOpenInvoiceSchedules(): Promise<number> {
+  const summary = await getInvoiceAlertSummary();
+  return summary.dueSoon + summary.dueToday + summary.overdue + summary.upcoming;
+}
+
+export type InvoiceAlertSummary = {
+  dueSoon: number;
+  dueToday: number;
+  overdue: number;
+  upcoming: number;
+};
+
+export async function getInvoiceAlertSummary(): Promise<InvoiceAlertSummary> {
   await refreshScheduleStatuses();
-  return prisma.invoiceSchedule.count({
-    where: {
-      client: { status: InvoiceClientStatus.ACTIVE },
-      status: {
-        in: [
-          InvoiceScheduleStatus.UPCOMING,
-          InvoiceScheduleStatus.DUE_SOON,
-          InvoiceScheduleStatus.DUE,
-          InvoiceScheduleStatus.GENERATED,
-          InvoiceScheduleStatus.SNOOZED,
-          InvoiceScheduleStatus.OVERDUE,
-        ],
+  const today = startOfUtcDay(new Date());
+
+  const [dueSoon, dueToday, overdue, upcoming] = await Promise.all([
+    prisma.invoiceSchedule.count({
+      where: {
+        status: InvoiceScheduleStatus.DUE_SOON,
+        client: { status: InvoiceClientStatus.ACTIVE },
       },
-    },
-  });
+    }),
+    prisma.invoiceSchedule.count({
+      where: {
+        dueDate: today,
+        status: {
+          notIn: [InvoiceScheduleStatus.SUBMITTED],
+        },
+        client: { status: InvoiceClientStatus.ACTIVE },
+      },
+    }),
+    prisma.invoiceSchedule.count({
+      where: {
+        status: InvoiceScheduleStatus.OVERDUE,
+        client: { status: InvoiceClientStatus.ACTIVE },
+      },
+    }),
+    prisma.invoiceSchedule.count({
+      where: {
+        status: InvoiceScheduleStatus.UPCOMING,
+        client: { status: InvoiceClientStatus.ACTIVE },
+      },
+    }),
+  ]);
+
+  return { dueSoon, dueToday, overdue, upcoming };
 }
 
 async function listDefaultAlertRecipientEmails(): Promise<string[]> {
@@ -849,12 +884,95 @@ async function logAlertAttempt(input: {
   });
 }
 
+async function sendGroupedInvoiceReminder(input: {
+  alertDate: Date;
+  alertType: InvoiceAlertLogType;
+  subject: string;
+  body: string;
+  invoiceCount: number;
+  recipients: string[];
+  emailConfigured: boolean;
+  configError: string | null;
+  results: {
+    fiveDayEmailsSent: number;
+    dueDateEmailsSent: number;
+    overdueEmailsSent: number;
+    skipped: number;
+    failed: number;
+  };
+  sentCounter: "fiveDayEmailsSent" | "dueDateEmailsSent" | "overdueEmailsSent";
+}) {
+  for (const recipientEmail of input.recipients) {
+    const alreadySent = await hasAlertAlreadySent({
+      alertDate: input.alertDate,
+      alertType: input.alertType,
+      recipientEmail,
+    });
+
+    if (alreadySent) {
+      await logAlertAttempt({
+        alertDate: input.alertDate,
+        alertType: input.alertType,
+        recipientEmail,
+        invoiceCount: input.invoiceCount,
+        status: InvoiceAlertLogStatus.SKIPPED,
+        errorMessage: "Reminder already sent for this interval.",
+      });
+      input.results.skipped += 1;
+      continue;
+    }
+
+    if (!input.emailConfigured) {
+      await logAlertAttempt({
+        alertDate: input.alertDate,
+        alertType: input.alertType,
+        recipientEmail,
+        invoiceCount: input.invoiceCount,
+        status: InvoiceAlertLogStatus.FAILED,
+        errorMessage: input.configError,
+      });
+      input.results.failed += 1;
+      continue;
+    }
+
+    try {
+      await sendPlainEmail({
+        to: [recipientEmail],
+        subject: input.subject,
+        text: input.body,
+      });
+      await logAlertAttempt({
+        alertDate: input.alertDate,
+        alertType: input.alertType,
+        recipientEmail,
+        invoiceCount: input.invoiceCount,
+        status: InvoiceAlertLogStatus.SENT,
+      });
+      input.results[input.sentCounter] += 1;
+    } catch (error) {
+      await logAlertAttempt({
+        alertDate: input.alertDate,
+        alertType: input.alertType,
+        recipientEmail,
+        invoiceCount: input.invoiceCount,
+        status: InvoiceAlertLogStatus.FAILED,
+        errorMessage: error instanceof Error ? error.message : "Send failed",
+      });
+      input.results.failed += 1;
+    }
+  }
+}
+
 export async function sendInvoiceReminders(reference = new Date()) {
   await refreshScheduleStatuses();
 
   const today = startOfUtcDay(reference);
   const fiveDaysOut = addUtcDays(today, 5);
   const recipients = await listAllAlertRecipientEmails();
+  const emailConfig = getInvoiceEmailConfigStatus();
+  const configError = emailConfig.configured
+    ? null
+    : `${INVOICE_EMAIL_CONFIG_WARNING} Missing: ${emailConfig.missing.join(", ")}.`;
 
   const dueSoonSchedules = await prisma.invoiceSchedule.findMany({
     where: {
@@ -883,14 +1001,24 @@ export async function sendInvoiceReminders(reference = new Date()) {
     include: { client: true },
   });
 
+  const overdueSchedules = await prisma.invoiceSchedule.findMany({
+    where: {
+      status: InvoiceScheduleStatus.OVERDUE,
+      client: { status: InvoiceClientStatus.ACTIVE },
+    },
+    include: { client: true },
+  });
+
   const results = {
     fiveDayEmailsSent: 0,
     dueDateEmailsSent: 0,
+    overdueEmailsSent: 0,
     skipped: 0,
     failed: 0,
+    emailConfigured: emailConfig.configured,
   };
 
-  if (dueSoonSchedules.length > 0) {
+  if (dueSoonSchedules.length > 0 && recipients.length > 0) {
     const payload = dueSoonSchedules.map((schedule) => ({
       clientName: schedule.client.clientName,
       serviceTypeLabel: invoiceServiceTypeLabel(schedule.client.serviceType),
@@ -898,46 +1026,21 @@ export async function sendInvoiceReminders(reference = new Date()) {
       invoiceCount: schedule.client.invoiceCountPerCycle,
     }));
 
-    for (const recipientEmail of recipients) {
-      const alreadySent = await hasAlertAlreadySent({
-        alertDate: today,
-        alertType: InvoiceAlertLogType.FIVE_DAY_REMINDER,
-        recipientEmail,
-      });
-      if (alreadySent) {
-        results.skipped += 1;
-        continue;
-      }
-
-      try {
-        await sendPlainEmail({
-          to: [recipientEmail],
-          subject: "Invoice Reminder: Invoices due in 5 days",
-          text: buildFiveDayReminderEmailBody(payload),
-        });
-        await logAlertAttempt({
-          alertDate: today,
-          alertType: InvoiceAlertLogType.FIVE_DAY_REMINDER,
-          recipientEmail,
-          invoiceCount: dueSoonSchedules.length,
-          status: InvoiceAlertLogStatus.SENT,
-        });
-        results.fiveDayEmailsSent += 1;
-      } catch (error) {
-        await logAlertAttempt({
-          alertDate: today,
-          alertType: InvoiceAlertLogType.FIVE_DAY_REMINDER,
-          recipientEmail,
-          invoiceCount: dueSoonSchedules.length,
-          status: InvoiceAlertLogStatus.FAILED,
-          errorMessage: error instanceof Error ? error.message : "Send failed",
-        });
-        results.failed += 1;
-      }
-    }
+    await sendGroupedInvoiceReminder({
+      alertDate: today,
+      alertType: InvoiceAlertLogType.FIVE_DAY_REMINDER,
+      subject: "Invoice Reminder: Invoices due in 5 days",
+      body: buildFiveDayReminderEmailBody(payload),
+      invoiceCount: dueSoonSchedules.length,
+      recipients,
+      emailConfigured: emailConfig.configured,
+      configError,
+      results,
+      sentCounter: "fiveDayEmailsSent",
+    });
   }
 
-  if (dueTodaySchedules.length > 0) {
+  if (dueTodaySchedules.length > 0 && recipients.length > 0) {
     const payload = dueTodaySchedules.map((schedule) => ({
       clientName: schedule.client.clientName,
       serviceTypeLabel: invoiceServiceTypeLabel(schedule.client.serviceType),
@@ -945,43 +1048,40 @@ export async function sendInvoiceReminders(reference = new Date()) {
       invoiceCount: schedule.client.invoiceCountPerCycle,
     }));
 
-    for (const recipientEmail of recipients) {
-      const alreadySent = await hasAlertAlreadySent({
-        alertDate: today,
-        alertType: InvoiceAlertLogType.DUE_DATE_REMINDER,
-        recipientEmail,
-      });
-      if (alreadySent) {
-        results.skipped += 1;
-        continue;
-      }
+    await sendGroupedInvoiceReminder({
+      alertDate: today,
+      alertType: InvoiceAlertLogType.DUE_DATE_REMINDER,
+      subject: "Invoice Reminder: Invoices due today",
+      body: buildDueDateReminderEmailBody(payload),
+      invoiceCount: dueTodaySchedules.length,
+      recipients,
+      emailConfigured: emailConfig.configured,
+      configError,
+      results,
+      sentCounter: "dueDateEmailsSent",
+    });
+  }
 
-      try {
-        await sendPlainEmail({
-          to: [recipientEmail],
-          subject: "Invoice Reminder: Invoices due today",
-          text: buildDueDateReminderEmailBody(payload),
-        });
-        await logAlertAttempt({
-          alertDate: today,
-          alertType: InvoiceAlertLogType.DUE_DATE_REMINDER,
-          recipientEmail,
-          invoiceCount: dueTodaySchedules.length,
-          status: InvoiceAlertLogStatus.SENT,
-        });
-        results.dueDateEmailsSent += 1;
-      } catch (error) {
-        await logAlertAttempt({
-          alertDate: today,
-          alertType: InvoiceAlertLogType.DUE_DATE_REMINDER,
-          recipientEmail,
-          invoiceCount: dueTodaySchedules.length,
-          status: InvoiceAlertLogStatus.FAILED,
-          errorMessage: error instanceof Error ? error.message : "Send failed",
-        });
-        results.failed += 1;
-      }
-    }
+  if (overdueSchedules.length > 0 && recipients.length > 0) {
+    const payload = overdueSchedules.map((schedule) => ({
+      clientName: schedule.client.clientName,
+      serviceTypeLabel: invoiceServiceTypeLabel(schedule.client.serviceType),
+      dueDate: formatIsoDate(schedule.dueDate),
+      invoiceCount: schedule.client.invoiceCountPerCycle,
+    }));
+
+    await sendGroupedInvoiceReminder({
+      alertDate: today,
+      alertType: InvoiceAlertLogType.OVERDUE_REMINDER,
+      subject: "Invoice Reminder: Overdue invoices",
+      body: buildOverdueReminderEmailBody(payload),
+      invoiceCount: overdueSchedules.length,
+      recipients,
+      emailConfigured: emailConfig.configured,
+      configError,
+      results,
+      sentCounter: "overdueEmailsSent",
+    });
   }
 
   return results;

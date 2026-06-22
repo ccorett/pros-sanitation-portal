@@ -14,7 +14,7 @@ import {
   listPurchasingListItems,
 } from "@/lib/inventory-service";
 import { countActivePolicies } from "@/lib/policy-service";
-import { countOpenInvoiceSchedules } from "@/lib/invoice-service";
+import { getInvoiceAlertSummary } from "@/lib/invoice-service";
 import {
   buildInvoiceAccessContext,
   canAccessInvoiceManagement,
@@ -71,7 +71,6 @@ export async function getAdminHubSummaryCounts(
     binSites,
     purchasingListItems,
     activePolicies,
-    openInvoiceSchedules,
   ] = await Promise.all([
     prisma.equipmentRequest.count({
       where: { status: EquipmentRequestStatus.PENDING },
@@ -92,8 +91,14 @@ export async function getAdminHubSummaryCounts(
     listBinFieldSitesForActor(actor),
     listPurchasingListItems(),
     countActivePolicies(),
-    countOpenInvoiceSchedules(),
   ]);
+
+  const invoiceAlerts = await getInvoiceAlertSummary();
+  const openInvoiceSchedules =
+    invoiceAlerts.dueSoon +
+    invoiceAlerts.dueToday +
+    invoiceAlerts.overdue +
+    invoiceAlerts.upcoming;
 
   return {
     pendingEquipmentRequests,
@@ -139,6 +144,7 @@ export async function buildAdminHubCards(
     latestBinLog,
     latestHrActivity,
     latestPolicy,
+    invoiceAlerts,
   ] = await Promise.all([
     prisma.accessHistory.findFirst({
       orderBy: { changedAt: "desc" },
@@ -161,6 +167,7 @@ export async function buildAdminHubCards(
       orderBy: { updatedAt: "desc" },
       select: { updatedAt: true },
     }),
+    getInvoiceAlertSummary(),
   ]);
 
   const inventoryLastEdited = lastInventoryActivity
@@ -213,10 +220,10 @@ export async function buildAdminHubCards(
     {
       id: "invoices",
       title: "Invoice Management",
-      description:
-        "Track recurring client invoices, due dates, reminders and submission status.",
+      description: `Invoice alerts: ${invoiceAlerts.dueSoon} due soon, ${invoiceAlerts.dueToday} due today, ${invoiceAlerts.overdue} overdue.`,
       href: "/admin/invoices",
-      count: counts.openInvoiceSchedules,
+      count:
+        invoiceAlerts.dueSoon + invoiceAlerts.dueToday + invoiceAlerts.overdue,
       lastEditedLabel: null,
     },
     {

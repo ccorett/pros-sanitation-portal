@@ -1,8 +1,10 @@
 import {
+  getInvoiceAlertSummary,
   listInvoiceAlertRecipients,
   listInvoiceClients,
   listInvoiceSchedules,
 } from "@/lib/invoice-service";
+import { getInvoiceEmailConfigStatus } from "@/lib/invoice-email-config";
 import {
   buildInvoiceAccessContext,
   canManageInvoiceAlertRecipients,
@@ -23,16 +25,20 @@ export async function GET() {
   );
   const accessContext = buildInvoiceAccessContext(access.actor, responsibilities);
 
-  const [clients, schedules, recipients] = await Promise.all([
+  const [clients, schedules, recipients, alertSummary, emailConfig] = await Promise.all([
     listInvoiceClients(),
     listInvoiceSchedules({ includeSubmitted: true }),
     listInvoiceAlertRecipients(),
+    getInvoiceAlertSummary(),
+    Promise.resolve(getInvoiceEmailConfigStatus()),
   ]);
 
   return NextResponse.json({
     clients,
     schedules,
     recipients,
+    alertSummary,
+    emailConfig,
     permissions: {
       canManageClients: canManageInvoiceClients(accessContext),
       canManageRecipients: canManageInvoiceAlertRecipients(accessContext),

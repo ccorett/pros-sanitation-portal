@@ -9,9 +9,12 @@ import {
 import { authInputClassName, authLabelClassName } from "@/lib/auth-form-styles";
 import type {
   InvoiceAlertRecipientRow,
+  InvoiceAlertSummary,
   InvoiceClientRow,
   InvoiceScheduleRow,
 } from "@/lib/invoice-service";
+import type { InvoiceEmailConfigStatus } from "@/lib/invoice-email-config";
+import { INVOICE_EMAIL_CONFIG_WARNING } from "@/lib/invoice-email-config";
 import {
   invoiceBillingCycleLabel,
   invoiceServiceTypeLabel,
@@ -39,6 +42,16 @@ export function AdminInvoiceManagementSection() {
   const [clients, setClients] = useState<InvoiceClientRow[]>([]);
   const [schedules, setSchedules] = useState<InvoiceScheduleRow[]>([]);
   const [recipients, setRecipients] = useState<InvoiceAlertRecipientRow[]>([]);
+  const [alertSummary, setAlertSummary] = useState<InvoiceAlertSummary>({
+    dueSoon: 0,
+    dueToday: 0,
+    overdue: 0,
+    upcoming: 0,
+  });
+  const [emailConfig, setEmailConfig] = useState<InvoiceEmailConfigStatus>({
+    configured: true,
+    missing: [],
+  });
   const [permissions, setPermissions] = useState<InvoicePermissions>({
     canManageClients: false,
     canManageRecipients: false,
@@ -73,6 +86,8 @@ export function AdminInvoiceManagementSection() {
         clients?: InvoiceClientRow[];
         schedules?: InvoiceScheduleRow[];
         recipients?: InvoiceAlertRecipientRow[];
+        alertSummary?: InvoiceAlertSummary;
+        emailConfig?: InvoiceEmailConfigStatus;
         permissions?: InvoicePermissions;
         error?: string;
       };
@@ -82,6 +97,20 @@ export function AdminInvoiceManagementSection() {
       setClients(data.clients ?? []);
       setSchedules(data.schedules ?? []);
       setRecipients(data.recipients ?? []);
+      setAlertSummary(
+        data.alertSummary ?? {
+          dueSoon: 0,
+          dueToday: 0,
+          overdue: 0,
+          upcoming: 0,
+        },
+      );
+      setEmailConfig(
+        data.emailConfig ?? {
+          configured: true,
+          missing: [],
+        },
+      );
       setPermissions(
         data.permissions ?? {
           canManageClients: false,
@@ -295,6 +324,39 @@ export function AdminInvoiceManagementSection() {
           {error}
         </p>
       ) : null}
+
+      {!emailConfig.configured ? (
+        <p className="rounded-xl border border-[#faad14]/40 bg-[#faad14]/10 px-4 py-3 text-sm text-[#faad14]">
+          {INVOICE_EMAIL_CONFIG_WARNING}
+          {emailConfig.missing.length > 0
+            ? ` Missing: ${emailConfig.missing.join(", ")}.`
+            : null}
+        </p>
+      ) : null}
+
+      <section className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">
+        <h2 className="text-lg font-bold text-[#ebfbff]">Invoice Alerts</h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <article className="rounded-xl border border-[#faad14]/30 bg-[#faad14]/10 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#faad14]">
+              Due Soon
+            </p>
+            <p className="mt-2 text-3xl font-bold text-[#ebfbff]">{alertSummary.dueSoon}</p>
+          </article>
+          <article className="rounded-xl border border-[#ff4d4f]/30 bg-[#ff4d4f]/10 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#ff4d4f]">
+              Due Today
+            </p>
+            <p className="mt-2 text-3xl font-bold text-[#ebfbff]">{alertSummary.dueToday}</p>
+          </article>
+          <article className="rounded-xl border border-[#ff4d4f]/40 bg-[#ff4d4f]/15 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#ff7875]">
+              Overdue
+            </p>
+            <p className="mt-2 text-3xl font-bold text-[#ebfbff]">{alertSummary.overdue}</p>
+          </article>
+        </div>
+      </section>
 
       {permissions.canManageRecipients ? (
         <section className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">

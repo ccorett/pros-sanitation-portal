@@ -25,9 +25,9 @@ export type AttendanceLogDto = {
   id: string;
   attendanceDate: string;
   location: string;
-  supervisorId: string;
+  supervisorId: string | null;
   supervisorName: string;
-  employeeId: string;
+  employeeId: string | null;
   employeeName: string;
   status: AttendanceStatus;
   statusLabel: string;
@@ -77,6 +77,21 @@ function attendanceHistoryWindowStart(
 
 function employeeDisplayName(employee: Pick<Employee, "firstName" | "lastName">): string {
   return `${employee.firstName} ${employee.lastName}`.trim();
+}
+
+function resolveAttendancePersonName(input: {
+  employee?: Pick<Employee, "firstName" | "lastName"> | null;
+  displayName?: string | null;
+}): string {
+  if (input.displayName?.trim()) {
+    return input.displayName.trim();
+  }
+
+  if (input.employee) {
+    return employeeDisplayName(input.employee);
+  }
+
+  return "Former Employee";
 }
 
 function parseAttendanceDate(value: string): Date {
@@ -257,14 +272,16 @@ function serializeAttendanceLog(
     id: string;
     attendanceDate: Date;
     location: string;
-    supervisorId: string;
-    employeeId: string;
+    supervisorId: string | null;
+    supervisorDisplayName?: string | null;
+    employeeId: string | null;
+    employeeDisplayName?: string | null;
     status: AttendanceStatus;
     checkInTime: Date | null;
     notes: string | null;
     createdAt: Date;
-    supervisor: Pick<Employee, "firstName" | "lastName">;
-    employee: Pick<Employee, "firstName" | "lastName">;
+    supervisor: Pick<Employee, "firstName" | "lastName"> | null;
+    employee: Pick<Employee, "firstName" | "lastName"> | null;
   },
   actor: Employee,
 ): AttendanceLogDto {
@@ -273,9 +290,15 @@ function serializeAttendanceLog(
     attendanceDate: formatAttendanceDate(row.attendanceDate),
     location: row.location,
     supervisorId: row.supervisorId,
-    supervisorName: employeeDisplayName(row.supervisor),
+    supervisorName: resolveAttendancePersonName({
+      employee: row.supervisor,
+      displayName: row.supervisorDisplayName,
+    }),
     employeeId: row.employeeId,
-    employeeName: employeeDisplayName(row.employee),
+    employeeName: resolveAttendancePersonName({
+      employee: row.employee,
+      displayName: row.employeeDisplayName,
+    }),
     status: row.status,
     statusLabel: STATUS_LABELS[row.status],
     checkInTime: row.checkInTime?.toISOString() ?? null,
@@ -311,11 +334,17 @@ export async function listAttendanceLogsForCleaningLocation(
   return rows.map((row) => ({
     id: row.id,
     attendanceDate: formatAttendanceDate(row.attendanceDate),
-    employeeName: employeeDisplayName(row.employee),
+    employeeName: resolveAttendancePersonName({
+      employee: row.employee,
+      displayName: row.employeeDisplayName,
+    }),
     status: row.status,
     statusLabel: STATUS_LABELS[row.status],
     checkInTime: row.checkInTime?.toISOString() ?? null,
-    supervisorName: employeeDisplayName(row.supervisor),
+    supervisorName: resolveAttendancePersonName({
+      employee: row.supervisor,
+      displayName: row.supervisorDisplayName,
+    }),
     notes: row.notes,
     canEdit: canEditAttendanceLog(actor, row),
   }));

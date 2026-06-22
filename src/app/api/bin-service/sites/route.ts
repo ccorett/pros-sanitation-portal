@@ -1,4 +1,4 @@
-import { requireBinApiAccess } from "@/lib/bin-service/api-auth";
+import { requireBinOperationalApiAccess, requireBinSetupApiAccess } from "@/lib/bin-service/api-auth";
 import {
   createBinServiceSite,
   enrichSiteWithStatus,
@@ -6,8 +6,8 @@ import {
 } from "@/lib/bin-service/service";
 import { NextResponse } from "next/server";
 
-export async function GET() {
-  const access = await requireBinApiAccess();
+export async function GET(request: Request) {
+  const access = await requireBinOperationalApiAccess(request, "bin-service/sites");
   if ("error" in access) return access.error;
 
   const sites = await listBinServiceSites();
@@ -24,7 +24,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const access = await requireBinApiAccess();
+  const access = await requireBinSetupApiAccess(request, "bin-service/sites");
   if ("error" in access) return access.error;
 
   const body = (await request.json()) as {

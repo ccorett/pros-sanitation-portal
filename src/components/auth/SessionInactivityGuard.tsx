@@ -1,9 +1,11 @@
 "use client";
 
 import { authClient } from "@/lib/auth-client";
+import { buildSessionExpiredLoginUrl } from "@/lib/session-inactivity";
 import { useEffect, useRef } from "react";
 
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
+const SESSION_TOUCH_DEBOUNCE_MS = 60 * 1000;
 
 const ACTIVITY_EVENTS = [
   "mousedown",
@@ -15,6 +17,7 @@ const ACTIVITY_EVENTS = [
 
 export function SessionInactivityGuard() {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const signingOutRef = useRef(false);
 
   useEffect(() => {
@@ -22,6 +25,13 @@ export function SessionInactivityGuard() {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
+      }
+    };
+
+    const clearTouchTimer = () => {
+      if (touchTimeoutRef.current) {
+        clearTimeout(touchTimeoutRef.current);
+        touchTimeoutRef.current = null;
       }
     };
 
@@ -38,9 +48,17 @@ export function SessionInactivityGuard() {
         // Continue to login even if sign-out fails.
       }
 
-      window.location.assign(
-        "/employee-login?reason=session-expired",
-      );
+      window.location.assign(buildSessionExpiredLoginUrl());
+    };
+
+    const touchServerSession = () => {
+      clearTouchTimer();
+      touchTimeoutRef.current = setTimeout(() => {
+        void fetch("/api/session/touch", {
+          method: "POST",
+          cache: "no-store",
+        }).catch(() => undefined);
+      }, SESSION_TOUCH_DEBOUNCE_MS);
     };
 
     const resetTimer = () => {
@@ -52,11 +70,13 @@ export function SessionInactivityGuard() {
 
     const handleActivity = () => {
       resetTimer();
+      touchServerSession();
     };
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
         resetTimer();
+        touchServerSession();
       }
     };
 
@@ -70,6 +90,7 @@ export function SessionInactivityGuard() {
 
     return () => {
       clearTimer();
+      clearTouchTimer();
 
       for (const eventName of ACTIVITY_EVENTS) {
         window.removeEventListener(eventName, handleActivity);

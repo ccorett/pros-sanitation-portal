@@ -124,16 +124,46 @@ const NAV_CATALOG: PortalNavItem[] = [
   { label: "My Profile", href: "/my-profile", feature: "myProfile" },
 ];
 
-const PATH_RULES: { prefix: string; feature: PortalFeature }[] = [
+/** Session-required prefixes aligned with middleware protected paths. */
+export const PROTECTED_PORTAL_PATH_PREFIXES = [
+  "/pending-verification",
+  "/staff-dashboard",
+  "/staff",
+  "/jobs",
+  "/hr",
+  "/human-resources",
+  "/equipment-supplies",
+  "/my-profile",
+  "/admin",
+  "/manager",
+  "/policies",
+  "/notices",
+] as const;
+
+/** Protected paths that are valid but not mapped to a portal feature. */
+const KNOWN_PROTECTED_PATHS_WITHOUT_FEATURE = ["/pending-verification"] as const;
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+type PathRule = {
+  prefix: string;
+  feature: PortalFeature;
+  /** Hub roots match only the exact path, not unknown nested segments. */
+  exact?: boolean;
+};
+
+const PATH_RULES: PathRule[] = [
   { prefix: "/admin/invoices", feature: "invoiceManagement" },
   { prefix: "/admin/accounts", feature: "admin" },
   { prefix: "/admin/approvals", feature: "admin" },
   { prefix: "/admin/bin-services", feature: "admin" },
   { prefix: "/admin/human-resources", feature: "admin" },
   { prefix: "/admin/policies", feature: "admin" },
-  { prefix: "/admin", feature: "adminHub" },
-  { prefix: "/manager", feature: "managerApprovals" },
   { prefix: "/admin/stock-management", feature: "stockManagement" },
+  { prefix: "/admin/purchasing-list", feature: "stockManagement" },
+  { prefix: "/admin", feature: "adminHub", exact: true },
+  { prefix: "/manager/approvals", feature: "managerApprovals" },
   { prefix: "/jobs/bin-management", feature: "binManagement" },
   { prefix: "/jobs/team-check-in", feature: "teamCheckIn" },
   { prefix: "/jobs/delivery", feature: "delivery" },
@@ -144,12 +174,20 @@ const PATH_RULES: { prefix: string; feature: PortalFeature }[] = [
   { prefix: "/my-profile", feature: "myProfile" },
   { prefix: "/human-resources", feature: "humanResources" },
   { prefix: "/hr", feature: "humanResources" },
-  { prefix: "/jobs", feature: "jobs" },
+  { prefix: "/jobs", feature: "jobs", exact: true },
   { prefix: "/staff-dashboard", feature: "dashboard" },
   { prefix: "/staff", feature: "dashboard" },
   { prefix: "/policies", feature: "humanResources" },
   { prefix: "/notices", feature: "jobs" },
 ];
+
+function matchesPathRule(path: string, rule: PathRule): boolean {
+  if (rule.exact) {
+    return path === rule.prefix;
+  }
+
+  return path === rule.prefix || path.startsWith(`${rule.prefix}/`);
+}
 
 async function resolveEmployeeResponsibilities(employee: {
   id: string;
@@ -206,26 +244,68 @@ export function getVisibleNavItems(
   );
 }
 
+function normalizePathname(pathname: string): string {
+  return pathname.split("?")[0] ?? pathname;
+}
+
+export function isProtectedPortalPathname(pathname: string): boolean {
+  const path = normalizePathname(pathname);
+
+  return PROTECTED_PORTAL_PATH_PREFIXES.some((prefix) => {
+    if (prefix === "/staff") {
+      return path === "/staff" || path.startsWith("/staff/");
+    }
+
+    return path === prefix || path.startsWith(`${prefix}/`);
+  });
+}
+
 export function resolvePortalFeature(pathname: string): PortalFeature | null {
-  const path = pathname.split("?")[0] ?? pathname;
+  const path = normalizePathname(pathname);
 
   for (const rule of PATH_RULES) {
-    if (path === rule.prefix || path.startsWith(`${rule.prefix}/`)) {
+    if (matchesPathRule(path, rule)) {
       return rule.feature;
     }
   }
 
+  const jobDetailMatch = path.match(/^\/jobs\/([^/]+)$/);
+  if (jobDetailMatch?.[1] && UUID_PATTERN.test(jobDetailMatch[1])) {
+    return "jobs";
+  }
+
   return null;
+}
+
+export function isKnownPortalPathname(pathname: string): boolean {
+  const path = normalizePathname(pathname);
+
+  if (
+    KNOWN_PROTECTED_PATHS_WITHOUT_FEATURE.some(
+      (knownPath) =>
+        path === knownPath || path.startsWith(`${knownPath}/`),
+    )
+  ) {
+    return true;
+  }
+
+  return resolvePortalFeature(path) !== null;
 }
 
 export function canAccessPathname(
   employee: EmployeeAccessContext,
   pathname: string,
 ): boolean {
-  const feature = resolvePortalFeature(pathname);
+  const path = normalizePathname(pathname);
+
+  if (!isProtectedPortalPathname(path)) {
+    return true;
+  }
+
+  const feature = resolvePortalFeature(path);
 
   if (!feature) {
-    return true;
+    return false;
   }
 
   return canAccessPortalFeature(employee, feature);
