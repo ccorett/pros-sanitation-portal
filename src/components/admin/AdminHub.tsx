@@ -16,10 +16,10 @@ export function AdminHub() {
       const response = await fetch("/api/admin/hub-summary", {
         cache: "no-store",
       });
-      const data = (await response.json()) as {
-        cards?: AdminHubCard[];
-        error?: string;
-      };
+      const raw = await response.text();
+      const data = raw
+        ? (JSON.parse(raw) as { cards?: AdminHubCard[]; error?: string })
+        : {};
       if (!response.ok) {
         throw new Error(data.error ?? "Unable to load admin hub summary.");
       }

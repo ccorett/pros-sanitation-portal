@@ -137,6 +137,22 @@ function humanResourcesCount(counts: AdminHubSummaryCounts): number {
   );
 }
 
+async function safeInvoiceNotificationSummary(): Promise<{
+  unreadCount: number;
+  latestActivity: Date | null;
+}> {
+  try {
+    const [unreadCount, latestActivity] = await Promise.all([
+      countUnreadInvoiceNotifications(),
+      getLatestInvoiceNotificationActivity(),
+    ]);
+    return { unreadCount, latestActivity };
+  } catch (error) {
+    console.error("[admin-hub-summary] invoice notifications unavailable:", error);
+    return { unreadCount: 0, latestActivity: null };
+  }
+}
+
 export async function buildAdminHubCards(
   actor: Employee,
   counts: AdminHubSummaryCounts,
@@ -149,8 +165,7 @@ export async function buildAdminHubCards(
     latestHrActivity,
     latestPolicy,
     invoiceAlerts,
-    unreadInvoiceNotifications,
-    latestInvoiceNotification,
+    invoiceNotificationSummary,
   ] = await Promise.all([
     prisma.accessHistory.findFirst({
       orderBy: { changedAt: "desc" },
@@ -174,9 +189,11 @@ export async function buildAdminHubCards(
       select: { updatedAt: true },
     }),
     getInvoiceAlertSummary(),
-    countUnreadInvoiceNotifications(),
-    getLatestInvoiceNotificationActivity(),
+    safeInvoiceNotificationSummary(),
   ]);
+
+  const { unreadCount: unreadInvoiceNotifications, latestActivity: latestInvoiceNotification } =
+    invoiceNotificationSummary;
 
   const inventoryLastEdited = lastInventoryActivity
     ? formatEditTimestamp(lastInventoryActivity)
