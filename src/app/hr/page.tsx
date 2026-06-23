@@ -1,15 +1,17 @@
 import { HrModuleCard } from "@/components/hr/HrModuleCard";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
 import { canAccessHrOrganisation } from "@/lib/hr-organisation-service";
-import { hrModules } from "@/lib/hr-mock-data";
+import { hrModules, payslipAdministrationModule } from "@/lib/hr-mock-data";
 import { isManagerOrAbove } from "@/lib/operational-access";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import { AccessLevel } from "@prisma/client";
-import { Building2, Upload } from "lucide-react";
+import { Building2 } from "lucide-react";
 import Link from "next/link";
 
 export default async function HrPage() {
   const { employee } = await requireStaffAccess({ pathname: "/hr" });
+  const [vacationModule, jobLettersModule, payslipsModule] = hrModules;
+  const showPayslipAdministration = isManagerOrAbove(employee.accessLevel);
 
   return (
     <StaffWorkspaceShell
@@ -41,24 +43,6 @@ export default async function HrPage() {
         </div>
       ) : null}
 
-      {isManagerOrAbove(employee.accessLevel) ? (
-        <div className="mb-6 glass-card rounded-2xl border border-[#00c6ff]/25 p-5">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#00c6ff]/15 text-[#00c6ff]">
-            <Upload className="h-5 w-5" aria-hidden="true" />
-          </div>
-          <p className="mt-4 text-lg font-bold text-[#ebfbff]">Payslip Administration</p>
-          <p className="mt-2 text-sm text-[#ebfbff]/65">
-            Upload monthly payroll CSV files, preview matches, and import payslips.
-          </p>
-          <Link
-            href="/hr/payslip-administration"
-            className="mt-4 inline-flex min-h-[44px] items-center rounded-xl border border-[#00c6ff]/40 bg-[#00c6ff]/10 px-4 py-2 text-sm font-semibold text-[#00c6ff] hover:bg-[#00c6ff]/20"
-          >
-            Open Payslip Administration
-          </Link>
-        </div>
-      ) : null}
-
       {employee.accessLevel === AccessLevel.SUPERVISOR ? (
         <div className="mb-6 glass-card rounded-2xl border border-[#00c6ff]/25 p-5">
           <p className="text-lg font-bold text-[#ebfbff]">Supervisor Review Queue</p>
@@ -76,9 +60,12 @@ export default async function HrPage() {
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {hrModules.map((module) => (
-          <HrModuleCard key={module.href} module={module} />
-        ))}
+        <HrModuleCard module={vacationModule} />
+        {showPayslipAdministration ? (
+          <HrModuleCard module={payslipAdministrationModule} />
+        ) : null}
+        <HrModuleCard module={jobLettersModule} />
+        <HrModuleCard module={payslipsModule} />
       </div>
     </StaffWorkspaceShell>
   );

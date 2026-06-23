@@ -3,7 +3,7 @@
  * Operational HR data (vacation, job letters, payslip requests) is stored in Neon.
  * Display helpers and static HR navigation only — not live data.
  */
-import { CalendarDays, FileText, Receipt, type LucideIcon } from "lucide-react";
+import { CalendarDays, FileText, Receipt, Upload, type LucideIcon } from "lucide-react";
 
 export type VacationRequestStatus = "Pending" | "Approved" | "Rejected";
 
@@ -46,18 +46,25 @@ export const hrModules: HrModule[] = [
     icon: CalendarDays,
   },
   {
-    title: "Payslips",
-    description: "View your latest payslip and payslip records from the last 12 months.",
-    href: "/hr/payslips",
-    icon: Receipt,
-  },
-  {
     title: "Job Letter Requests",
     description: "Request employment, job, or salary letters.",
     href: "/hr/job-letters",
     icon: FileText,
   },
+  {
+    title: "Payslips",
+    description: "View your latest payslip and payslip records from the last 12 months.",
+    href: "/hr/payslips",
+    icon: Receipt,
+  },
 ];
+
+export const payslipAdministrationModule: HrModule = {
+  title: "Payslip Administration",
+  description: "Upload monthly payroll CSV files, preview matches, and import payslips.",
+  href: "/hr/payslip-administration",
+  icon: Upload,
+};
 
 
 export function vacationStatusClass(status: VacationRequestStatus): string {
