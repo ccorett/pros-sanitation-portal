@@ -15,6 +15,17 @@ import {
   getDashboardDeliveryActivity,
   type DashboardDeliveryActivityItem,
 } from "@/lib/dashboard-delivery-activity";
+import {
+  DASHBOARD_INVOICE_ACTIVITY_LINKS,
+  type DashboardInvoiceActivityItem,
+} from "@/lib/dashboard-invoice-activity";
+import {
+  buildInvoiceAccessContext,
+  canAccessInvoiceManagement,
+  resolveEmployeeResponsibilitiesForActor,
+} from "@/lib/invoice-access";
+import { getInvoiceAlertSummary } from "@/lib/invoice-service";
+import { countUnreadInvoiceNotifications } from "@/lib/invoice-notification-service";
 
 const OPEN_VACATION_STATUSES: VacationFinalStatus[] = [
   VacationFinalStatus.PENDING_SUPERVISOR_REVIEW,
@@ -34,6 +45,7 @@ export type DashboardSummaryMetrics = {
 export type DashboardSummary = {
   metrics: DashboardSummaryMetrics;
   deliveryActivity: DashboardDeliveryActivityItem[] | null;
+  invoiceActivity: DashboardInvoiceActivityItem[] | null;
 };
 
 function canSeeOrganizationActivity(employee: Employee): boolean {
@@ -41,6 +53,34 @@ function canSeeOrganizationActivity(employee: Employee): boolean {
     isManagerOrAbove(employee.accessLevel) ||
     canAccessAdminModule(employee.accessLevel)
   );
+}
+
+async function getDashboardInvoiceActivity(
+  employee: Employee,
+): Promise<DashboardInvoiceActivityItem[] | null> {
+  const responsibilities = await resolveEmployeeResponsibilitiesForActor(employee);
+  const accessContext = buildInvoiceAccessContext(employee, responsibilities);
+
+  if (!canAccessInvoiceManagement(accessContext)) {
+    return null;
+  }
+
+  const [alertSummary, unreadCount] = await Promise.all([
+    getInvoiceAlertSummary(),
+    countUnreadInvoiceNotifications(),
+  ]);
+
+  const counts: Record<DashboardInvoiceActivityItem["key"], number> = {
+    invoiceAlerts: unreadCount,
+    invoicesDueSoon: alertSummary.dueSoon,
+    invoicesDueToday: alertSummary.dueToday,
+    overdueInvoices: alertSummary.overdue,
+  };
+
+  return DASHBOARD_INVOICE_ACTIVITY_LINKS.map((item) => ({
+    ...item,
+    count: counts[item.key],
+  }));
 }
 
 export async function getDashboardSummary(
@@ -57,6 +97,7 @@ export async function getDashboardSummary(
     unacknowledgedPolicies,
     todaysBinJobs,
     deliveryActivity,
+    invoiceActivity,
   ] = await Promise.all([
     prisma.job.count({
       where: orgWide
@@ -112,6 +153,7 @@ export async function getDashboardSummary(
     countUnacknowledgedPolicies(employee.id),
     listBinFieldJobsToday(employee).then((jobs) => jobs.length),
     getDashboardDeliveryActivity(employee),
+    getDashboardInvoiceActivity(employee),
   ]);
 
   return {
@@ -125,5 +167,6 @@ export async function getDashboardSummary(
       availablePayslips,
     },
     deliveryActivity,
+    invoiceActivity,
   };
 }

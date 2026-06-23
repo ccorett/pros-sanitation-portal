@@ -25,7 +25,8 @@ import {
 import type { InvoiceBillingCycle, InvoiceServiceType } from "@prisma/client";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { formatEditTimestamp } from "@/lib/admin-format";
 
 type InvoicePermissions = {
   canManageClients: boolean;
@@ -38,6 +39,23 @@ const BILLING_CYCLES: Array<{ value: InvoiceBillingCycle; label: string }> = [
 ];
 
 type InvoiceViewTab = "overview" | "notifications";
+
+type RegisterStatusFilter =
+  | "all"
+  | "DUE_SOON"
+  | "DUE"
+  | "OVERDUE"
+  | "SUBMITTED"
+  | "GENERATED";
+
+const REGISTER_STATUS_FILTERS: Array<{ value: RegisterStatusFilter; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "DUE_SOON", label: "Due Soon" },
+  { value: "DUE", label: "Due Today" },
+  { value: "OVERDUE", label: "Overdue" },
+  { value: "SUBMITTED", label: "Submitted" },
+  { value: "GENERATED", label: "Generated" },
+];
 
 function invoiceTabClassName(active: boolean): string {
   return active
@@ -75,6 +93,14 @@ export function AdminInvoiceManagementSection() {
     usualDueDay: 1,
     remarks: "",
   });
+  const [searchClient, setSearchClient] = useState("");
+  const [serviceTypeFilter, setServiceTypeFilter] = useState<InvoiceServiceType | "all">(
+    "all",
+  );
+  const [billingCycleFilter, setBillingCycleFilter] = useState<InvoiceBillingCycle | "all">(
+    "all",
+  );
+  const [statusFilter, setStatusFilter] = useState<RegisterStatusFilter>("all");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -247,6 +273,38 @@ export function AdminInvoiceManagementSection() {
     return `${client.clientName} · ${invoiceServiceTypeLabel(client.serviceType)} · ${invoiceBillingCycleLabel(client.billingCycle)}`;
   }
 
+  const filteredSchedules = useMemo(() => {
+    const query = searchClient.trim().toLowerCase();
+
+    return schedules.filter((schedule) => {
+      if (query && !schedule.clientName.toLowerCase().includes(query)) {
+        return false;
+      }
+      if (serviceTypeFilter !== "all" && schedule.serviceType !== serviceTypeFilter) {
+        return false;
+      }
+      if (billingCycleFilter !== "all" && schedule.billingCycle !== billingCycleFilter) {
+        return false;
+      }
+      if (statusFilter !== "all" && schedule.status !== statusFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [schedules, searchClient, serviceTypeFilter, billingCycleFilter, statusFilter]);
+
+  function findClientForSchedule(clientId: string): InvoiceClientRow | undefined {
+    return clients.find((client) => client.id === clientId);
+  }
+
+  function startEditClientFromSchedule(schedule: InvoiceScheduleRow) {
+    const client = findClientForSchedule(schedule.clientId);
+    if (!client) {
+      return;
+    }
+    startEditClient(client);
+  }
+
   if (loading && activeTab === "overview") {
     return (
       <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
@@ -313,7 +371,7 @@ export function AdminInvoiceManagementSection() {
 
       <section className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-bold text-[#ebfbff]">Recurring Clients</h2>
+          <h2 className="text-lg font-bold text-[#ebfbff]">Invoice Register</h2>
           {permissions.canManageClients ? (
             <button
               type="button"
@@ -428,8 +486,71 @@ export function AdminInvoiceManagementSection() {
           </form>
         ) : null}
 
-        {clients.length === 0 ? (
-          <p className="text-sm text-[#ebfbff]/55">No recurring clients yet.</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="block sm:col-span-2 lg:col-span-1">
+            <span className={authLabelClassName}>Search Client</span>
+            <input
+              value={searchClient}
+              onChange={(event) => setSearchClient(event.target.value)}
+              placeholder="Client name"
+              className={authInputClassName}
+            />
+          </label>
+          <label className="block">
+            <span className={authLabelClassName}>Service Type</span>
+            <select
+              value={serviceTypeFilter}
+              onChange={(event) =>
+                setServiceTypeFilter(event.target.value as InvoiceServiceType | "all")
+              }
+              className={authInputClassName}
+            >
+              <option value="all">All</option>
+              {INVOICE_SERVICE_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className={authLabelClassName}>Billing Cycle</span>
+            <select
+              value={billingCycleFilter}
+              onChange={(event) =>
+                setBillingCycleFilter(event.target.value as InvoiceBillingCycle | "all")
+              }
+              className={authInputClassName}
+            >
+              <option value="all">All</option>
+              {BILLING_CYCLES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {REGISTER_STATUS_FILTERS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setStatusFilter(option.value)}
+              className={`inline-flex min-h-[36px] items-center rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors ${
+                statusFilter === option.value
+                  ? "border-[#6cc801]/45 bg-[#6cc801]/15 text-[#6cc801]"
+                  : "border-[#ebfbff]/15 bg-[#0c151d]/40 text-[#ebfbff]/70 hover:border-[#00c6ff]/30"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {filteredSchedules.length === 0 ? (
+          <p className="text-sm text-[#ebfbff]/55">No invoice register rows match these filters.</p>
         ) : (
           <>
             <DesktopTableView>
@@ -442,109 +563,251 @@ export function AdminInvoiceManagementSection() {
                       <th className="px-4 py-3">Billing Cycle</th>
                       <th className="px-4 py-3">Invoices Per Cycle</th>
                       <th className="px-4 py-3">Next Due Date</th>
+                      <th className="px-4 py-3">Reminder Date</th>
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Remarks</th>
-                      {permissions.canManageClients ? (
-                        <th className="px-4 py-3">Action</th>
-                      ) : null}
+                      <th className="px-4 py-3">Last Updated</th>
+                      <th className="px-4 py-3">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {clients.map((client) => (
+                    {filteredSchedules.map((schedule) => (
                       <tr
-                        key={client.id}
-                        className="border-b border-[#ebfbff]/5 last:border-0"
+                        key={schedule.id}
+                        className={`border-b border-[#ebfbff]/5 last:border-0 border-l-4 ${invoiceRowBorderClass(schedule.status)}`}
                       >
                         <td className="px-4 py-3 font-medium text-[#ebfbff]">
-                          {client.clientName}
+                          {schedule.clientName}
                         </td>
                         <td className="px-4 py-3 text-[#ebfbff]/70">
-                          {invoiceServiceTypeLabel(client.serviceType)}
+                          {invoiceServiceTypeLabel(schedule.serviceType)}
                         </td>
                         <td className="px-4 py-3 text-[#ebfbff]/70">
-                          {invoiceBillingCycleLabel(client.billingCycle)}
+                          {invoiceBillingCycleLabel(schedule.billingCycle)}
                         </td>
                         <td className="px-4 py-3 text-[#ebfbff]/70">
-                          {client.invoiceCountPerCycle}
+                          {schedule.invoiceCountPerCycle}
+                        </td>
+                        <td className="px-4 py-3 text-[#ebfbff]/70">{schedule.dueDate}</td>
+                        <td className="px-4 py-3 text-[#ebfbff]/70">
+                          {schedule.reminderDate}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${invoiceStatusBadgeClass(schedule.status)}`}
+                          >
+                            {schedule.statusLabel}
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-[#ebfbff]/70">
-                          {client.nextDueDate ?? "—"}
+                          {schedule.remarks || "—"}
                         </td>
-                        <td className="px-4 py-3 text-[#ebfbff]/70">{client.status}</td>
                         <td className="px-4 py-3 text-[#ebfbff]/70">
-                          {client.remarks || "—"}
+                          {formatEditTimestamp(schedule.updatedAt)}
                         </td>
-                        {permissions.canManageClients ? (
-                          <td className="px-4 py-3">
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => startEditClient(client)}
-                                className="text-xs font-semibold text-[#00c6ff]"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                disabled={busyId === client.id}
-                                onClick={() =>
-                                  void handleRemoveClient(client.id, clientRowLabel(client))
-                                }
-                                className="text-xs font-semibold text-[#ff4d4f]"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </td>
-                        ) : null}
+                        <td className="px-4 py-3">
+                          <div className="flex min-w-[12rem] flex-wrap gap-2">
+                            {permissions.canManageClients ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => startEditClientFromSchedule(schedule)}
+                                  className="text-xs font-semibold text-[#00c6ff]"
+                                >
+                                  Edit Client
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={busyId === schedule.clientId}
+                                  onClick={() => {
+                                    const client = findClientForSchedule(schedule.clientId);
+                                    if (!client) return;
+                                    void handleRemoveClient(
+                                      schedule.clientId,
+                                      clientRowLabel(client),
+                                    );
+                                  }}
+                                  className="text-xs font-semibold text-[#ff4d4f]"
+                                >
+                                  Remove Client
+                                </button>
+                              </>
+                            ) : null}
+                            {permissions.canProcessSchedules ? (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={busyId === schedule.id}
+                                  onClick={() => {
+                                    const days = window.prompt("Snooze for how many days?", "3");
+                                    if (!days) return;
+                                    void handleScheduleAction(schedule.id, "snooze", {
+                                      snoozeDays: Number(days),
+                                    });
+                                  }}
+                                  className="text-xs font-semibold text-[#00c6ff]"
+                                >
+                                  Snooze
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={busyId === schedule.id}
+                                  onClick={() =>
+                                    void handleScheduleAction(schedule.id, "generated")
+                                  }
+                                  className="text-xs font-semibold text-[#ebfbff]/80"
+                                >
+                                  Mark Generated
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={busyId === schedule.id}
+                                  onClick={() =>
+                                    void handleScheduleAction(schedule.id, "submitted")
+                                  }
+                                  className="text-xs font-semibold text-[#6cc801]"
+                                >
+                                  Mark Submitted
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={busyId === schedule.id}
+                                  onClick={() => {
+                                    const remarks = window.prompt(
+                                      "Remarks",
+                                      schedule.remarks ?? "",
+                                    );
+                                    if (remarks === null) return;
+                                    void handleScheduleAction(schedule.id, "remarks", {
+                                      remarks,
+                                    });
+                                  }}
+                                  className="text-xs font-semibold text-[#ebfbff]/60"
+                                >
+                                  Edit Remarks
+                                </button>
+                              </>
+                            ) : null}
+                            <Link
+                              href="/admin/invoices?tab=notifications"
+                              className="text-xs font-semibold text-[#00c6ff]"
+                            >
+                              View Notifications
+                            </Link>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </DesktopTableView>
+
             <MobileCardStack>
-              {clients.map((client) => (
+              {filteredSchedules.map((schedule) => (
                 <MobileRecordCard
-                  key={client.id}
-                  title={client.clientName}
-                  subtitle={invoiceServiceTypeLabel(client.serviceType)}
+                  key={schedule.id}
+                  title={schedule.clientName}
+                  subtitle={`${invoiceServiceTypeLabel(schedule.serviceType)} · ${invoiceBillingCycleLabel(schedule.billingCycle)}`}
+                  headerExtra={
+                    <span
+                      className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${invoiceStatusBadgeClass(schedule.status)}`}
+                    >
+                      {schedule.statusLabel}
+                    </span>
+                  }
                   fields={[
+                    { label: "Invoices Per Cycle", value: schedule.invoiceCountPerCycle },
+                    { label: "Next Due Date", value: schedule.dueDate },
+                    { label: "Reminder Date", value: schedule.reminderDate },
                     {
-                      label: "Billing Cycle",
-                      value: invoiceBillingCycleLabel(client.billingCycle),
+                      label: "Last Updated",
+                      value: formatEditTimestamp(schedule.updatedAt),
                     },
-                    { label: "Invoices Per Cycle", value: client.invoiceCountPerCycle },
-                    { label: "Next Due Date", value: client.nextDueDate ?? "—" },
-                    { label: "Status", value: client.status },
                   ]}
                   detailFields={
-                    client.remarks
-                      ? [{ label: "Remarks", value: client.remarks }]
+                    schedule.remarks
+                      ? [{ label: "Remarks", value: schedule.remarks }]
                       : undefined
                   }
                   actions={
-                    permissions.canManageClients ? (
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => startEditClient(client)}
-                          className="rounded-xl border border-[#00c6ff]/30 px-3 py-2 text-xs font-semibold text-[#00c6ff]"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busyId === client.id}
-                          onClick={() =>
-                            void handleRemoveClient(client.id, client.clientName)
-                          }
-                          className="rounded-xl border border-[#ff4d4f]/30 px-3 py-2 text-xs font-semibold text-[#ff4d4f]"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ) : undefined
+                    <div className="flex flex-wrap gap-2">
+                      {permissions.canManageClients ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => startEditClientFromSchedule(schedule)}
+                            className="rounded-xl border border-[#00c6ff]/30 px-3 py-2 text-xs font-semibold text-[#00c6ff]"
+                          >
+                            Edit Client
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busyId === schedule.clientId}
+                            onClick={() => {
+                              const client = findClientForSchedule(schedule.clientId);
+                              if (!client) return;
+                              void handleRemoveClient(schedule.clientId, client.clientName);
+                            }}
+                            className="rounded-xl border border-[#ff4d4f]/30 px-3 py-2 text-xs font-semibold text-[#ff4d4f]"
+                          >
+                            Remove Client
+                          </button>
+                        </>
+                      ) : null}
+                      {permissions.canProcessSchedules ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={busyId === schedule.id}
+                            onClick={() => {
+                              const days = window.prompt("Snooze for how many days?", "3");
+                              if (!days) return;
+                              void handleScheduleAction(schedule.id, "snooze", {
+                                snoozeDays: Number(days),
+                              });
+                            }}
+                            className="rounded-xl border border-[#00c6ff]/30 px-3 py-2 text-xs font-semibold text-[#00c6ff]"
+                          >
+                            Snooze
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busyId === schedule.id}
+                            onClick={() => void handleScheduleAction(schedule.id, "generated")}
+                            className="rounded-xl border border-[#ebfbff]/20 px-3 py-2 text-xs font-semibold"
+                          >
+                            Mark Generated
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busyId === schedule.id}
+                            onClick={() => void handleScheduleAction(schedule.id, "submitted")}
+                            className="rounded-xl border border-[#6cc801]/30 px-3 py-2 text-xs font-semibold text-[#6cc801]"
+                          >
+                            Mark Submitted
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busyId === schedule.id}
+                            onClick={() => {
+                              const remarks = window.prompt("Remarks", schedule.remarks ?? "");
+                              if (remarks === null) return;
+                              void handleScheduleAction(schedule.id, "remarks", { remarks });
+                            }}
+                            className="rounded-xl border border-[#ebfbff]/20 px-3 py-2 text-xs font-semibold"
+                          >
+                            Edit Remarks
+                          </button>
+                        </>
+                      ) : null}
+                      <Link
+                        href="/admin/invoices?tab=notifications"
+                        className="rounded-xl border border-[#00c6ff]/30 px-3 py-2 text-xs font-semibold text-[#00c6ff]"
+                      >
+                        View Notifications
+                      </Link>
+                    </div>
                   }
                 />
               ))}
@@ -667,181 +930,6 @@ export function AdminInvoiceManagementSection() {
             </div>
           </form>
         ) : null}
-      </section>
-
-      <section className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">
-        <h2 className="text-lg font-bold text-[#ebfbff]">Invoice Schedule</h2>
-        {schedules.length === 0 ? (
-          <p className="text-sm text-[#ebfbff]/55">No invoice schedules yet.</p>
-        ) : (
-          <>
-            <DesktopTableView>
-              <div className="overflow-x-auto rounded-xl border border-[#ebfbff]/10">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="border-b border-[#ebfbff]/10 text-xs uppercase tracking-wide text-[#ebfbff]/50">
-                    <tr>
-                      <th className="px-4 py-3">Client Name</th>
-                      <th className="px-4 py-3">Service Type</th>
-                      <th className="px-4 py-3">Cycle</th>
-                      <th className="px-4 py-3">Invoices</th>
-                      <th className="px-4 py-3">Reminder</th>
-                      <th className="px-4 py-3">Due</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Remarks</th>
-                      {permissions.canProcessSchedules ? (
-                        <th className="px-4 py-3">Action</th>
-                      ) : null}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {schedules.map((schedule) => (
-                      <tr
-                        key={schedule.id}
-                        className={`border-b border-[#ebfbff]/5 last:border-0 border-l-4 ${invoiceRowBorderClass(schedule.status)}`}
-                      >
-                        <td className="px-4 py-3 font-medium text-[#ebfbff]">
-                          {schedule.clientName}
-                        </td>
-                        <td className="px-4 py-3 text-[#ebfbff]/70">
-                          {invoiceServiceTypeLabel(schedule.serviceType)}
-                        </td>
-                        <td className="px-4 py-3 text-[#ebfbff]/70">
-                          {schedule.cycleLabel}
-                        </td>
-                        <td className="px-4 py-3 text-[#ebfbff]/70">
-                          {schedule.invoiceCountPerCycle}
-                        </td>
-                        <td className="px-4 py-3 text-[#ebfbff]/70">
-                          {schedule.reminderDate}
-                        </td>
-                        <td className="px-4 py-3 text-[#ebfbff]/70">{schedule.dueDate}</td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${invoiceStatusBadgeClass(schedule.status)}`}
-                          >
-                            {schedule.statusLabel}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-[#ebfbff]/70">
-                          {schedule.remarks || "—"}
-                        </td>
-                        {permissions.canProcessSchedules ? (
-                          <td className="px-4 py-3">
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                disabled={busyId === schedule.id}
-                                onClick={() => {
-                                  const days = window.prompt("Snooze for how many days?", "3");
-                                  if (!days) return;
-                                  void handleScheduleAction(schedule.id, "snooze", {
-                                    snoozeDays: Number(days),
-                                  });
-                                }}
-                                className="text-xs font-semibold text-[#00c6ff]"
-                              >
-                                Snooze
-                              </button>
-                              <button
-                                type="button"
-                                disabled={busyId === schedule.id}
-                                onClick={() =>
-                                  void handleScheduleAction(schedule.id, "generated")
-                                }
-                                className="text-xs font-semibold text-[#ebfbff]/80"
-                              >
-                                Generated
-                              </button>
-                              <button
-                                type="button"
-                                disabled={busyId === schedule.id}
-                                onClick={() =>
-                                  void handleScheduleAction(schedule.id, "submitted")
-                                }
-                                className="text-xs font-semibold text-[#6cc801]"
-                              >
-                                Submitted
-                              </button>
-                              <button
-                                type="button"
-                                disabled={busyId === schedule.id}
-                                onClick={() => {
-                                  const remarks = window.prompt(
-                                    "Remarks",
-                                    schedule.remarks ?? "",
-                                  );
-                                  if (remarks === null) return;
-                                  void handleScheduleAction(schedule.id, "remarks", {
-                                    remarks,
-                                  });
-                                }}
-                                className="text-xs font-semibold text-[#ebfbff]/60"
-                              >
-                                Remarks
-                              </button>
-                            </div>
-                          </td>
-                        ) : null}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </DesktopTableView>
-            <MobileCardStack>
-              {schedules.map((schedule) => (
-                <MobileRecordCard
-                  key={schedule.id}
-                  title={schedule.clientName}
-                  subtitle={`${invoiceServiceTypeLabel(schedule.serviceType)} · ${schedule.cycleLabel}`}
-                  headerExtra={
-                    <span
-                      className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${invoiceStatusBadgeClass(schedule.status)}`}
-                    >
-                      {schedule.statusLabel}
-                    </span>
-                  }
-                  fields={[
-                    { label: "Invoices", value: schedule.invoiceCountPerCycle },
-                    { label: "Reminder", value: schedule.reminderDate },
-                    { label: "Due", value: schedule.dueDate },
-                  ]}
-                  detailFields={
-                    schedule.remarks
-                      ? [{ label: "Remarks", value: schedule.remarks }]
-                      : undefined
-                  }
-                  actions={
-                    permissions.canProcessSchedules ? (
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          disabled={busyId === schedule.id}
-                          onClick={() =>
-                            void handleScheduleAction(schedule.id, "generated")
-                          }
-                          className="rounded-xl border border-[#ebfbff]/20 px-3 py-2 text-xs font-semibold"
-                        >
-                          Generated
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busyId === schedule.id}
-                          onClick={() =>
-                            void handleScheduleAction(schedule.id, "submitted")
-                          }
-                          className="rounded-xl border border-[#6cc801]/30 px-3 py-2 text-xs font-semibold text-[#6cc801]"
-                        >
-                          Submitted
-                        </button>
-                      </div>
-                    ) : undefined
-                  }
-                />
-              ))}
-            </MobileCardStack>
-          </>
-        )}
       </section>
         </>
       )}

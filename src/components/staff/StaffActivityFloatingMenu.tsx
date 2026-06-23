@@ -1,6 +1,7 @@
 "use client";
 
 import type { DashboardDeliveryActivityItem } from "@/lib/dashboard-delivery-activity";
+import type { DashboardInvoiceActivityItem } from "@/lib/dashboard-invoice-activity";
 import type { DashboardSummaryMetrics } from "@/lib/dashboard-summary-service";
 import { ClipboardList, X } from "lucide-react";
 import Link from "next/link";
@@ -18,6 +19,12 @@ type ActivityRow =
   | {
       kind: "delivery";
       key: DashboardDeliveryActivityItem["key"];
+      label: string;
+      href: string;
+    }
+  | {
+      kind: "invoice";
+      key: DashboardInvoiceActivityItem["key"];
       label: string;
       href: string;
     };
@@ -55,6 +62,18 @@ const ATTENTION_DELIVERY_METRICS = new Set<DashboardDeliveryActivityItem["key"]>
   "deliveriesInProgress",
 ]);
 
+const ATTENTION_INVOICE_METRICS = new Set<DashboardInvoiceActivityItem["key"]>([
+  "invoiceAlerts",
+  "invoicesDueSoon",
+  "invoicesDueToday",
+  "overdueInvoices",
+]);
+
+const URGENT_INVOICE_METRICS = new Set<DashboardInvoiceActivityItem["key"]>([
+  "invoicesDueToday",
+  "overdueInvoices",
+]);
+
 function metricTone(key: ActivityRow["key"], count: number): MetricTone {
   if (count === 0) {
     return "normal";
@@ -68,11 +87,19 @@ function metricTone(key: ActivityRow["key"], count: number): MetricTone {
     return "urgent";
   }
 
+  if (URGENT_INVOICE_METRICS.has(key as DashboardInvoiceActivityItem["key"])) {
+    return "urgent";
+  }
+
   if (ATTENTION_METRICS.has(key as keyof DashboardSummaryMetrics)) {
     return "attention";
   }
 
   if (ATTENTION_DELIVERY_METRICS.has(key as DashboardDeliveryActivityItem["key"])) {
+    return "attention";
+  }
+
+  if (ATTENTION_INVOICE_METRICS.has(key as DashboardInvoiceActivityItem["key"])) {
     return "attention";
   }
 
@@ -93,6 +120,7 @@ function ActivityPanelContent({
   activityRows,
   metrics,
   deliveryActivity,
+  invoiceActivity,
   loading,
   error,
   onClose,
@@ -100,6 +128,7 @@ function ActivityPanelContent({
   activityRows: ActivityRow[];
   metrics: DashboardSummaryMetrics | null;
   deliveryActivity: DashboardDeliveryActivityItem[] | null;
+  invoiceActivity: DashboardInvoiceActivityItem[] | null;
   loading: boolean;
   error: string | null;
   onClose: () => void;
@@ -136,7 +165,9 @@ function ActivityPanelContent({
               const count =
                 item.kind === "metric"
                   ? metrics[item.key]
-                  : (deliveryActivity?.find((row) => row.key === item.key)?.count ?? 0);
+                  : item.kind === "delivery"
+                    ? (deliveryActivity?.find((row) => row.key === item.key)?.count ?? 0)
+                    : (invoiceActivity?.find((row) => row.key === item.key)?.count ?? 0);
               const tone = metricTone(item.key, count);
 
               return (
@@ -177,6 +208,9 @@ export function StaffActivityFloatingMenu() {
   const [deliveryActivity, setDeliveryActivity] = useState<
     DashboardDeliveryActivityItem[] | null
   >(null);
+  const [invoiceActivity, setInvoiceActivity] = useState<
+    DashboardInvoiceActivityItem[] | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -188,6 +222,7 @@ export function StaffActivityFloatingMenu() {
       const data = (await response.json()) as {
         metrics?: DashboardSummaryMetrics;
         deliveryActivity?: DashboardDeliveryActivityItem[] | null;
+        invoiceActivity?: DashboardInvoiceActivityItem[] | null;
         error?: string;
       };
       if (!response.ok) {
@@ -195,6 +230,7 @@ export function StaffActivityFloatingMenu() {
       }
       setMetrics(data.metrics ?? null);
       setDeliveryActivity(data.deliveryActivity ?? null);
+      setInvoiceActivity(data.invoiceActivity ?? null);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Unable to load dashboard summary.",
@@ -252,6 +288,12 @@ export function StaffActivityFloatingMenu() {
           label: item.label,
           href: "/jobs/delivery",
         })),
+        ...(invoiceActivity ?? []).map((item) => ({
+          kind: "invoice" as const,
+          key: item.key,
+          label: item.label,
+          href: item.href,
+        })),
       ]
     : [];
 
@@ -279,6 +321,7 @@ export function StaffActivityFloatingMenu() {
               activityRows={activityRows}
               metrics={metrics}
               deliveryActivity={deliveryActivity}
+              invoiceActivity={invoiceActivity}
               loading={loading}
               error={error}
               onClose={() => setOpen(false)}

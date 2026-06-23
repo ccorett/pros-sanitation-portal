@@ -46,6 +46,7 @@ export type InvoiceScheduleRow = {
   submittedAt: string | null;
   snoozedUntil: string | null;
   remarks: string | null;
+  updatedAt: string;
 };
 
 function startOfUtcDay(date: Date): Date {
@@ -373,6 +374,7 @@ function serializeSchedule(
       ? formatIsoDate(schedule.snoozedUntil)
       : null,
     remarks: schedule.remarks,
+    updatedAt: schedule.updatedAt.toISOString(),
   };
 }
 
