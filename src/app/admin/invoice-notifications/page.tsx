@@ -1,4 +1,4 @@
-import { AdminInvoiceManagementSection } from "@/components/admin/AdminInvoiceManagementSection";
+import { AdminInvoiceNotificationsSection } from "@/components/admin/AdminInvoiceNotificationsSection";
 import { AdminBackLink } from "@/components/admin/AdminBackLink";
 import { StaffWorkspaceShell } from "@/components/layout/StaffWorkspaceShell";
 import {
@@ -9,8 +9,10 @@ import {
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import { redirect } from "next/navigation";
 
-export default async function AdminInvoicesPage() {
-  const { employee } = await requireStaffAccess({ pathname: "/admin/invoices" });
+export default async function AdminInvoiceNotificationsPage() {
+  const { employee } = await requireStaffAccess({
+    pathname: "/admin/invoice-notifications",
+  });
   const responsibilities = await resolveEmployeeResponsibilitiesForActor(employee);
   const accessContext = buildInvoiceAccessContext(employee, responsibilities);
 
@@ -21,8 +23,8 @@ export default async function AdminInvoicesPage() {
   return (
     <StaffWorkspaceShell
       sectionLabel="Admin"
-      title="Invoice Management"
-      subtitle="Track recurring client invoices, due dates, and submission status."
+      title="Invoice Notifications"
+      subtitle="Platform alerts for invoice due dates, generation, and submission."
       employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
@@ -30,7 +32,7 @@ export default async function AdminInvoicesPage() {
     >
       <div className="space-y-6">
         <AdminBackLink />
-        <AdminInvoiceManagementSection />
+        <AdminInvoiceNotificationsSection />
       </div>
     </StaffWorkspaceShell>
   );

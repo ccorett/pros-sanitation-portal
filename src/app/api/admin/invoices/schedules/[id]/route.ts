@@ -36,10 +36,18 @@ export async function PATCH(request: Request, context: RouteContext) {
         });
         break;
       case "generated":
-        schedules = await markInvoiceScheduleGenerated(id);
+        schedules = await markInvoiceScheduleGenerated(
+          id,
+          `${access.actor.firstName} ${access.actor.lastName}`.trim() ||
+            access.actor.companyEmail,
+        );
         break;
       case "submitted":
-        schedules = await markInvoiceScheduleSubmitted(id);
+        schedules = await markInvoiceScheduleSubmitted(
+          id,
+          `${access.actor.firstName} ${access.actor.lastName}`.trim() ||
+            access.actor.companyEmail,
+        );
         break;
       case "remarks":
         schedules = await updateInvoiceScheduleRemarks(id, body.remarks ?? null);

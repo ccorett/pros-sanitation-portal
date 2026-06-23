@@ -16,6 +16,10 @@ import {
 import { countActivePolicies } from "@/lib/policy-service";
 import { getInvoiceAlertSummary } from "@/lib/invoice-service";
 import {
+  countUnreadInvoiceNotifications,
+  getLatestInvoiceNotificationActivity,
+} from "@/lib/invoice-notification-service";
+import {
   buildInvoiceAccessContext,
   canAccessInvoiceManagement,
   hasAdminAssistantResponsibility,
@@ -145,6 +149,8 @@ export async function buildAdminHubCards(
     latestHrActivity,
     latestPolicy,
     invoiceAlerts,
+    unreadInvoiceNotifications,
+    latestInvoiceNotification,
   ] = await Promise.all([
     prisma.accessHistory.findFirst({
       orderBy: { changedAt: "desc" },
@@ -168,6 +174,8 @@ export async function buildAdminHubCards(
       select: { updatedAt: true },
     }),
     getInvoiceAlertSummary(),
+    countUnreadInvoiceNotifications(),
+    getLatestInvoiceNotificationActivity(),
   ]);
 
   const inventoryLastEdited = lastInventoryActivity
@@ -227,6 +235,16 @@ export async function buildAdminHubCards(
       lastEditedLabel: null,
     },
     {
+      id: "invoice-notifications",
+      title: "Invoice Notifications",
+      description: "Platform alerts when invoices are due, generated, or submitted.",
+      href: "/admin/invoice-notifications",
+      count: unreadInvoiceNotifications,
+      lastEditedLabel: latestInvoiceNotification
+        ? formatEditTimestamp(latestInvoiceNotification.toISOString())
+        : null,
+    },
+    {
       id: "bin-services",
       title: "Bin Services",
       description:
@@ -264,11 +282,13 @@ function filterAdminHubCardsForActor(
     !isFullAdmin && hasAdminAssistantResponsibility(accessContext);
 
   if (isAdminAssistantOnly) {
-    return cards.filter((card) => card.id === "invoices");
+    return cards.filter(
+      (card) => card.id === "invoices" || card.id === "invoice-notifications",
+    );
   }
 
   return cards.filter((card) => {
-    if (card.id === "invoices") {
+    if (card.id === "invoices" || card.id === "invoice-notifications") {
       return canAccessInvoiceManagement(accessContext);
     }
     return isFullAdmin;

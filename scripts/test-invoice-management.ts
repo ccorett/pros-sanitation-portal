@@ -1,10 +1,11 @@
 /**
- * Verifies invoice management: due dates, status colours, actions, permissions, reminders.
+ * Verifies invoice management: due dates, status colours, actions, permissions, notifications.
  * Run: npx tsx scripts/test-invoice-management.ts
  */
 import {
   AccessLevel,
   InvoiceBillingCycle,
+  InvoiceNotificationType,
   InvoiceScheduleStatus,
   InvoiceServiceType,
   EmployeeResponsibility,
@@ -13,29 +14,28 @@ import { PrismaClient } from "@prisma/client";
 import {
   buildInvoiceAccessContext,
   canAccessInvoiceManagement,
-  canManageInvoiceAlertRecipients,
   canManageInvoiceClients,
   canProcessInvoiceSchedules,
-  canSendInvoiceStatusEmail,
 } from "../src/lib/invoice-access";
-import { buildManualStatusUpdateEmailBody } from "../src/lib/invoice-email";
+import {
+  countUnreadInvoiceNotifications,
+  listInvoiceNotifications,
+  markInvoiceNotificationRead,
+  syncInvoiceDueNotifications,
+} from "../src/lib/invoice-notification-service";
 import {
   computeDueDateForCycle,
   computeNextCycle,
   computeReminderDate,
-  createInvoiceAlertRecipient,
   createInvoiceClient,
   deriveScheduleStatus,
-  getInvoiceStatusEmailSummary,
   listInvoiceClients,
   markInvoiceScheduleGenerated,
   markInvoiceScheduleSubmitted,
-  sendInvoiceReminders,
-  sendManualInvoiceStatusUpdate,
+  refreshScheduleStatuses,
   snoozeInvoiceSchedule,
   softRemoveInvoiceClient,
 } from "../src/lib/invoice-service";
-import { InvoiceAlertLogType } from "@prisma/client";
 import { getInvoiceStatusColor } from "../src/lib/invoice-status";
 
 const prisma = new PrismaClient();
@@ -83,59 +83,7 @@ async function main() {
   assert(!canAccessInvoiceManagement(memberCtx), "Team member should not access invoices");
   assert(canManageInvoiceClients(adminCtx), "Admin should manage clients");
   assert(!canManageInvoiceClients(assistantCtx), "Admin assistant should not manage clients");
-  assert(canManageInvoiceAlertRecipients(adminCtx), "Admin should manage recipients");
-  assert(
-    !canManageInvoiceAlertRecipients(assistantCtx),
-    "Admin assistant should not manage recipients",
-  );
   assert(canProcessInvoiceSchedules(assistantCtx), "Admin assistant should process schedules");
-  assert(canSendInvoiceStatusEmail(adminCtx), "Admin should send status emails");
-  assert(canSendInvoiceStatusEmail(assistantCtx), "Admin assistant should send status emails");
-  assert(!canSendInvoiceStatusEmail(memberCtx), "Team member should not send status emails");
-
-  const statusEmailBody = buildManualStatusUpdateEmailBody({
-    sentAt: "2026-06-03",
-    sentBy: "Test Admin",
-    summary: {
-      dueSoon: 1,
-      dueToday: 2,
-      overdue: 0,
-      generated: 3,
-      submitted: 4,
-      snoozed: 1,
-    },
-    schedules: [
-      {
-        clientName: "Sample Client",
-        serviceTypeLabel: "Cleaning Services",
-        billingCycleLabel: "Monthly",
-        dueDate: "2026-06-01",
-        statusLabel: "Due Soon",
-        remarks: "Test remark",
-      },
-    ],
-  });
-  assert(statusEmailBody.includes("Invoice Status Update"), "Status email should include title");
-  assert(statusEmailBody.includes("Due Soon: 1"), "Status email should include summary counts");
-  assert(statusEmailBody.includes("Sample Client"), "Status email should include schedule rows");
-
-  const summary = await getInvoiceStatusEmailSummary();
-  assert(
-    typeof summary.generated === "number" && typeof summary.submitted === "number",
-    "Status summary should include generated and submitted counts",
-  );
-
-  const manualStatusWithoutRecipients = await sendManualInvoiceStatusUpdate({
-    sentBy: "Invoice Test",
-  });
-  assert(!manualStatusWithoutRecipients.ok, "Manual status send should fail without recipients");
-
-  const manualStatusLog = await prisma.invoiceAlertLog.findFirst({
-    where: { alertType: InvoiceAlertLogType.MANUAL_STATUS_UPDATE },
-    orderBy: { createdAt: "desc" },
-  });
-  assert(manualStatusLog !== null, "Manual status send should create InvoiceAlertLog entry");
-  assert(manualStatusLog?.sentBy === "Invoice Test", "Manual status log should record sentBy");
 
   const nextCycle = computeNextCycle({ billingCycle: InvoiceBillingCycle.MONTHLY });
   const dueDate = computeDueDateForCycle({
@@ -162,10 +110,7 @@ async function main() {
     startOfUtcDay(reminderDate),
   );
   assert(dueSoonStatus === InvoiceScheduleStatus.DUE_SOON, "Should be DUE_SOON on reminder date");
-  assert(
-    getInvoiceStatusColor(dueSoonStatus) === "yellow",
-    "Due soon should be yellow",
-  );
+  assert(getInvoiceStatusColor(dueSoonStatus) === "yellow", "Due soon should be yellow");
 
   const dueStatus = deriveScheduleStatus(
     {
@@ -225,8 +170,7 @@ async function main() {
   if (!created.nextDueDate) {
     throw new Error("Next due date should be set");
   }
-  const nextDueDate = created.nextDueDate;
-  assert(nextDueDate.endsWith("-01"), "Next due date should fall on the 1st");
+  assert(created.nextDueDate.endsWith("-01"), "Next due date should fall on the 1st");
 
   const schedules = await prisma.invoiceSchedule.findMany({
     where: { clientId: created.id },
@@ -246,34 +190,63 @@ async function main() {
   assert(snoozed.status === InvoiceScheduleStatus.SNOOZED, "Snooze should set SNOOZED status");
   assert(getInvoiceStatusColor(InvoiceScheduleStatus.SNOOZED) === "blue", "Snoozed should be blue");
 
-  await markInvoiceScheduleGenerated(scheduleId);
+  await markInvoiceScheduleGenerated(scheduleId, "Invoice Test");
   const generated = await prisma.invoiceSchedule.findUniqueOrThrow({
     where: { id: scheduleId },
   });
   assert(generated.generatedAt !== null, "Generated should set generatedAt");
 
-  await markInvoiceScheduleSubmitted(scheduleId);
+  const generatedNotification = await prisma.invoiceNotification.findFirst({
+    where: {
+      invoiceId: scheduleId,
+      type: InvoiceNotificationType.GENERATED,
+    },
+  });
+  assert(generatedNotification !== null, "Generated should create platform notification");
+  assert(
+    generatedNotification!.message.includes(testClientName),
+    "Generated notification should include client name",
+  );
+
+  await markInvoiceScheduleSubmitted(scheduleId, "Invoice Test");
   const submitted = await prisma.invoiceSchedule.findUniqueOrThrow({
     where: { id: scheduleId },
   });
   assert(submitted.status === InvoiceScheduleStatus.SUBMITTED, "Submitted should set status");
   assert(getInvoiceStatusColor(InvoiceScheduleStatus.SUBMITTED) === "green", "Submitted is green");
 
-  await createInvoiceAlertRecipient({
-    name: "Invoice Test Recipient",
-    email: `invoice-test-${Date.now()}@example.com`,
-    roleLabel: "Test",
+  const submittedNotification = await prisma.invoiceNotification.findFirst({
+    where: {
+      invoiceId: scheduleId,
+      type: InvoiceNotificationType.SUBMITTED,
+    },
   });
+  assert(submittedNotification !== null, "Submitted should create platform notification");
 
-  const reminderResults = await sendInvoiceReminders();
+  await refreshScheduleStatuses();
+  const syncResults = await syncInvoiceDueNotifications();
   assert(
-    typeof reminderResults === "object" && reminderResults !== null,
-    "Reminder results should be an object",
+    typeof syncResults.dueSoonCreated === "number",
+    "Sync should return due soon counter",
   );
-  assert(
-    "fiveDayEmailsSent" in reminderResults && "dueDateEmailsSent" in reminderResults,
-    "Reminder results should include email counters",
-  );
+
+  const unreadBefore = await countUnreadInvoiceNotifications();
+  assert(typeof unreadBefore === "number", "Unread count should be a number");
+
+  if (generatedNotification) {
+    await markInvoiceNotificationRead(generatedNotification.id, {
+      name: "Invoice Test",
+      email: "test@example.com",
+    });
+    const audit = await prisma.invoiceNotificationAuditLog.findFirst({
+      where: { notificationId: generatedNotification.id },
+      orderBy: { createdAt: "desc" },
+    });
+    assert(audit !== null, "Mark read should create audit log");
+  }
+
+  const unreadNotifications = await listInvoiceNotifications("unread");
+  assert(Array.isArray(unreadNotifications), "Unread filter should return list");
 
   await softRemoveInvoiceClient(created.id);
 
@@ -301,8 +274,8 @@ async function main() {
   console.log("Invoice management flow OK:", {
     testClientName,
     nextDueDate: created.nextDueDate,
-    reminderRuns:
-      reminderResults.fiveDayEmailsSent + reminderResults.dueDateEmailsSent,
+    syncResults,
+    unreadBefore,
   });
 }
 

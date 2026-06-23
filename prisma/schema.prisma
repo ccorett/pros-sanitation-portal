@@ -1093,6 +1093,31 @@ enum InvoiceAlertLogStatus {
   @@map("InvoiceAlertLogStatus")
 }
 
+enum InvoiceNotificationType {
+  DUE_SOON
+  DUE_TODAY
+  OVERDUE
+  GENERATED
+  SUBMITTED
+
+  @@map("InvoiceNotificationType")
+}
+
+enum InvoiceNotificationStatus {
+  UNREAD
+  READ
+
+  @@map("InvoiceNotificationStatus")
+}
+
+enum InvoiceNotificationAuditAction {
+  NOTIFICATION_CREATED
+  NOTIFICATION_READ
+  NOTIFICATION_UNREAD
+
+  @@map("InvoiceNotificationAuditAction")
+}
+
 model InvoiceClient {
   id                   String              @id @default(uuid()) @db.Uuid
   clientName           String
@@ -1106,7 +1131,8 @@ model InvoiceClient {
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
 
-  schedules InvoiceSchedule[]
+  schedules     InvoiceSchedule[]
+  notifications InvoiceNotification[]
 
   @@index([status])
   @@index([clientName, serviceType, billingCycle])
@@ -1128,7 +1154,8 @@ model InvoiceSchedule {
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
 
-  client InvoiceClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client        InvoiceClient         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  notifications InvoiceNotification[]
 
   @@unique([clientId, cycleMonth, cycleYear])
   @@index([dueDate])
@@ -1165,4 +1192,43 @@ model InvoiceAlertLog {
   @@unique([alertDate, alertType, recipientEmail])
   @@index([alertDate])
   @@map("invoice_alert_logs")
+}
+
+model InvoiceNotification {
+  id        String                    @id @default(uuid()) @db.Uuid
+  clientId  String                    @db.Uuid
+  invoiceId String                    @db.Uuid
+  type      InvoiceNotificationType
+  message   String
+  status    InvoiceNotificationStatus @default(UNREAD)
+  createdAt DateTime                  @default(now())
+  readAt    DateTime?
+  createdBy String?
+
+  client  InvoiceClient   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  invoice InvoiceSchedule @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([invoiceId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@map("invoice_notifications")
+}
+
+model InvoiceNotificationAuditLog {
+  id             String                         @id @default(uuid()) @db.Uuid
+  notificationId String?                        @db.Uuid
+  clientId       String                         @db.Uuid
+  invoiceId      String                         @db.Uuid
+  action         InvoiceNotificationAuditAction
+  actorName      String
+  actorEmail     String?
+  createdAt      DateTime                       @default(now())
+
+  @@index([notificationId])
+  @@index([invoiceId])
+  @@index([clientId])
+  @@index([createdAt])
+  @@map("invoice_notification_audit_logs")
 }

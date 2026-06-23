@@ -1,7 +1,8 @@
 import { COMPANY } from "@/lib/constants";
 import {
-  assertInvoiceEmailConfigured,
+  getInvoiceEmailFrom,
   getInvoiceEmailFromAddress,
+  getResendApiKey,
 } from "@/lib/invoice-email-config";
 
 type SendEmailInput = {
@@ -10,6 +11,109 @@ type SendEmailInput = {
   text: string;
 };
 
+export type ResendErrorPayload = {
+  statusCode?: number;
+  name?: string;
+  message?: string;
+};
+
+export class ResendSendError extends Error {
+  readonly statusCode?: number;
+  readonly errorName?: string;
+  readonly errorMessage?: string;
+
+  constructor(safeMessage: string, payload: ResendErrorPayload = {}) {
+    super(safeMessage);
+    this.name = "ResendSendError";
+    this.statusCode = payload.statusCode;
+    this.errorName = payload.name;
+    this.errorMessage = payload.message;
+  }
+}
+
+export function toSafeResendErrorMessage(payload: ResendErrorPayload): string {
+  const message = (payload.message ?? "").trim();
+  const lower = message.toLowerCase();
+
+  if (lower.includes("api key is invalid")) {
+    return "API key is invalid";
+  }
+
+  if (
+    lower.includes("not verified") ||
+    lower.includes("domain is not") ||
+    lower.includes("verify your domain") ||
+    lower.includes("verify a domain") ||
+    (lower.includes("from") && lower.includes("domain"))
+  ) {
+    return "Sender email is not verified";
+  }
+
+  if (lower.includes("missing") && lower.includes("from")) {
+    return "Missing sender";
+  }
+
+  if (
+    lower.includes("recipient") ||
+    lower.includes("to field") ||
+    lower.includes("at least one recipient")
+  ) {
+    return "No recipients";
+  }
+
+  if (payload.name === "validation_error" || lower.includes("validation")) {
+    return "Resend validation error";
+  }
+
+  if (message) {
+    return message;
+  }
+
+  return "Resend validation error";
+}
+
+export function logInvoiceStatusSendDiagnostics(input: {
+  recipientCount: number;
+  resendStatusCode?: number | null;
+  resendErrorName?: string | null;
+  resendErrorMessage?: string | null;
+  safeError?: string | null;
+  outcome: "precheck_failed" | "resend_failed" | "unexpected_error";
+}) {
+  console.error("[invoice-send-status]", {
+    outcome: input.outcome,
+    safeError: input.safeError ?? null,
+    resendApiKeyPresent: Boolean(getResendApiKey()),
+    invoiceEmailFromPresent: Boolean(getInvoiceEmailFrom()),
+    invoiceEmailFrom: getInvoiceEmailFrom() || null,
+    recipientCount: input.recipientCount,
+    resendStatusCode: input.resendStatusCode ?? null,
+    resendErrorName: input.resendErrorName ?? null,
+    resendErrorMessage: input.resendErrorMessage ?? null,
+  });
+}
+
+async function parseResendErrorResponse(
+  response: Response,
+): Promise<ResendSendError> {
+  const detail = await response.text();
+  let payload: ResendErrorPayload = { statusCode: response.status };
+
+  try {
+    const parsed = JSON.parse(detail) as ResendErrorPayload;
+    payload = {
+      statusCode: parsed.statusCode ?? response.status,
+      name: parsed.name,
+      message: parsed.message,
+    };
+  } catch {
+    payload.message = detail.trim() || undefined;
+  }
+
+  const safeMessage = toSafeResendErrorMessage(payload);
+  return new ResendSendError(safeMessage, payload);
+}
+
 export async function sendPlainEmail({
   to,
   subject,
@@ -17,12 +121,18 @@ export async function sendPlainEmail({
 }: SendEmailInput): Promise<void> {
   const recipients = [...new Set(to.map((email) => email.trim()).filter(Boolean))];
   if (recipients.length === 0) {
-    return;
+    throw new ResendSendError("No recipients");
   }
 
-  assertInvoiceEmailConfigured();
+  if (!getResendApiKey()) {
+    throw new ResendSendError("Missing RESEND_API_KEY");
+  }
 
-  const resendApiKey = process.env.RESEND_API_KEY!.trim();
+  if (!getInvoiceEmailFrom()) {
+    throw new ResendSendError("Missing INVOICE_EMAIL_FROM");
+  }
+
+  const resendApiKey = getResendApiKey();
   const from = getInvoiceEmailFromAddress();
 
   const response = await fetch("https://api.resend.com/emails", {
@@ -40,8 +150,7 @@ export async function sendPlainEmail({
   });
 
   if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`Failed to send email: ${detail}`);
+    throw await parseResendErrorResponse(response);
   }
 }
 

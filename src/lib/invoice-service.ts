@@ -1,9 +1,4 @@
 import {
-  AccessLevel,
-  AccountStatus,
-  EmployeeResponsibility,
-  InvoiceAlertLogStatus,
-  InvoiceAlertLogType,
   InvoiceBillingCycle,
   InvoiceClientStatus,
   InvoiceScheduleStatus,
@@ -11,18 +6,6 @@ import {
   type InvoiceClient,
   type InvoiceSchedule,
 } from "@prisma/client";
-import {
-  buildDueDateReminderEmailBody,
-  buildFiveDayReminderEmailBody,
-  buildManualStatusUpdateEmailBody,
-  buildOverdueReminderEmailBody,
-  sendPlainEmail,
-} from "@/lib/invoice-email";
-import {
-  getInvoiceEmailConfigStatus,
-  INVOICE_EMAIL_CONFIG_WARNING,
-} from "@/lib/invoice-email-config";
-import { invoiceServiceTypeLabel, invoiceBillingCycleLabel } from "@/lib/invoice-format";
 import { invoiceStatusLabel } from "@/lib/invoice-status";
 import { prisma } from "@/lib/prisma";
 
@@ -63,14 +46,6 @@ export type InvoiceScheduleRow = {
   submittedAt: string | null;
   snoozedUntil: string | null;
   remarks: string | null;
-};
-
-export type InvoiceAlertRecipientRow = {
-  id: string;
-  name: string;
-  email: string;
-  roleLabel: string | null;
-  isActive: boolean;
 };
 
 function startOfUtcDay(date: Date): Date {
@@ -259,7 +234,7 @@ function cycleLabel(month: number, year: number, billingCycle: InvoiceBillingCyc
   });
 }
 
-async function refreshScheduleStatuses(scheduleIds?: string[]) {
+export async function refreshScheduleStatuses(scheduleIds?: string[]) {
   const schedules = await prisma.invoiceSchedule.findMany({
     where: scheduleIds ? { id: { in: scheduleIds } } : undefined,
   });
@@ -452,20 +427,6 @@ export async function listInvoiceSchedules(options?: {
   return schedules.map(serializeSchedule);
 }
 
-export async function listInvoiceAlertRecipients(): Promise<InvoiceAlertRecipientRow[]> {
-  const rows = await prisma.invoiceAlertRecipient.findMany({
-    orderBy: [{ isActive: "desc" }, { name: "asc" }],
-  });
-
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    email: row.email,
-    roleLabel: row.roleLabel,
-    isActive: row.isActive,
-  }));
-}
-
 export async function createInvoiceClient(input: {
   clientName: string;
   serviceType: InvoiceServiceType;
@@ -642,41 +603,10 @@ export async function upsertImportedInvoiceClient(
   return "created";
 }
 
-export async function createInvoiceAlertRecipient(input: {
-  name: string;
-  email: string;
-  roleLabel?: string | null;
-}) {
-  await prisma.invoiceAlertRecipient.create({
-    data: {
-      name: input.name.trim(),
-      email: input.email.trim().toLowerCase(),
-      roleLabel: input.roleLabel?.trim() || null,
-      isActive: true,
-    },
-  });
-  return listInvoiceAlertRecipients();
-}
-
-export async function updateInvoiceAlertRecipient(
-  recipientId: string,
-  input: { isActive?: boolean },
+export async function markInvoiceScheduleGenerated(
+  scheduleId: string,
+  createdBy?: string | null,
 ) {
-  await prisma.invoiceAlertRecipient.update({
-    where: { id: recipientId },
-    data: {
-      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
-    },
-  });
-  return listInvoiceAlertRecipients();
-}
-
-export async function deleteInvoiceAlertRecipient(recipientId: string) {
-  await prisma.invoiceAlertRecipient.delete({ where: { id: recipientId } });
-  return listInvoiceAlertRecipients();
-}
-
-export async function markInvoiceScheduleGenerated(scheduleId: string) {
   const now = new Date();
   await prisma.invoiceSchedule.update({
     where: { id: scheduleId },
@@ -685,10 +615,17 @@ export async function markInvoiceScheduleGenerated(scheduleId: string) {
       generatedAt: now,
     },
   });
+
+  const { notifyInvoiceGenerated } = await import("@/lib/invoice-notification-service");
+  await notifyInvoiceGenerated(scheduleId, createdBy);
+
   return listInvoiceSchedules({ includeSubmitted: true });
 }
 
-export async function markInvoiceScheduleSubmitted(scheduleId: string) {
+export async function markInvoiceScheduleSubmitted(
+  scheduleId: string,
+  createdBy?: string | null,
+) {
   const now = new Date();
   await prisma.invoiceSchedule.update({
     where: { id: scheduleId },
@@ -697,6 +634,9 @@ export async function markInvoiceScheduleSubmitted(scheduleId: string) {
       submittedAt: now,
     },
   });
+
+  const { notifyInvoiceSubmitted } = await import("@/lib/invoice-notification-service");
+  await notifyInvoiceSubmitted(scheduleId, createdBy);
 
   const schedule = await prisma.invoiceSchedule.findUnique({
     where: { id: scheduleId },
@@ -794,497 +734,4 @@ export async function getInvoiceAlertSummary(): Promise<InvoiceAlertSummary> {
   ]);
 
   return { dueSoon, dueToday, overdue, upcoming };
-}
-
-async function listDefaultAlertRecipientEmails(): Promise<string[]> {
-  const employees = await prisma.employee.findMany({
-    where: {
-      accountStatus: AccountStatus.ACTIVE,
-      OR: [
-        { accessLevel: { in: [AccessLevel.ADMIN, AccessLevel.SUPER_ADMIN] } },
-        {
-          responsibilityEntries: {
-            some: { responsibility: EmployeeResponsibility.ADMIN_ASSISTANT },
-          },
-        },
-      ],
-    },
-    select: { companyEmail: true },
-  });
-
-  return employees
-    .map((employee) => employee.companyEmail.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-async function listAllAlertRecipientEmails(): Promise<string[]> {
-  const [manual, defaults] = await Promise.all([
-    prisma.invoiceAlertRecipient.findMany({
-      where: { isActive: true },
-      select: { email: true },
-    }),
-    listDefaultAlertRecipientEmails(),
-  ]);
-
-  return [
-    ...new Set([
-      ...defaults,
-      ...manual.map((row) => row.email.trim().toLowerCase()),
-    ]),
-  ];
-}
-
-async function hasAlertAlreadySent(input: {
-  alertDate: Date;
-  alertType: InvoiceAlertLogType;
-  recipientEmail: string;
-}): Promise<boolean> {
-  const existing = await prisma.invoiceAlertLog.findUnique({
-    where: {
-      alertDate_alertType_recipientEmail: {
-        alertDate: input.alertDate,
-        alertType: input.alertType,
-        recipientEmail: input.recipientEmail,
-      },
-    },
-  });
-  return Boolean(existing && existing.status === InvoiceAlertLogStatus.SENT);
-}
-
-async function logAlertAttempt(input: {
-  alertDate: Date;
-  alertType: InvoiceAlertLogType;
-  recipientEmail: string;
-  invoiceCount: number;
-  status: InvoiceAlertLogStatus;
-  errorMessage?: string | null;
-  sentBy?: string | null;
-}) {
-  await prisma.invoiceAlertLog.upsert({
-    where: {
-      alertDate_alertType_recipientEmail: {
-        alertDate: input.alertDate,
-        alertType: input.alertType,
-        recipientEmail: input.recipientEmail,
-      },
-    },
-    create: {
-      alertDate: input.alertDate,
-      alertType: input.alertType,
-      recipientEmail: input.recipientEmail,
-      invoiceCount: input.invoiceCount,
-      status: input.status,
-      sentBy: input.sentBy ?? null,
-      sentAt: input.status === InvoiceAlertLogStatus.SENT ? new Date() : null,
-      errorMessage: input.errorMessage ?? null,
-    },
-    update: {
-      invoiceCount: input.invoiceCount,
-      status: input.status,
-      sentBy: input.sentBy ?? null,
-      sentAt: input.status === InvoiceAlertLogStatus.SENT ? new Date() : null,
-      errorMessage: input.errorMessage ?? null,
-    },
-  });
-}
-
-async function sendGroupedInvoiceReminder(input: {
-  alertDate: Date;
-  alertType: InvoiceAlertLogType;
-  subject: string;
-  body: string;
-  invoiceCount: number;
-  recipients: string[];
-  emailConfigured: boolean;
-  configError: string | null;
-  results: {
-    fiveDayEmailsSent: number;
-    dueDateEmailsSent: number;
-    overdueEmailsSent: number;
-    skipped: number;
-    failed: number;
-  };
-  sentCounter: "fiveDayEmailsSent" | "dueDateEmailsSent" | "overdueEmailsSent";
-}) {
-  for (const recipientEmail of input.recipients) {
-    const alreadySent = await hasAlertAlreadySent({
-      alertDate: input.alertDate,
-      alertType: input.alertType,
-      recipientEmail,
-    });
-
-    if (alreadySent) {
-      await logAlertAttempt({
-        alertDate: input.alertDate,
-        alertType: input.alertType,
-        recipientEmail,
-        invoiceCount: input.invoiceCount,
-        status: InvoiceAlertLogStatus.SKIPPED,
-        errorMessage: "Reminder already sent for this interval.",
-      });
-      input.results.skipped += 1;
-      continue;
-    }
-
-    if (!input.emailConfigured) {
-      await logAlertAttempt({
-        alertDate: input.alertDate,
-        alertType: input.alertType,
-        recipientEmail,
-        invoiceCount: input.invoiceCount,
-        status: InvoiceAlertLogStatus.FAILED,
-        errorMessage: input.configError,
-      });
-      input.results.failed += 1;
-      continue;
-    }
-
-    try {
-      await sendPlainEmail({
-        to: [recipientEmail],
-        subject: input.subject,
-        text: input.body,
-      });
-      await logAlertAttempt({
-        alertDate: input.alertDate,
-        alertType: input.alertType,
-        recipientEmail,
-        invoiceCount: input.invoiceCount,
-        status: InvoiceAlertLogStatus.SENT,
-      });
-      input.results[input.sentCounter] += 1;
-    } catch (error) {
-      await logAlertAttempt({
-        alertDate: input.alertDate,
-        alertType: input.alertType,
-        recipientEmail,
-        invoiceCount: input.invoiceCount,
-        status: InvoiceAlertLogStatus.FAILED,
-        errorMessage: error instanceof Error ? error.message : "Send failed",
-      });
-      input.results.failed += 1;
-    }
-  }
-}
-
-export async function sendInvoiceReminders(reference = new Date()) {
-  await refreshScheduleStatuses();
-
-  const today = startOfUtcDay(reference);
-  const fiveDaysOut = addUtcDays(today, 5);
-  const recipients = await listAllAlertRecipientEmails();
-  const emailConfig = getInvoiceEmailConfigStatus();
-  const configError = emailConfig.configured
-    ? null
-    : `${INVOICE_EMAIL_CONFIG_WARNING} Missing: ${emailConfig.missing.join(", ")}.`;
-
-  const dueSoonSchedules = await prisma.invoiceSchedule.findMany({
-    where: {
-      dueDate: fiveDaysOut,
-      status: {
-        in: [
-          InvoiceScheduleStatus.UPCOMING,
-          InvoiceScheduleStatus.DUE_SOON,
-          InvoiceScheduleStatus.GENERATED,
-          InvoiceScheduleStatus.SNOOZED,
-        ],
-      },
-      client: { status: InvoiceClientStatus.ACTIVE },
-    },
-    include: { client: true },
-  });
-
-  const dueTodaySchedules = await prisma.invoiceSchedule.findMany({
-    where: {
-      dueDate: today,
-      status: {
-        notIn: [InvoiceScheduleStatus.SUBMITTED],
-      },
-      client: { status: InvoiceClientStatus.ACTIVE },
-    },
-    include: { client: true },
-  });
-
-  const overdueSchedules = await prisma.invoiceSchedule.findMany({
-    where: {
-      status: InvoiceScheduleStatus.OVERDUE,
-      client: { status: InvoiceClientStatus.ACTIVE },
-    },
-    include: { client: true },
-  });
-
-  const results = {
-    fiveDayEmailsSent: 0,
-    dueDateEmailsSent: 0,
-    overdueEmailsSent: 0,
-    skipped: 0,
-    failed: 0,
-    emailConfigured: emailConfig.configured,
-  };
-
-  if (dueSoonSchedules.length > 0 && recipients.length > 0) {
-    const payload = dueSoonSchedules.map((schedule) => ({
-      clientName: schedule.client.clientName,
-      serviceTypeLabel: invoiceServiceTypeLabel(schedule.client.serviceType),
-      dueDate: formatIsoDate(schedule.dueDate),
-      invoiceCount: schedule.client.invoiceCountPerCycle,
-    }));
-
-    await sendGroupedInvoiceReminder({
-      alertDate: today,
-      alertType: InvoiceAlertLogType.FIVE_DAY_REMINDER,
-      subject: "Invoice Reminder: Invoices due in 5 days",
-      body: buildFiveDayReminderEmailBody(payload),
-      invoiceCount: dueSoonSchedules.length,
-      recipients,
-      emailConfigured: emailConfig.configured,
-      configError,
-      results,
-      sentCounter: "fiveDayEmailsSent",
-    });
-  }
-
-  if (dueTodaySchedules.length > 0 && recipients.length > 0) {
-    const payload = dueTodaySchedules.map((schedule) => ({
-      clientName: schedule.client.clientName,
-      serviceTypeLabel: invoiceServiceTypeLabel(schedule.client.serviceType),
-      dueDate: formatIsoDate(schedule.dueDate),
-      invoiceCount: schedule.client.invoiceCountPerCycle,
-    }));
-
-    await sendGroupedInvoiceReminder({
-      alertDate: today,
-      alertType: InvoiceAlertLogType.DUE_DATE_REMINDER,
-      subject: "Invoice Reminder: Invoices due today",
-      body: buildDueDateReminderEmailBody(payload),
-      invoiceCount: dueTodaySchedules.length,
-      recipients,
-      emailConfigured: emailConfig.configured,
-      configError,
-      results,
-      sentCounter: "dueDateEmailsSent",
-    });
-  }
-
-  if (overdueSchedules.length > 0 && recipients.length > 0) {
-    const payload = overdueSchedules.map((schedule) => ({
-      clientName: schedule.client.clientName,
-      serviceTypeLabel: invoiceServiceTypeLabel(schedule.client.serviceType),
-      dueDate: formatIsoDate(schedule.dueDate),
-      invoiceCount: schedule.client.invoiceCountPerCycle,
-    }));
-
-    await sendGroupedInvoiceReminder({
-      alertDate: today,
-      alertType: InvoiceAlertLogType.OVERDUE_REMINDER,
-      subject: "Invoice Reminder: Overdue invoices",
-      body: buildOverdueReminderEmailBody(payload),
-      invoiceCount: overdueSchedules.length,
-      recipients,
-      emailConfigured: emailConfig.configured,
-      configError,
-      results,
-      sentCounter: "overdueEmailsSent",
-    });
-  }
-
-  return results;
-}
-
-export type InvoiceStatusEmailSummary = {
-  dueSoon: number;
-  dueToday: number;
-  overdue: number;
-  generated: number;
-  submitted: number;
-  snoozed: number;
-};
-
-export async function getInvoiceStatusEmailSummary(): Promise<InvoiceStatusEmailSummary> {
-  await refreshScheduleStatuses();
-  const today = startOfUtcDay(new Date());
-  const activeClientFilter = { client: { status: InvoiceClientStatus.ACTIVE } };
-
-  const [dueSoon, dueToday, overdue, generated, submitted, snoozed] =
-    await Promise.all([
-      prisma.invoiceSchedule.count({
-        where: {
-          status: InvoiceScheduleStatus.DUE_SOON,
-          ...activeClientFilter,
-        },
-      }),
-      prisma.invoiceSchedule.count({
-        where: {
-          dueDate: today,
-          status: { notIn: [InvoiceScheduleStatus.SUBMITTED] },
-          ...activeClientFilter,
-        },
-      }),
-      prisma.invoiceSchedule.count({
-        where: {
-          status: InvoiceScheduleStatus.OVERDUE,
-          ...activeClientFilter,
-        },
-      }),
-      prisma.invoiceSchedule.count({
-        where: {
-          status: InvoiceScheduleStatus.GENERATED,
-          ...activeClientFilter,
-        },
-      }),
-      prisma.invoiceSchedule.count({
-        where: {
-          status: InvoiceScheduleStatus.SUBMITTED,
-          ...activeClientFilter,
-        },
-      }),
-      prisma.invoiceSchedule.count({
-        where: {
-          status: InvoiceScheduleStatus.SNOOZED,
-          ...activeClientFilter,
-        },
-      }),
-    ]);
-
-  return { dueSoon, dueToday, overdue, generated, submitted, snoozed };
-}
-
-async function listConfiguredAlertRecipientEmails(): Promise<string[]> {
-  const rows = await prisma.invoiceAlertRecipient.findMany({
-    where: { isActive: true },
-    select: { email: true },
-  });
-
-  return [
-    ...new Set(rows.map((row) => row.email.trim().toLowerCase()).filter(Boolean)),
-  ];
-}
-
-export type SendManualInvoiceStatusResult = {
-  ok: boolean;
-  recipientCount: number;
-  invoiceCount: number;
-  error?: string;
-};
-
-export async function sendManualInvoiceStatusUpdate(input: {
-  sentBy: string;
-}): Promise<SendManualInvoiceStatusResult> {
-  await refreshScheduleStatuses();
-
-  const [schedules, summary, recipients, emailConfig] = await Promise.all([
-    listInvoiceSchedules({ includeSubmitted: true }),
-    getInvoiceStatusEmailSummary(),
-    listConfiguredAlertRecipientEmails(),
-    Promise.resolve(getInvoiceEmailConfigStatus()),
-  ]);
-
-  const alertDate = startOfUtcDay(new Date());
-  const sentAtLabel = formatIsoDate(new Date());
-  const configError = emailConfig.configured
-    ? null
-    : `${INVOICE_EMAIL_CONFIG_WARNING} Missing: ${emailConfig.missing.join(", ")}.`;
-  const invoiceCount = schedules.length;
-
-  if (recipients.length === 0) {
-    await logAlertAttempt({
-      alertDate,
-      alertType: InvoiceAlertLogType.MANUAL_STATUS_UPDATE,
-      recipientEmail: "none",
-      invoiceCount,
-      status: InvoiceAlertLogStatus.FAILED,
-      errorMessage: "No active alert recipients configured.",
-      sentBy: input.sentBy,
-    });
-
-    return {
-      ok: false,
-      recipientCount: 0,
-      invoiceCount,
-      error: "No active alert recipients configured.",
-    };
-  }
-
-  const body = buildManualStatusUpdateEmailBody({
-    sentAt: sentAtLabel,
-    sentBy: input.sentBy,
-    summary,
-    schedules: schedules.map((schedule) => ({
-      clientName: schedule.clientName,
-      serviceTypeLabel: invoiceServiceTypeLabel(schedule.serviceType),
-      billingCycleLabel: invoiceBillingCycleLabel(schedule.billingCycle),
-      dueDate: schedule.dueDate,
-      statusLabel: schedule.statusLabel,
-      remarks: schedule.remarks,
-    })),
-  });
-
-  const subject = "Invoice Status Update - Pro's Sanitation";
-
-  if (!emailConfig.configured) {
-    for (const recipientEmail of recipients) {
-      await logAlertAttempt({
-        alertDate,
-        alertType: InvoiceAlertLogType.MANUAL_STATUS_UPDATE,
-        recipientEmail,
-        invoiceCount,
-        status: InvoiceAlertLogStatus.FAILED,
-        errorMessage: configError,
-        sentBy: input.sentBy,
-      });
-    }
-
-    return {
-      ok: false,
-      recipientCount: recipients.length,
-      invoiceCount,
-      error: configError ?? "Email configuration incomplete.",
-    };
-  }
-
-  try {
-    await sendPlainEmail({
-      to: recipients,
-      subject,
-      text: body,
-    });
-
-    for (const recipientEmail of recipients) {
-      await logAlertAttempt({
-        alertDate,
-        alertType: InvoiceAlertLogType.MANUAL_STATUS_UPDATE,
-        recipientEmail,
-        invoiceCount,
-        status: InvoiceAlertLogStatus.SENT,
-        sentBy: input.sentBy,
-      });
-    }
-
-    return {
-      ok: true,
-      recipientCount: recipients.length,
-      invoiceCount,
-    };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Send failed";
-
-    for (const recipientEmail of recipients) {
-      await logAlertAttempt({
-        alertDate,
-        alertType: InvoiceAlertLogType.MANUAL_STATUS_UPDATE,
-        recipientEmail,
-        invoiceCount,
-        status: InvoiceAlertLogStatus.FAILED,
-        errorMessage,
-        sentBy: input.sentBy,
-      });
-    }
-
-    return {
-      ok: false,
-      recipientCount: recipients.length,
-      invoiceCount,
-      error: errorMessage,
-    };
-  }
 }

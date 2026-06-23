@@ -8,13 +8,10 @@ import {
 } from "@/components/ui/MobileRecordCard";
 import { authInputClassName, authLabelClassName } from "@/lib/auth-form-styles";
 import type {
-  InvoiceAlertRecipientRow,
   InvoiceAlertSummary,
   InvoiceClientRow,
   InvoiceScheduleRow,
 } from "@/lib/invoice-service";
-import type { InvoiceEmailConfigStatus } from "@/lib/invoice-email-config";
-import { INVOICE_EMAIL_CONFIG_WARNING } from "@/lib/invoice-email-config";
 import {
   invoiceBillingCycleLabel,
   invoiceServiceTypeLabel,
@@ -29,9 +26,7 @@ import { useCallback, useEffect, useState } from "react";
 
 type InvoicePermissions = {
   canManageClients: boolean;
-  canManageRecipients: boolean;
   canProcessSchedules: boolean;
-  canSendStatusEmail: boolean;
 };
 
 const BILLING_CYCLES: Array<{ value: InvoiceBillingCycle; label: string }> = [
@@ -42,28 +37,20 @@ const BILLING_CYCLES: Array<{ value: InvoiceBillingCycle; label: string }> = [
 export function AdminInvoiceManagementSection() {
   const [clients, setClients] = useState<InvoiceClientRow[]>([]);
   const [schedules, setSchedules] = useState<InvoiceScheduleRow[]>([]);
-  const [recipients, setRecipients] = useState<InvoiceAlertRecipientRow[]>([]);
   const [alertSummary, setAlertSummary] = useState<InvoiceAlertSummary>({
     dueSoon: 0,
     dueToday: 0,
     overdue: 0,
     upcoming: 0,
   });
-  const [emailConfig, setEmailConfig] = useState<InvoiceEmailConfigStatus>({
-    configured: true,
-    missing: [],
-  });
   const [permissions, setPermissions] = useState<InvoicePermissions>({
     canManageClients: false,
-    canManageRecipients: false,
     canProcessSchedules: false,
-    canSendStatusEmail: false,
   });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [sendingStatusEmail, setSendingStatusEmail] = useState(false);
   const [showAddClient, setShowAddClient] = useState(false);
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [clientForm, setClientForm] = useState({
@@ -74,11 +61,6 @@ export function AdminInvoiceManagementSection() {
     usualDueDay: 1,
     remarks: "",
   });
-  const [recipientForm, setRecipientForm] = useState({
-    name: "",
-    email: "",
-    roleLabel: "",
-  });
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -88,9 +70,7 @@ export function AdminInvoiceManagementSection() {
       const data = (await response.json()) as {
         clients?: InvoiceClientRow[];
         schedules?: InvoiceScheduleRow[];
-        recipients?: InvoiceAlertRecipientRow[];
         alertSummary?: InvoiceAlertSummary;
-        emailConfig?: InvoiceEmailConfigStatus;
         permissions?: InvoicePermissions;
         error?: string;
       };
@@ -99,7 +79,6 @@ export function AdminInvoiceManagementSection() {
       }
       setClients(data.clients ?? []);
       setSchedules(data.schedules ?? []);
-      setRecipients(data.recipients ?? []);
       setAlertSummary(
         data.alertSummary ?? {
           dueSoon: 0,
@@ -108,18 +87,10 @@ export function AdminInvoiceManagementSection() {
           upcoming: 0,
         },
       );
-      setEmailConfig(
-        data.emailConfig ?? {
-          configured: true,
-          missing: [],
-        },
-      );
       setPermissions(
         data.permissions ?? {
           canManageClients: false,
-          canManageRecipients: false,
           canProcessSchedules: false,
-          canSendStatusEmail: false,
         },
       );
     } catch (cause) {
@@ -246,73 +217,6 @@ export function AdminInvoiceManagementSection() {
     }
   }
 
-  async function handleSendStatusEmail() {
-    setSendingStatusEmail(true);
-    setMessage(null);
-    setError(null);
-    try {
-      const response = await fetch("/api/admin/invoices/send-status", {
-        method: "POST",
-      });
-      const data = (await response.json()) as { ok?: boolean; error?: string };
-      if (!response.ok || !data.ok) {
-        setError("Status email failed. Check email configuration.");
-        return;
-      }
-      setMessage("Status email sent successfully.");
-    } catch {
-      setError("Status email failed. Check email configuration.");
-    } finally {
-      setSendingStatusEmail(false);
-    }
-  }
-
-  async function handleAddRecipient(event: React.FormEvent) {
-    event.preventDefault();
-    setBusyId("add-recipient");
-    setMessage(null);
-    setError(null);
-    try {
-      const response = await fetch("/api/admin/invoices/recipients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(recipientForm),
-      });
-      const data = (await response.json()) as { error?: string };
-      if (!response.ok) {
-        throw new Error(data.error ?? "Unable to add recipient.");
-      }
-      setRecipientForm({ name: "", email: "", roleLabel: "" });
-      setMessage("Alert recipient added.");
-      await loadData();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to add recipient.");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function handleRemoveRecipient(recipientId: string) {
-    setBusyId(recipientId);
-    setMessage(null);
-    setError(null);
-    try {
-      const response = await fetch(`/api/admin/invoices/recipients/${recipientId}`, {
-        method: "DELETE",
-      });
-      const data = (await response.json()) as { error?: string };
-      if (!response.ok) {
-        throw new Error(data.error ?? "Unable to remove recipient.");
-      }
-      setMessage("Alert recipient removed.");
-      await loadData();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to remove recipient.");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
   function startEditClient(client: InvoiceClientRow) {
     setEditingClientId(client.id);
     setClientForm({
@@ -350,15 +254,6 @@ export function AdminInvoiceManagementSection() {
         </p>
       ) : null}
 
-      {!emailConfig.configured ? (
-        <p className="rounded-xl border border-[#faad14]/40 bg-[#faad14]/10 px-4 py-3 text-sm text-[#faad14]">
-          {INVOICE_EMAIL_CONFIG_WARNING}
-          {emailConfig.missing.length > 0
-            ? ` Missing: ${emailConfig.missing.join(", ")}.`
-            : null}
-        </p>
-      ) : null}
-
       <section className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">
         <h2 className="text-lg font-bold text-[#ebfbff]">Invoice Alerts</h2>
         <div className="grid gap-4 sm:grid-cols-3">
@@ -382,87 +277,6 @@ export function AdminInvoiceManagementSection() {
           </article>
         </div>
       </section>
-
-      {permissions.canManageRecipients ? (
-        <section className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">
-          <h2 className="text-lg font-bold text-[#ebfbff]">Alert Recipients</h2>
-          <p className="text-sm text-[#ebfbff]/55">
-            Grouped invoice reminders are sent to admins, super admins, admin assistants,
-            and these additional recipients.
-          </p>
-          <form
-            onSubmit={handleAddRecipient}
-            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
-          >
-            <label className="block">
-              <span className={authLabelClassName}>Name</span>
-              <input
-                value={recipientForm.name}
-                onChange={(event) =>
-                  setRecipientForm((current) => ({ ...current, name: event.target.value }))
-                }
-                className={authInputClassName}
-                required
-              />
-            </label>
-            <label className="block">
-              <span className={authLabelClassName}>Email</span>
-              <input
-                type="email"
-                value={recipientForm.email}
-                onChange={(event) =>
-                  setRecipientForm((current) => ({ ...current, email: event.target.value }))
-                }
-                className={authInputClassName}
-                required
-              />
-            </label>
-            <label className="block">
-              <span className={authLabelClassName}>Role / Label</span>
-              <input
-                value={recipientForm.roleLabel}
-                onChange={(event) =>
-                  setRecipientForm((current) => ({
-                    ...current,
-                    roleLabel: event.target.value,
-                  }))
-                }
-                className={authInputClassName}
-              />
-            </label>
-            <div className="flex items-end">
-              <Button type="submit" loading={busyId === "add-recipient"} fullWidth>
-                Add Recipient
-              </Button>
-            </div>
-          </form>
-          {recipients.length > 0 ? (
-            <ul className="space-y-2 text-sm text-[#ebfbff]/75">
-              {recipients.map((recipient) => (
-                <li
-                  key={recipient.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#ebfbff]/10 px-4 py-3"
-                >
-                  <span>
-                    {recipient.name} · {recipient.email}
-                    {recipient.roleLabel ? ` · ${recipient.roleLabel}` : ""}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={busyId === recipient.id}
-                    onClick={() => void handleRemoveRecipient(recipient.id)}
-                    className="text-xs font-semibold text-[#ff4d4f]"
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-[#ebfbff]/45">No manual alert recipients yet.</p>
-          )}
-        </section>
-      ) : null}
 
       <section className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -823,18 +637,7 @@ export function AdminInvoiceManagementSection() {
       </section>
 
       <section className="glass-card space-y-4 rounded-2xl p-5 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-bold text-[#ebfbff]">Invoice Schedule</h2>
-          {permissions.canSendStatusEmail ? (
-            <Button
-              type="button"
-              disabled={sendingStatusEmail}
-              onClick={() => void handleSendStatusEmail()}
-            >
-              {sendingStatusEmail ? "Sending..." : "Send Status"}
-            </Button>
-          ) : null}
-        </div>
+        <h2 className="text-lg font-bold text-[#ebfbff]">Invoice Schedule</h2>
         {schedules.length === 0 ? (
           <p className="text-sm text-[#ebfbff]/55">No invoice schedules yet.</p>
         ) : (

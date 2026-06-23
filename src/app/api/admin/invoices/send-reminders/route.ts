@@ -1,11 +1,12 @@
-import { sendInvoiceReminders } from "@/lib/invoice-service";
+import { refreshScheduleStatuses } from "@/lib/invoice-service";
+import { syncInvoiceDueNotifications } from "@/lib/invoice-notification-service";
 import { verifyInvoiceCronSecret } from "@/lib/require-invoice-api";
 import { NextResponse } from "next/server";
 
 /**
- * Cron entry point for grouped invoice reminder emails.
+ * Cron entry point for invoice due-date platform notifications.
  *
- * Vercel Cron example (vercel.json):
+ * Vercel Cron (vercel.json):
  * {
  *   "crons": [{
  *     "path": "/api/admin/invoices/send-reminders",
@@ -26,11 +27,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const results = await sendInvoiceReminders();
+    await refreshScheduleStatuses();
+    const results = await syncInvoiceDueNotifications();
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Unable to send invoice reminders.";
+      error instanceof Error
+        ? error.message
+        : "Unable to sync invoice notifications.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -154,6 +154,7 @@ type PathRule = {
 };
 
 const PATH_RULES: PathRule[] = [
+  { prefix: "/admin/invoice-notifications", feature: "invoiceManagement" },
   { prefix: "/admin/invoices", feature: "invoiceManagement" },
   { prefix: "/admin/accounts", feature: "admin" },
   { prefix: "/admin/approvals", feature: "admin" },

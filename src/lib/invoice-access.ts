@@ -25,19 +25,7 @@ export function canManageInvoiceClients(
   return canAccessAdminModule(ctx.accessLevel);
 }
 
-export function canManageInvoiceAlertRecipients(
-  ctx: Pick<EmployeeAccessContext, "accessLevel" | "responsibilities">,
-): boolean {
-  return canAccessAdminModule(ctx.accessLevel);
-}
-
 export function canProcessInvoiceSchedules(
-  ctx: Pick<EmployeeAccessContext, "accessLevel" | "responsibilities">,
-): boolean {
-  return canAccessInvoiceManagement(ctx);
-}
-
-export function canSendInvoiceStatusEmail(
   ctx: Pick<EmployeeAccessContext, "accessLevel" | "responsibilities">,
 ): boolean {
   return canAccessInvoiceManagement(ctx);
