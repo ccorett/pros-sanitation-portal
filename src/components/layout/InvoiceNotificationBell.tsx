@@ -6,6 +6,10 @@ import {
 } from "@/lib/invoice-notification-format";
 import type { InvoiceNotificationRow } from "@/lib/invoice-notification-service";
 import { formatEditTimestamp } from "@/lib/admin-format";
+import {
+  ACTIVITY_POPUP_SCRIM_CLASS,
+  ACTIVITY_POPUP_SURFACE_CLASS,
+} from "@/lib/floating-panel-styles";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -77,7 +81,12 @@ export function InvoiceNotificationBell() {
   }, [open, loadSummary]);
 
   return (
-    <div ref={panelRef} className="relative shrink-0">
+    <>
+      {open ? (
+        <div className={ACTIVITY_POPUP_SCRIM_CLASS} aria-hidden="true" />
+      ) : null}
+
+      <div ref={panelRef} className="relative shrink-0">
       <button
         type="button"
         aria-label={
@@ -113,7 +122,9 @@ export function InvoiceNotificationBell() {
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-50 mt-2 w-[min(100vw-2rem,22rem)] overflow-hidden rounded-xl border border-[#00c6ff]/25 bg-[#0c151d] shadow-xl shadow-black/40">
+        <div
+          className={`absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl ${ACTIVITY_POPUP_SURFACE_CLASS}`}
+        >
           <div className="border-b border-[#ebfbff]/10 px-4 py-3">
             <p className="text-sm font-bold text-[#ebfbff]">Invoice Notifications</p>
             <p className="mt-0.5 text-xs text-[#ebfbff]/50">
@@ -176,6 +187,7 @@ export function InvoiceNotificationBell() {
           </div>
         </div>
       ) : null}
-    </div>
+      </div>
+    </>
   );
 }

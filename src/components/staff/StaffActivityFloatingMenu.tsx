@@ -3,6 +3,10 @@
 import type { DashboardDeliveryActivityItem } from "@/lib/dashboard-delivery-activity";
 import type { DashboardInvoiceActivityItem } from "@/lib/dashboard-invoice-activity";
 import type { DashboardSummaryMetrics } from "@/lib/dashboard-summary-service";
+import {
+  ACTIVITY_POPUP_SCRIM_CLASS,
+  ACTIVITY_POPUP_SURFACE_CLASS,
+} from "@/lib/floating-panel-styles";
 import { ClipboardList, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
@@ -300,10 +304,7 @@ export function StaffActivityFloatingMenu() {
   return (
     <>
       {open ? (
-        <div
-          className="fixed inset-0 z-40 bg-[#0c151d]/50 backdrop-blur-[2px] sm:bg-transparent sm:backdrop-blur-0"
-          aria-hidden="true"
-        />
+        <div className={ACTIVITY_POPUP_SCRIM_CLASS} aria-hidden="true" />
       ) : null}
 
       <div
@@ -315,7 +316,7 @@ export function StaffActivityFloatingMenu() {
             id={panelId}
             role="dialog"
             aria-label="My Activity"
-            className="fixed inset-x-0 bottom-0 z-50 max-h-[min(75vh,36rem)] overflow-hidden rounded-t-2xl border border-[#ebfbff]/15 bg-[#0c151d] pb-20 shadow-2xl shadow-[#0c151d]/80 sm:absolute sm:inset-x-auto sm:bottom-full sm:right-0 sm:z-auto sm:mb-3 sm:w-[min(22rem,calc(100vw-2rem))] sm:rounded-2xl sm:pb-0"
+            className={`fixed inset-x-0 bottom-0 z-50 max-h-[min(75vh,36rem)] rounded-t-2xl ${ACTIVITY_POPUP_SURFACE_CLASS} pb-20 sm:absolute sm:inset-x-auto sm:bottom-full sm:right-0 sm:z-auto sm:mb-3 sm:w-[min(22rem,calc(100vw-2rem))] sm:rounded-2xl sm:pb-0`}
           >
             <ActivityPanelContent
               activityRows={activityRows}
