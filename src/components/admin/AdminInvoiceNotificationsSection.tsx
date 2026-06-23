@@ -15,7 +15,11 @@ import type { InvoiceNotificationRow } from "@/lib/invoice-notification-service"
 import { formatEditTimestamp } from "@/lib/admin-format";
 import { useCallback, useEffect, useState } from "react";
 
-export function AdminInvoiceNotificationsSection() {
+export function AdminInvoiceNotificationsSection({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) {
   const [notifications, setNotifications] = useState<InvoiceNotificationRow[]>([]);
   const [filter, setFilter] = useState<(typeof INVOICE_NOTIFICATION_FILTERS)[number]["value"]>(
     "all",
@@ -84,14 +88,20 @@ export function AdminInvoiceNotificationsSection() {
 
   if (loading) {
     return (
-      <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+      <div
+        className={
+          embedded
+            ? "rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55"
+            : "glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55"
+        }
+      >
         Loading invoice notifications…
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className={embedded ? "space-y-4" : "space-y-6"}>
       {message ? (
         <p className="rounded-xl border border-[#6cc801]/30 bg-[#6cc801]/10 px-4 py-3 text-sm text-[#6cc801]">
           {message}

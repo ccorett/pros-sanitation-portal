@@ -1,5 +1,8 @@
-import type { InvoiceNotificationFilter } from "@/lib/invoice-notification-service";
-import { listInvoiceNotifications } from "@/lib/invoice-notification-service";
+import {
+  countUnreadInvoiceNotifications,
+  listInvoiceNotifications,
+  type InvoiceNotificationFilter,
+} from "@/lib/invoice-notification-service";
 import { requireInvoiceApiActor } from "@/lib/require-invoice-api";
 import { NextResponse } from "next/server";
 
@@ -18,6 +21,19 @@ function parseFilter(value: string | null): InvoiceNotificationFilter {
   }
 }
 
+function parseLimit(value: string | null): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return undefined;
+  }
+
+  return Math.min(parsed, 50);
+}
+
 export async function GET(request: Request) {
   const access = await requireInvoiceApiActor();
   if ("error" in access) {
@@ -26,7 +42,12 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const filter = parseFilter(searchParams.get("filter"));
+  const limit = parseLimit(searchParams.get("limit"));
 
-  const notifications = await listInvoiceNotifications(filter);
-  return NextResponse.json({ notifications, filter });
+  const [notifications, unreadCount] = await Promise.all([
+    listInvoiceNotifications(filter, { limit }),
+    countUnreadInvoiceNotifications(),
+  ]);
+
+  return NextResponse.json({ notifications, filter, unreadCount });
 }

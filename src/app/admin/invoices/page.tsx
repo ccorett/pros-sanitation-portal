@@ -8,6 +8,7 @@ import {
 } from "@/lib/invoice-access";
 import { requireStaffAccess } from "@/lib/require-staff-access";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 export default async function AdminInvoicesPage() {
   const { employee } = await requireStaffAccess({ pathname: "/admin/invoices" });
@@ -22,7 +23,7 @@ export default async function AdminInvoicesPage() {
     <StaffWorkspaceShell
       sectionLabel="Admin"
       title="Invoice Management"
-      subtitle="Track recurring client invoices, due dates, and submission status."
+      subtitle="Track recurring invoices, due dates, invoice status and alerts."
       employeeId={employee.id}
       accessLevel={employee.accessLevel}
       operationalGroup={employee.operationalGroup}
@@ -30,7 +31,15 @@ export default async function AdminInvoicesPage() {
     >
       <div className="space-y-6">
         <AdminBackLink />
-        <AdminInvoiceManagementSection />
+        <Suspense
+          fallback={
+            <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
+              Loading invoice management…
+            </div>
+          }
+        >
+          <AdminInvoiceManagementSection />
+        </Suspense>
       </div>
     </StaffWorkspaceShell>
   );

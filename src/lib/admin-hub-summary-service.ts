@@ -16,10 +16,6 @@ import {
 import { countActivePolicies } from "@/lib/policy-service";
 import { getInvoiceAlertSummary } from "@/lib/invoice-service";
 import {
-  countUnreadInvoiceNotifications,
-  getLatestInvoiceNotificationActivity,
-} from "@/lib/invoice-notification-service";
-import {
   buildInvoiceAccessContext,
   canAccessInvoiceManagement,
   hasAdminAssistantResponsibility,
@@ -137,22 +133,6 @@ function humanResourcesCount(counts: AdminHubSummaryCounts): number {
   );
 }
 
-async function safeInvoiceNotificationSummary(): Promise<{
-  unreadCount: number;
-  latestActivity: Date | null;
-}> {
-  try {
-    const [unreadCount, latestActivity] = await Promise.all([
-      countUnreadInvoiceNotifications(),
-      getLatestInvoiceNotificationActivity(),
-    ]);
-    return { unreadCount, latestActivity };
-  } catch (error) {
-    console.error("[admin-hub-summary] invoice notifications unavailable:", error);
-    return { unreadCount: 0, latestActivity: null };
-  }
-}
-
 export async function buildAdminHubCards(
   actor: Employee,
   counts: AdminHubSummaryCounts,
@@ -165,7 +145,6 @@ export async function buildAdminHubCards(
     latestHrActivity,
     latestPolicy,
     invoiceAlerts,
-    invoiceNotificationSummary,
   ] = await Promise.all([
     prisma.accessHistory.findFirst({
       orderBy: { changedAt: "desc" },
@@ -189,11 +168,7 @@ export async function buildAdminHubCards(
       select: { updatedAt: true },
     }),
     getInvoiceAlertSummary(),
-    safeInvoiceNotificationSummary(),
   ]);
-
-  const { unreadCount: unreadInvoiceNotifications, latestActivity: latestInvoiceNotification } =
-    invoiceNotificationSummary;
 
   const inventoryLastEdited = lastInventoryActivity
     ? formatEditTimestamp(lastInventoryActivity)
@@ -245,21 +220,11 @@ export async function buildAdminHubCards(
     {
       id: "invoices",
       title: "Invoice Management",
-      description: `Invoice alerts: ${invoiceAlerts.dueSoon} due soon, ${invoiceAlerts.dueToday} due today, ${invoiceAlerts.overdue} overdue.`,
+      description: `Track recurring invoices, due dates, invoice status and alerts. ${invoiceAlerts.dueSoon} due soon, ${invoiceAlerts.dueToday} due today, ${invoiceAlerts.overdue} overdue.`,
       href: "/admin/invoices",
       count:
         invoiceAlerts.dueSoon + invoiceAlerts.dueToday + invoiceAlerts.overdue,
       lastEditedLabel: null,
-    },
-    {
-      id: "invoice-notifications",
-      title: "Invoice Notifications",
-      description: "Platform alerts when invoices are due, generated, or submitted.",
-      href: "/admin/invoice-notifications",
-      count: unreadInvoiceNotifications,
-      lastEditedLabel: latestInvoiceNotification
-        ? formatEditTimestamp(latestInvoiceNotification.toISOString())
-        : null,
     },
     {
       id: "bin-services",
@@ -299,13 +264,11 @@ function filterAdminHubCardsForActor(
     !isFullAdmin && hasAdminAssistantResponsibility(accessContext);
 
   if (isAdminAssistantOnly) {
-    return cards.filter(
-      (card) => card.id === "invoices" || card.id === "invoice-notifications",
-    );
+    return cards.filter((card) => card.id === "invoices");
   }
 
   return cards.filter((card) => {
-    if (card.id === "invoices" || card.id === "invoice-notifications") {
+    if (card.id === "invoices") {
       return canAccessInvoiceManagement(accessContext);
     }
     return isFullAdmin;

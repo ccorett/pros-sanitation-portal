@@ -1,13 +1,18 @@
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { InvoiceNotificationBell } from "@/components/layout/InvoiceNotificationBell";
 import { getVisibleNavItems } from "@/lib/portal-route-access";
 import type { EmployeeAccessContext } from "@/lib/operational-access";
 import Link from "next/link";
 
 type StaffTopNavProps = {
   accessContext: EmployeeAccessContext;
+  showInvoiceNotifications?: boolean;
 };
 
-export function StaffTopNav({ accessContext }: StaffTopNavProps) {
+export function StaffTopNav({
+  accessContext,
+  showInvoiceNotifications = false,
+}: StaffTopNavProps) {
   const items = getVisibleNavItems(accessContext);
 
   return (
@@ -23,6 +28,7 @@ export function StaffTopNav({ accessContext }: StaffTopNavProps) {
           </Link>
         ))}
       </nav>
+      {showInvoiceNotifications ? <InvoiceNotificationBell /> : null}
       <div className="staff-nav-signout shrink-0">
         <SignOutButton />
       </div>

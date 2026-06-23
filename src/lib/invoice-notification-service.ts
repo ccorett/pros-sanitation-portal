@@ -231,6 +231,7 @@ export async function getLatestInvoiceNotificationActivity(): Promise<Date | nul
 
 export async function listInvoiceNotifications(
   filter: InvoiceNotificationFilter = "all",
+  options?: { limit?: number },
 ): Promise<InvoiceNotificationRow[]> {
   const rows = await prisma.invoiceNotification.findMany({
     where: buildFilterWhere(filter),
@@ -239,6 +240,7 @@ export async function listInvoiceNotifications(
       invoice: { select: { cycleMonth: true, cycleYear: true } },
     },
     orderBy: [{ createdAt: "desc" }, { client: { clientName: "asc" } }],
+    ...(options?.limit ? { take: options.limit } : {}),
   });
 
   return rows.map(serializeNotification);

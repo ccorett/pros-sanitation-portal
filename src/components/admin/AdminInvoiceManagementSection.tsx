@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminInvoiceNotificationsSection } from "@/components/admin/AdminInvoiceNotificationsSection";
 import { Button } from "@/components/ui/Button";
 import {
   DesktopTableView,
@@ -22,6 +23,8 @@ import {
   invoiceStatusBadgeClass,
 } from "@/lib/invoice-status";
 import type { InvoiceBillingCycle, InvoiceServiceType } from "@prisma/client";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 type InvoicePermissions = {
@@ -34,7 +37,18 @@ const BILLING_CYCLES: Array<{ value: InvoiceBillingCycle; label: string }> = [
   { value: "ANNUALLY", label: "Annually" },
 ];
 
+type InvoiceViewTab = "overview" | "notifications";
+
+function invoiceTabClassName(active: boolean): string {
+  return active
+    ? "border-[#6cc801]/45 bg-[#6cc801]/15 text-[#6cc801]"
+    : "border-[#ebfbff]/15 bg-[#0c151d]/40 text-[#ebfbff]/70 hover:border-[#00c6ff]/30";
+}
+
 export function AdminInvoiceManagementSection() {
+  const searchParams = useSearchParams();
+  const activeTab: InvoiceViewTab =
+    searchParams.get("tab") === "notifications" ? "notifications" : "overview";
   const [clients, setClients] = useState<InvoiceClientRow[]>([]);
   const [schedules, setSchedules] = useState<InvoiceScheduleRow[]>([]);
   const [alertSummary, setAlertSummary] = useState<InvoiceAlertSummary>({
@@ -233,7 +247,7 @@ export function AdminInvoiceManagementSection() {
     return `${client.clientName} · ${invoiceServiceTypeLabel(client.serviceType)} · ${invoiceBillingCycleLabel(client.billingCycle)}`;
   }
 
-  if (loading) {
+  if (loading && activeTab === "overview") {
     return (
       <div className="glass-card rounded-2xl p-8 text-center text-sm text-[#ebfbff]/55">
         Loading invoice management…
@@ -243,6 +257,25 @@ export function AdminInvoiceManagementSection() {
 
   return (
     <div className="space-y-8">
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href="/admin/invoices"
+          className={`inline-flex min-h-[40px] items-center rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${invoiceTabClassName(activeTab === "overview")}`}
+        >
+          Overview
+        </Link>
+        <Link
+          href="/admin/invoices?tab=notifications"
+          className={`inline-flex min-h-[40px] items-center rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${invoiceTabClassName(activeTab === "notifications")}`}
+        >
+          Invoice Notifications
+        </Link>
+      </div>
+
+      {activeTab === "notifications" ? (
+        <AdminInvoiceNotificationsSection embedded />
+      ) : (
+        <>
       {message ? (
         <p className="rounded-xl border border-[#6cc801]/30 bg-[#6cc801]/10 px-4 py-3 text-sm text-[#6cc801]">
           {message}
@@ -810,6 +843,8 @@ export function AdminInvoiceManagementSection() {
           </>
         )}
       </section>
+        </>
+      )}
     </div>
   );
 }

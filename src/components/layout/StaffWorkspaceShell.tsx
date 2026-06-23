@@ -7,6 +7,7 @@ import {
   type WorkspaceLayoutWidth,
 } from "@/lib/workspace-layout";
 import { toEmployeeAccessContext } from "@/lib/portal-route-access";
+import { canAccessInvoiceManagement } from "@/lib/invoice-access";
 import type { AccessLevel, OperationalGroup } from "@prisma/client";
 import type { ReactNode } from "react";
 
@@ -40,6 +41,7 @@ export async function StaffWorkspaceShell({
     operationalGroup,
     companyEmail,
   });
+  const showInvoiceNotifications = canAccessInvoiceManagement(accessContext);
   return (
     <main className="relative min-h-dvh">
       <SessionInactivityGuard />
@@ -63,7 +65,10 @@ export async function StaffWorkspaceShell({
               <p className="text-xs text-[#ebfbff]/50">{sectionLabel}</p>
             </div>
           </div>
-          <StaffTopNav accessContext={accessContext} />
+          <StaffTopNav
+            accessContext={accessContext}
+            showInvoiceNotifications={showInvoiceNotifications}
+          />
         </div>
       </header>
 
